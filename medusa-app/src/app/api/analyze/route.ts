@@ -1,7 +1,6 @@
-import Anthropic from '@anthropic-ai/sdk';
+import { query } from '@anthropic-ai/claude-agent-sdk';
 import { NextRequest, NextResponse } from 'next/server';
-
-const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+import { randomUUID } from 'crypto';
 
 /* ── Look-specific makeup briefs ── */
 const LOOK_BRIEF: Record<string, string> = {
@@ -38,28 +37,16 @@ export async function POST(req: NextRequest) {
     if (!image || !lookId) {
       return NextResponse.json({ error: 'image and lookId are required' }, { status: 400 });
     }
-    if (!process.env.ANTHROPIC_API_KEY) {
-      return NextResponse.json({ error: 'ANTHROPIC_API_KEY not set' }, { status: 500 });
+    if (!process.env.CLAUDE_CODE_OAUTH_TOKEN) {
+      return NextResponse.json({ error: 'CLAUDE_CODE_OAUTH_TOKEN not set' }, { status: 500 });
     }
 
     const mediaType = getMediaType(image);
     const base64    = image.replace(/^data:image\/\w+;base64,/, '');
     const brief     = LOOK_BRIEF[lookId] ?? 'A beautiful personalised makeup look.';
+    const sessionId = randomUUID();
 
-    const msg = await client.messages.create({
-      model:      'claude-sonnet-4-6',
-      max_tokens: 5000,
-      messages: [
-        {
-          role: 'user',
-          content: [
-            {
-              type:   'image',
-              source: { type: 'base64', media_type: mediaType, data: base64 },
-            },
-            {
-              type: 'text',
-              text: `You are MEDUSA — an expert AI makeup artist and precision computer vision specialist.
+    const promptText = `You are MEDUSA — an expert AI makeup artist and precision computer vision specialist.
 
 REQUESTED LOOK: ${brief}
 
@@ -150,19 +137,50 @@ Respond with ONLY valid JSON — no markdown fences, no commentary:
       "zone": <string>
     }
   ]
-}`,
+}`;
+
+    /* ── Build a single-message async iterable with the image ── */
+    async function* makeMessages() {
+      yield {
+        type:               'user' as const,
+        message: {
+          role:    'user' as const,
+          content: [
+            {
+              type:   'image' as const,
+              source: {
+                type:       'base64' as const,
+                media_type: mediaType,
+                data:        base64,
+              },
             },
+            { type: 'text' as const, text: promptText },
           ],
         },
-      ],
-    });
+        parent_tool_use_id: null,
+        session_id:          sessionId,
+      };
+    }
 
-    const raw = msg.content[0].type === 'text' ? msg.content[0].text : '';
-    if (!raw) throw new Error('Empty response from Claude');
+    /* ── Run query with no tools (pure vision + text response) ── */
+    let resultText = '';
 
-    const parsed = JSON.parse(extractJSON(raw));
+    for await (const msg of query({
+      prompt:  makeMessages(),
+      options: {
+        maxTurns: 1,
+        tools:    [],          // no file/bash tools — pure AI response only
+      },
+    })) {
+      if (msg.type === 'result' && msg.subtype === 'success') {
+        resultText = msg.result;
+      }
+    }
 
-    /* Basic validation */
+    if (!resultText) throw new Error('No result from Claude');
+
+    const parsed = JSON.parse(extractJSON(resultText));
+
     if (!parsed.faceAnalysis || !Array.isArray(parsed.steps) || parsed.steps.length === 0) {
       throw new Error('Malformed response from Claude');
     }

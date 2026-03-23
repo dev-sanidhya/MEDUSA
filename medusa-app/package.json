@@ -8,6 +8,7 @@
     "start": "next start"
   },
   "dependencies": {
+    "@anthropic-ai/claude-agent-sdk": "^0.2.81",
     "@anthropic-ai/sdk": "^0.80.0",
     "@remotion/player": "^4.0.438",
     "framer-motion": "^12.38.0",
