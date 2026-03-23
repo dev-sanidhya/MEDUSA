@@ -1,0 +1,17 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "medusa-dev",
+      "runtimeExecutable": "node",
+      "runtimeArgs": [
+        "C:/Users/shish/Desktop/PORTFOLIO/MEDUSA/medusa-app/node_modules/next/dist/bin/next",
+        "dev",
+        "--port",
+        "3333"
+      ],
+      "port": 3333,
+      "cwd": "C:/Users/shish/Desktop/PORTFOLIO/MEDUSA/medusa-app"
+    }
+  ]
+}
