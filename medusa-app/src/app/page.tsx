@@ -1,322 +1,289 @@
-import Link from 'next/link';
-import Navbar from '@/components/Navbar';
-import RemotionHero from '@/components/RemotionHero';
-import LooksRow from '@/components/LooksRow';
+"use client";
 
-const STEPS = [
-  { n: '01', title: 'Upload your selfie',  body: 'Any lighting. Any angle. Front camera on your phone is perfect.' },
-  { n: '02', title: 'Pick your look',      body: '5 curated aesthetics — from no-makeup to full editorial.' },
-  { n: '03', title: 'AI reads your face',  body: 'Skin tone, undertone, bone structure — every feature mapped.' },
-  { n: '04', title: 'Get your tutorial',   body: '8 personalised steps, written in plain language, just for you.' },
-];
+/**
+ * page.tsx — Medusa main page
+ * Orchestrates the full face analysis flow:
+ * 1. Upload photo → MediaPipe detection → precision score
+ * 2. Send to Claude agent → either asks for more photos or gives full analysis
+ * 3. Display face analysis → proceed to tutorial (coming next)
+ */
 
-const STATS = [
-  { value: '5',     label: 'Looks' },
-  { value: '8',     label: 'Steps per tutorial' },
-  { value: '< 3s',  label: 'Analysis time' },
-  { value: '100%',  label: 'Personalised' },
-];
+import { useState } from "react";
+import { PhotoCapture, type CapturedPhoto } from "@/components/PhotoCapture";
+import { FaceAnalysisDisplay } from "@/components/FaceAnalysisDisplay";
+import type { AnalyzeFaceRequest, FaceAnalysisResult } from "./api/analyze-face/route";
 
-export default function Home() {
-  return (
-    <div style={{ background: 'var(--bg)' }}>
-      <Navbar />
+type AppStage =
+  | "welcome"
+  | "capturing"
+  | "analyzing"
+  | "analysis_complete"
+  | "tutorial";
 
-      {/* ══ HERO ══════════════════════════════════════════════════ */}
-      <section
-        style={{
-          position: 'relative',
-          height: '100svh',
-          minHeight: 640,
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          justifyContent: 'center',
-          overflow: 'hidden',
-        }}
-      >
-        {/* Remotion animated background */}
-        <RemotionHero />
+export default function MedusaPage() {
+  const [stage, setStage] = useState<AppStage>("welcome");
+  const [capturedPhotos, setCapturedPhotos] = useState<CapturedPhoto[]>([]);
+  const [agentMessage, setAgentMessage] = useState<string | null>(null);
+  const [photoInstruction, setPhotoInstruction] = useState<string | undefined>(undefined);
+  const [analysisResult, setAnalysisResult] = useState<FaceAnalysisResult["faceAnalysis"] | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
-        {/* Seamless bottom fade into page bg */}
-        <div style={{
-          position: 'absolute', bottom: 0, left: 0, right: 0,
-          height: 220, zIndex: 2,
-          background: 'linear-gradient(to bottom, transparent, var(--bg))',
-          pointerEvents: 'none',
-        }} />
+  const currentPhotoNumber = capturedPhotos.length + 1;
 
-        {/* Hero text block */}
-        <div
-          className="wrap"
-          style={{
-            position: 'relative', zIndex: 3,
-            display: 'flex', flexDirection: 'column',
-            alignItems: 'center', textAlign: 'center',
-            gap: 28,
-          }}
-        >
-          {/* Live badge */}
-          <div className="tag fu" style={{ gap: 8 }}>
-            <span className="pdot" style={{ width: 5, height: 5, borderRadius: '50%', background: '#22c55e', display: 'inline-block' }} />
-            V1 — Live now
+  const handlePhotoCaptured = async (photo: CapturedPhoto) => {
+    const allPhotos = [...capturedPhotos, photo];
+    setCapturedPhotos(allPhotos);
+    setStage("analyzing");
+    setError(null);
+
+    try {
+      const requestBody: AnalyzeFaceRequest = {
+        photos: allPhotos.map((p) => ({
+          base64: p.base64,
+          mimeType: p.mimeType,
+          geometryProfile: p.geometryProfile,
+          precisionReport: p.precisionReport,
+        })),
+      };
+
+      const res = await fetch("/api/analyze-face", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(requestBody),
+      });
+
+      if (!res.ok) {
+        const errBody = await res.json().catch(() => ({}));
+        throw new Error(errBody.error ?? `API error: ${res.status}`);
+      }
+
+      const result: FaceAnalysisResult = await res.json();
+
+      if (result.status === "needs_more_photos" && result.photoRequest) {
+        setAgentMessage(result.photoRequest.message);
+        setPhotoInstruction(result.photoRequest.specificInstruction);
+        setStage("capturing");
+      } else if (result.status === "analysis_complete" && result.faceAnalysis) {
+        setAnalysisResult(result.faceAnalysis);
+        setStage("analysis_complete");
+      } else {
+        throw new Error("Unexpected agent response");
+      }
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Something went wrong during analysis. Please try again.";
+      console.error(err);
+      setError(msg);
+      setStage("capturing");
+    }
+  };
+
+  // ─── WELCOME ───────────────────────────────────────────────────────────────
+  if (stage === "welcome") {
+    return (
+      <main className="min-h-screen bg-stone-950 flex flex-col items-center justify-center px-6">
+        <div className="max-w-md w-full text-center space-y-8">
+          <div>
+            <h1 className="text-6xl font-bold tracking-tight text-white" style={{ fontFamily: "Georgia, serif" }}>
+              MEDUSA
+            </h1>
+            <p className="text-stone-400 text-sm tracking-[0.3em] uppercase mt-2">AI Makeup Artist</p>
           </div>
 
-          {/* Main headline */}
-          <h1
-            className="serif fu-1"
-            style={{
-              fontSize: 'clamp(64px, 13vw, 138px)',
-              lineHeight: 0.88,
-              letterSpacing: '-0.03em',
-              color: 'var(--text)',
-              maxWidth: 840,
-            }}
-          >
-            Make them
+          <p className="text-stone-300 text-base leading-relaxed">
+            Your face is unique. Your tutorial should be too.
             <br />
-            <em className="serif-italic" style={{ color: 'var(--accent)' }}>
-              stop.
-            </em>
-          </h1>
-
-          <p
-            className="fu-2"
-            style={{
-              fontSize: 16, lineHeight: 1.85, fontWeight: 300,
-              color: 'var(--text-2)', maxWidth: 400,
-            }}
-          >
-            Upload your selfie. AI maps your face. Get a step-by-step makeup
-            tutorial built{' '}
-            <strong style={{ fontWeight: 500, color: 'var(--text)' }}>
-              exactly for you.
-            </strong>
+            <span className="text-stone-500 text-sm">
+              Upload a selfie and I&apos;ll map your face with 478-point precision —
+              then guide you step by step to your best look.
+            </span>
           </p>
 
-          <div className="fu-3" style={{ display: 'flex', gap: 12, flexWrap: 'wrap', justifyContent: 'center' }}>
-            <Link href="/start" className="btn btn-dark btn-lg">
-              Get your look →
-            </Link>
-            <a href="#process" className="btn btn-ghost btn-lg">
-              How it works
-            </a>
-          </div>
-
-          <p
-            className="fu-4"
-            style={{ fontSize: 11, color: 'var(--text-3)', letterSpacing: '0.1em', textTransform: 'uppercase' }}
-          >
-            Free · No account · Works on mobile
-          </p>
-        </div>
-
-        {/* Scrolling marquee strip at bottom of hero */}
-        <div
-          style={{
-            position: 'absolute', bottom: 36, left: 0, right: 0,
-            overflow: 'hidden', zIndex: 3, pointerEvents: 'none',
-          }}
-        >
-          <div
-            style={{
-              display: 'flex', gap: 48, whiteSpace: 'nowrap',
-              animation: 'marquee 28s linear infinite',
-              fontSize: 10, letterSpacing: '0.26em',
-              color: 'var(--text-3)', textTransform: 'uppercase',
-            }}
-          >
-            {Array(12).fill(['smoky eye','✦','glass skin','◆','bold lip','◇','editorial','▲','no-makeup makeup','●']).flat().map((t, i) => (
-              <span key={i}>{t}</span>
+          <div className="bg-stone-900 rounded-2xl p-5 text-left space-y-3">
+            {[
+              ["◈", "I'll analyze your exact face geometry"],
+              ["◉", "I'll read your skin tone and undertone"],
+              ["✦", "I'll build your personalized makeup plan"],
+            ].map(([icon, text]) => (
+              <div key={text} className="flex items-center gap-3">
+                <span className="text-rose-400 text-lg w-5">{icon}</span>
+                <span className="text-stone-300 text-sm">{text}</span>
+              </div>
             ))}
           </div>
-        </div>
-      </section>
 
-      {/* ══ STATS BAR ══════════════════════════════════════════ */}
-      <div style={{ background: 'var(--bg-dark)', padding: '32px 0' }}>
-        <div className="wrap">
-          <div
-            style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(4, 1fr)',
-            }}
+          <button
+            onClick={() => setStage("capturing")}
+            className="w-full py-4 bg-rose-500 hover:bg-rose-400 text-white font-semibold rounded-2xl transition-colors text-[15px] tracking-wide"
           >
-            {STATS.map((s, i) => (
-              <div
-                key={i}
-                style={{
-                  textAlign: 'center', padding: '10px 0',
-                  borderRight: i < 3 ? '1px solid rgba(255,255,255,.07)' : 'none',
-                }}
-              >
-                <p className="serif" style={{ fontSize: 32, color: 'var(--text-inv)', letterSpacing: '-0.02em', lineHeight: 1 }}>{s.value}</p>
-                <p style={{ fontSize: 10.5, color: 'rgba(245,240,235,.35)', marginTop: 6, letterSpacing: '0.08em', textTransform: 'uppercase' }}>{s.label}</p>
+            Begin My Analysis →
+          </button>
+
+          <p className="text-stone-600 text-xs">
+            Your photo is processed locally — never stored on our servers.
+          </p>
+        </div>
+      </main>
+    );
+  }
+
+  // ─── CAPTURING ─────────────────────────────────────────────────────────────
+  if (stage === "capturing") {
+    return (
+      <main className="min-h-screen bg-stone-50 px-5 py-10">
+        <div className="max-w-lg mx-auto space-y-6">
+          <div>
+            <h1 className="text-2xl font-bold text-stone-900" style={{ fontFamily: "Georgia, serif" }}>MEDUSA</h1>
+            <p className="text-stone-400 text-sm mt-1">Photo {currentPhotoNumber} of up to 3</p>
+          </div>
+
+          {agentMessage && (
+            <div className="bg-white border border-stone-200 rounded-2xl p-5 shadow-sm">
+              <div className="flex items-start gap-3">
+                <div className="w-8 h-8 bg-rose-100 rounded-full flex items-center justify-center shrink-0 mt-0.5">
+                  <span className="text-rose-500 text-sm">✦</span>
+                </div>
+                <div>
+                  <p className="text-xs font-semibold text-rose-500 uppercase tracking-wider mb-1">
+                    I need one more photo
+                  </p>
+                  <p className="text-stone-700 text-sm leading-relaxed">{agentMessage}</p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {capturedPhotos.length > 0 && (
+            <div className="flex gap-2">
+              {capturedPhotos.map((p, i) => (
+                <div key={i} className="relative rounded-lg overflow-hidden w-16 h-16 bg-stone-200">
+                  <img src={p.previewUrl} alt={`Photo ${i + 1}`} className="w-full h-full object-cover" />
+                  <div className="absolute inset-0 bg-black/20 flex items-center justify-center">
+                    <span className="text-white text-xs font-bold">{i + 1}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {currentPhotoNumber === 1 && (
+            <div className="bg-stone-100 rounded-xl p-4 space-y-1.5">
+              <p className="text-xs font-semibold text-stone-500 uppercase tracking-wider mb-2">For best results</p>
+              {[
+                "Face the camera directly — straight on",
+                "Natural light, no harsh flash",
+                "Hair pulled back, full face visible",
+                "Neutral expression, mouth closed",
+                "Full face in frame — forehead to chin",
+              ].map((tip) => (
+                <div key={tip} className="flex items-start gap-2">
+                  <span className="text-rose-400 text-xs mt-0.5">·</span>
+                  <span className="text-stone-600 text-xs">{tip}</span>
+                </div>
+              ))}
+            </div>
+          )}
+
+          <PhotoCapture
+            photoNumber={currentPhotoNumber}
+            onPhotoCaptured={handlePhotoCaptured}
+            instruction={photoInstruction}
+          />
+
+          {error && (
+            <div className="p-4 bg-red-50 border border-red-200 rounded-xl text-sm text-red-700">
+              {error}
+            </div>
+          )}
+        </div>
+      </main>
+    );
+  }
+
+  // ─── ANALYZING ─────────────────────────────────────────────────────────────
+  if (stage === "analyzing") {
+    return (
+      <main className="min-h-screen bg-stone-950 flex flex-col items-center justify-center px-6">
+        <div className="text-center space-y-6">
+          <div className="relative w-20 h-20 mx-auto">
+            <div className="absolute inset-0 border-2 border-rose-800 rounded-full animate-ping opacity-30" />
+            <div className="absolute inset-2 border-2 border-rose-500 rounded-full animate-spin" />
+            <div className="absolute inset-0 flex items-center justify-center">
+              <span className="text-rose-400 text-2xl">✦</span>
+            </div>
+          </div>
+          <div>
+            <h2 className="text-white text-xl font-semibold">Reading your face</h2>
+            <p className="text-stone-400 text-sm mt-2">
+              Analyzing 478 landmark points · Measuring face geometry · Assessing skin tone
+            </p>
+          </div>
+          <div className="space-y-2 text-left max-w-xs mx-auto">
+            {[
+              "Mapping face structure...",
+              "Calculating eye geometry...",
+              "Measuring lip proportions...",
+              "Classifying face shape...",
+              "Reading skin tone...",
+            ].map((step) => (
+              <div key={step} className="flex items-center gap-2 text-stone-500 text-xs">
+                <span className="w-1 h-1 bg-rose-500 rounded-full animate-pulse" />
+                {step}
               </div>
             ))}
           </div>
         </div>
-      </div>
+      </main>
+    );
+  }
 
-      {/* ══ HOW IT WORKS ══════════════════════════════════════ */}
-      <section id="process" style={{ padding: '120px 0' }}>
-        <div className="wrap">
-
-          <div style={{ marginBottom: 64 }}>
-            <span className="tag" style={{ marginBottom: 18, display: 'inline-flex' }}>How it works</span>
-            <h2 className="serif" style={{ fontSize: 'clamp(40px, 6vw, 72px)', lineHeight: 1, letterSpacing: '-0.03em' }}>
-              Four steps.
-              <br />
-              <span className="serif-italic" style={{ color: 'var(--text-2)' }}>Zero guesswork.</span>
-            </h2>
+  // ─── ANALYSIS COMPLETE ─────────────────────────────────────────────────────
+  if (stage === "analysis_complete" && analysisResult) {
+    return (
+      <main className="min-h-screen bg-stone-50 px-5 py-10">
+        <div className="max-w-2xl mx-auto">
+          <div className="mb-8 text-center">
+            <h1 className="text-3xl font-bold text-stone-900" style={{ fontFamily: "Georgia, serif" }}>
+              Your Face Analysis
+            </h1>
+            <p className="text-stone-400 text-sm mt-2">
+              {capturedPhotos.length} photo{capturedPhotos.length > 1 ? "s" : ""} analyzed ·{" "}
+              {capturedPhotos[capturedPhotos.length - 1]?.precisionReport.overallScore}/100 precision
+            </p>
           </div>
-
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 16 }}>
-            {STEPS.map((step, i) => (
-              <div key={i} className="process-card">
-                <span className="num">{step.n}</span>
-                <p style={{ fontSize: 10.5, color: 'var(--accent)', letterSpacing: '0.18em', textTransform: 'uppercase', marginBottom: 16, fontWeight: 500 }}>Step {step.n}</p>
-                <h3 className="serif" style={{ fontSize: 24, color: 'var(--text)', marginBottom: 12, lineHeight: 1.15 }}>{step.title}</h3>
-                <p style={{ fontSize: 14, color: 'var(--text-2)', lineHeight: 1.75 }}>{step.body}</p>
-              </div>
-            ))}
-          </div>
+          <FaceAnalysisDisplay
+            analysis={analysisResult}
+            onProceed={() => setStage("tutorial")}
+          />
         </div>
-      </section>
+      </main>
+    );
+  }
 
-      {/* ══ EDITORIAL PULL QUOTE ══════════════════════════════ */}
-      <div className="rule-fade" />
-      <div
-        style={{
-          padding: '100px 0',
-          position: 'relative',
-          overflow: 'hidden',
-        }}
-      >
-        {/* Soft colour bleed */}
-        {[
-          { left: '-4%',  top: '0%',  size: 500, color: '#C17060', opacity: 0.07 },
-          { left: '65%',  top: '-30%', size: 420, color: '#D4A090', opacity: 0.07 },
-        ].map((b, i) => (
-          <div key={i} style={{
-            position: 'absolute', left: b.left, top: b.top,
-            width: b.size, height: b.size, borderRadius: '50%',
-            background: b.color, opacity: b.opacity, filter: 'blur(80px)',
-            pointerEvents: 'none',
-          }} />
-        ))}
-
-        <div className="wrap" style={{ position: 'relative', zIndex: 1, textAlign: 'center' }}>
-          <p
-            className="serif-italic"
-            style={{
-              fontSize: 'clamp(26px, 4.5vw, 54px)',
-              color: 'var(--text-2)',
-              lineHeight: 1.35,
-              letterSpacing: '-0.015em',
-              maxWidth: 760,
-              margin: '0 auto',
-            }}
-          >
-            "No two faces are the same.<br />So why are tutorials generic?"
+  // ─── TUTORIAL PLACEHOLDER ──────────────────────────────────────────────────
+  if (stage === "tutorial") {
+    return (
+      <main className="min-h-screen bg-stone-950 flex items-center justify-center px-6">
+        <div className="text-center text-white space-y-4">
+          <h2 className="text-2xl font-bold">Tutorial — Coming Next</h2>
+          <p className="text-stone-400 text-sm max-w-xs">
+            Personalized step-by-step guide with realistic face previews for each step.
           </p>
-          <div style={{ width: 48, height: 1.5, background: 'var(--accent)', margin: '32px auto 0', opacity: 0.7 }} />
-        </div>
-      </div>
-      <div className="rule-fade" />
-
-      {/* ══ LOOK LIBRARY ══════════════════════════════════════ */}
-      <section style={{ padding: '120px 0' }}>
-        <div className="wrap">
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 80, alignItems: 'start' }}>
-
-            {/* Left: heading */}
-            <div style={{ position: 'sticky', top: 120 }}>
-              <span className="tag" style={{ marginBottom: 20, display: 'inline-flex' }}>Look library</span>
-              <h2 className="serif" style={{ fontSize: 'clamp(38px, 5vw, 66px)', lineHeight: 1, letterSpacing: '-0.03em', marginBottom: 20 }}>
-                5 looks.
-                <br />
-                <span className="serif-italic" style={{ color: 'var(--text-2)' }}>One is yours.</span>
-              </h2>
-              <p style={{ fontSize: 14, color: 'var(--text-2)', lineHeight: 1.8, maxWidth: 340, marginBottom: 32 }}>
-                From the subtlest skin-first finish to a full runway statement.
-                Each look is adapted to your exact skin tone and features.
-              </p>
-              <Link href="/looks" className="btn btn-ghost btn-sm">
-                Explore all looks →
-              </Link>
-            </div>
-
-            {/* Right: look rows */}
-            <div>
-              <LooksRow />
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* ══ DARK CTA ══════════════════════════════════════════ */}
-      <section
-        style={{
-          background: 'var(--bg-dark)',
-          padding: '120px 0',
-          position: 'relative',
-          overflow: 'hidden',
-        }}
-      >
-        {/* Radial glow */}
-        <div style={{
-          position: 'absolute', top: '50%', left: '50%',
-          transform: 'translate(-50%, -50%)',
-          width: 700, height: 700, borderRadius: '50%',
-          background: 'radial-gradient(circle, rgba(181,96,74,.16) 0%, transparent 68%)',
-          pointerEvents: 'none',
-        }} />
-
-        <div className="wrap" style={{ position: 'relative', zIndex: 1, textAlign: 'center' }}>
-          <span className="tag" style={{ marginBottom: 24, display: 'inline-flex', borderColor: 'rgba(255,255,255,.1)', background: 'rgba(255,255,255,.04)', color: 'rgba(245,240,235,.4)' }}>
-            Try it free
-          </span>
-          <h2
-            className="serif"
-            style={{
-              fontSize: 'clamp(48px, 9vw, 100px)',
-              lineHeight: 0.92,
-              letterSpacing: '-0.035em',
-              color: 'var(--text-inv)',
-              marginBottom: 28,
+          <button
+            onClick={() => {
+              setStage("welcome");
+              setCapturedPhotos([]);
+              setAnalysisResult(null);
+              setAgentMessage(null);
+              setPhotoInstruction(undefined);
             }}
+            className="px-6 py-3 bg-rose-500 hover:bg-rose-400 text-white rounded-xl transition-colors text-sm"
           >
-            Your face.
-            <br />
-            <em className="serif-italic" style={{ color: 'var(--accent-hi)' }}>Your tutorial.</em>
-          </h2>
-          <p style={{ fontSize: 15, color: 'rgba(245,240,235,.45)', fontWeight: 300, lineHeight: 1.85, maxWidth: 380, margin: '0 auto 40px' }}>
-            No generic guides. No subscriptions.<br />AI-powered steps built around your exact features.
-          </p>
-          <div style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap' }}>
-            <Link href="/start" className="btn btn-accent btn-lg">
-              Get your look →
-            </Link>
-            <Link href="/roadmap" className="btn btn-ghost-inv btn-lg">
-              See what's coming
-            </Link>
-          </div>
+            Start Over
+          </button>
         </div>
-      </section>
+      </main>
+    );
+  }
 
-      {/* ══ FOOTER ════════════════════════════════════════════ */}
-      <footer style={{ borderTop: '1px solid var(--line)', padding: '32px 0', background: 'var(--bg-card)' }}>
-        <div className="wrap" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 16 }}>
-          <span className="serif" style={{ fontSize: 13, color: 'var(--text-3)', letterSpacing: '0.24em' }}>MEDUSA</span>
-          <div style={{ display: 'flex', gap: 28 }}>
-            <Link href="/looks"   style={{ fontSize: 12, color: 'var(--text-3)' }}>Looks</Link>
-            <Link href="/roadmap" style={{ fontSize: 12, color: 'var(--text-3)' }}>Roadmap</Link>
-            <Link href="/start"   style={{ fontSize: 12, color: 'var(--text-3)' }}>Try it</Link>
-          </div>
-          <span style={{ fontSize: 11, color: 'var(--text-3)' }}>© 2026 MEDUSA — AI Makeup Tutorials</span>
-        </div>
-      </footer>
-    </div>
-  );
+  return null;
 }

@@ -1,8 +1,9 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  /* config options here */
   reactCompiler: true,
+  // Claude Agent SDK spawns a subprocess — must run as native Node, not bundled
+  serverExternalPackages: ["@anthropic-ai/claude-agent-sdk"],
 };
 
 export default nextConfig;
