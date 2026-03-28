@@ -102,21 +102,32 @@ function paintFullFace(ctx: CanvasRenderingContext2D, lm: RawLandmark[], w: numb
 }
 
 function paintUnderEye(ctx: CanvasRenderingContext2D, lm: RawLandmark[], w: number, h: number, fill: string) {
-  // Setting powder goes under the WHOLE eye — full width inner→outer corner, extending well below lash line
+  // Professional concealer = inverted triangle: top edge along lower lash line, apex pointing down toward cheek.
+  // Covers the full dark circle zone — inner corner → outer corner → tip at ~nose-wing level.
   for (const [lowerIdx, innerCorner, outerCorner] of [
     [LANDMARK_INDICES.leftEyeLower,  LANDMARK_INDICES.leftEyeInnerCorner[0],  LANDMARK_INDICES.leftEyeOuterCorner[0]],
     [LANDMARK_INDICES.rightEyeLower, LANDMARK_INDICES.rightEyeInnerCorner[0], LANDMARK_INDICES.rightEyeOuterCorner[0]],
   ] as const) {
     const inner = p(lm, innerCorner, w, h);
     const outer = p(lm, outerCorner, w, h);
-    const cx = (inner[0] + outer[0]) / 2;
     const eyeSpanX = Math.abs(outer[0] - inner[0]);
-    // Bottom of lower lash line
+
+    // Bottom of lower lash line (true floor of the eye opening)
     const lowerPts = (lowerIdx as number[]).map(i => p(lm, i, w, h));
     const lashBottomY = Math.max(...lowerPts.map(([, y]) => y));
-    // Drop = ~45% of eye width downward
-    const dropH = eyeSpanX * 0.45;
-    fillEllipse(ctx, cx, lashBottomY + dropH * 0.55, eyeSpanX * 0.62, dropH * 0.75, fill, 8);
+
+    // Triangle apex drops down ~60% of the eye width
+    const dropH = eyeSpanX * 0.60;
+    const tipX   = (inner[0] + outer[0]) / 2;
+    const tipY   = lashBottomY + dropH;
+
+    // Slightly widen the top corners outward so the shape matches the actual under-eye hollow
+    const triangle: Pt[] = [
+      [inner[0] - eyeSpanX * 0.06, lashBottomY],
+      [outer[0] + eyeSpanX * 0.06, lashBottomY],
+      [tipX, tipY],
+    ];
+    fillPoly(ctx, triangle, fill, 9);
   }
 }
 
