@@ -128,6 +128,12 @@ export default function MedusaPage() {
     setError(null);
   };
 
+  const handleChooseAnotherLook = () => {
+    setTutorialResult(null);
+    setError(null);
+    setStage("look_selection");
+  };
+
   // ─── WELCOME ───────────────────────────────────────────────────────────────
   if (stage === "welcome") {
     return (
@@ -373,6 +379,7 @@ export default function MedusaPage() {
           imageWidth: lastPhoto.imageWidth,
           imageHeight: lastPhoto.imageHeight,
         }}
+        onChooseAnotherLook={handleChooseAnotherLook}
         onRestart={handleRestart}
       />
     );

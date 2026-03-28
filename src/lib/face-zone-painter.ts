@@ -220,20 +220,15 @@ function paintBlush(ctx: CanvasRenderingContext2D, lm: RawLandmark[], w: number,
 function paintContour(ctx: CanvasRenderingContext2D, lm: RawLandmark[], w: number, h: number, fill: string) {
   const faceW = span(lm, LANDMARK_INDICES.faceOval, "x") * w;
   const sw = faceW * 0.08;
+  const cheekDepth = faceW * 0.045;
 
   const lT = p(lm, LANDMARK_INDICES.leftTemple[0], w, h);
   const lC = p(lm, LANDMARK_INDICES.leftCheekbone[0], w, h);
-  const lJ = p(lm, LANDMARK_INDICES.leftJaw[0], w, h);
-  fillPoly(ctx, [[lT[0],lT[1]], [lT[0]+sw,lT[1]], [lC[0]+sw*.8,lC[1]], [lJ[0]+sw*.5,lJ[1]], [lJ[0],lJ[1]], [lC[0],lC[1]]], fill, 10);
+  fillPoly(ctx, [[lT[0],lT[1]], [lT[0]+sw,lT[1]], [lC[0]+sw*.75,lC[1]+cheekDepth*.35], [lC[0],lC[1]+cheekDepth]], fill, 10);
 
   const rT = p(lm, LANDMARK_INDICES.rightTemple[0], w, h);
   const rC = p(lm, LANDMARK_INDICES.rightCheekbone[0], w, h);
-  const rJ = p(lm, LANDMARK_INDICES.rightJaw[0], w, h);
-  fillPoly(ctx, [[rT[0],rT[1]], [rT[0]-sw,rT[1]], [rC[0]-sw*.8,rC[1]], [rJ[0]-sw*.5,rJ[1]], [rJ[0],rJ[1]], [rC[0],rC[1]]], fill, 10);
-
-  const chin = p(lm, LANDMARK_INDICES.chinBottom[0], w, h);
-  const chinH = (chin[1] - lJ[1]) * 0.5;
-  fillPoly(ctx, [[lJ[0],lJ[1]], [chin[0],chin[1]], [rJ[0],rJ[1]], [rJ[0],rJ[1]+chinH], [chin[0],chin[1]+chinH], [lJ[0],lJ[1]+chinH]], fill.replace(/[\d.]+\)$/, "0.28)"), 8);
+  fillPoly(ctx, [[rT[0],rT[1]], [rT[0]-sw,rT[1]], [rC[0]-sw*.75,rC[1]+cheekDepth*.35], [rC[0],rC[1]+cheekDepth]], fill, 10);
 }
 
 function paintHighlighter(ctx: CanvasRenderingContext2D, lm: RawLandmark[], w: number, h: number, fill: string) {
@@ -350,11 +345,11 @@ export function getMotionGuides(lm: RawLandmark[], zone: ZoneKey, w: number, h: 
       ];
     }
     case "contour": {
-      const lT = f(LANDMARK_INDICES.leftTemple[0]);
-      const rT = f(LANDMARK_INDICES.rightTemple[0]);
+      const lCheek = f(LANDMARK_INDICES.leftCheekbone[0]);
+      const rCheek = f(LANDMARK_INDICES.rightCheekbone[0]);
       return [
-        { x: lT[0] + 0.03, y: lT[1] + 0.05, dx: 0.08, dy: 0.35, label: "blend downward" },
-        { x: rT[0] - 0.03, y: rT[1] + 0.05, dx: -0.08, dy: 0.35 },
+        { x: lCheek[0] - 0.02, y: lCheek[1] + 0.03, dx: 0.2, dy: -0.12, label: "follow cheekbone line" },
+        { x: rCheek[0] + 0.02, y: rCheek[1] + 0.03, dx: -0.2, dy: -0.12 },
       ];
     }
     case "highlighter": {

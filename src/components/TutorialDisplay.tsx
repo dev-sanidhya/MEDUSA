@@ -30,9 +30,10 @@ interface Props {
   tutorial: GenerateTutorialResult;
   facePhoto: FacePhoto;
   onRestart: () => void;
+  onChooseAnotherLook: () => void;
 }
 
-export function TutorialDisplay({ tutorial, facePhoto, onRestart }: Props) {
+export function TutorialDisplay({ tutorial, facePhoto, onRestart, onChooseAnotherLook }: Props) {
   const [activeStep, setActiveStep] = useState(0);
   const step = tutorial.steps[activeStep];
   const total = tutorial.steps.length;
@@ -148,12 +149,20 @@ export function TutorialDisplay({ tutorial, facePhoto, onRestart }: Props) {
                   Next →
                 </button>
               ) : (
-                <button
-                  onClick={onRestart}
-                  className="flex-1 py-3 border border-stone-200 text-stone-600 rounded-xl text-sm font-medium"
-                >
-                  New Analysis
-                </button>
+                <>
+                  <button
+                    onClick={onChooseAnotherLook}
+                    className="flex-1 py-3 bg-stone-900 hover:bg-stone-800 text-white rounded-xl text-sm font-semibold transition-colors"
+                  >
+                    Try Another Look
+                  </button>
+                  <button
+                    onClick={onRestart}
+                    className="flex-1 py-3 border border-stone-200 text-stone-600 rounded-xl text-sm font-medium"
+                  >
+                    New Analysis
+                  </button>
+                </>
               )}
             </div>
           </div>
