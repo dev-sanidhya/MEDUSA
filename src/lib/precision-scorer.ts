@@ -110,11 +110,13 @@ const CHEEK_INDICES = [
 // ─── Scoring helpers ─────────────────────────────────────────────────────────
 
 function avgVisibility(landmarks: RawLandmark[], indices: number[]): number {
-  const scores = indices
-    .map(i => landmarks[i]?.visibility ?? 1)
-    .filter(v => v !== undefined);
-  if (scores.length === 0) return 1;
-  return scores.reduce((a, b) => a + b, 0) / scores.length;
+  const raw = indices.map(i => landmarks[i]?.visibility);
+  // FaceLandmarker doesn't output visibility — values are 0 or undefined.
+  // When no landmark reports a meaningful value, assume full visibility
+  // and let pose/framing drive the score instead.
+  const meaningful = raw.filter((v): v is number => v !== undefined && v > 0);
+  if (meaningful.length === 0) return 1;
+  return meaningful.reduce((a, b) => a + b, 0) / meaningful.length;
 }
 
 function scoreZone(

@@ -205,10 +205,10 @@ Your analysis must cover:
 - Natural brow shape and any asymmetry
 - Skin tone AND undertone read directly from the photo
 - 3 specific beautiful features to enhance
-- What makeup techniques to AVOID for this face and exactly why
+- What makeup techniques to AVOID — this is critical. For each item in avoidTechniques, format it as: "[Technique] — because [specific geometric measurement/ratio from their data] means this will [specific visual distortion it causes on their face]". Be honest and precise. Example: "Heavy lower lash-line liner — your eye tilt of +3° gives you a naturally upturned eye; liner on the waterline pulls the visual weight downward and kills that lift, making your eyes look smaller and drooping."
 
 ## Tone
-Warm, expert, personal, confidence-building. Like a makeup artist who genuinely knows this person's face.`;
+Warm, direct, and plain-spoken. Talk like a friend who happens to be a makeup artist — not a textbook. Short sentences. No jargon. If you can say it simply, say it simply.`;
 
 // ─── Route handler ────────────────────────────────────────────────────────────
 

@@ -24,7 +24,10 @@ export interface CapturedPhoto {
   geometryProfile: FaceProfile;
   precisionReport: PrecisionReport;
   previewUrl: string;
+  cleanPhotoUrl: string;      // face photo without landmark overlay — used for zone canvas
   landmarks: RawLandmark[];
+  imageWidth: number;
+  imageHeight: number;
 }
 
 interface PhotoCaptureProps {
@@ -92,6 +95,10 @@ export function PhotoCapture({
       canvas.height = detection.imageHeight;
       const ctx = canvas.getContext("2d")!;
       ctx.drawImage(bitmap, 0, 0);
+
+      // Capture clean photo before drawing overlays
+      const cleanPhotoUrl = canvas.toDataURL("image/jpeg", 0.92);
+
       bitmap.close();
       drawLandmarkOverlay(ctx, detection.landmarks, detection.imageWidth, detection.imageHeight, precision);
 
@@ -112,7 +119,10 @@ export function PhotoCapture({
         geometryProfile: profile,
         precisionReport: precision,
         previewUrl: preview,
+        cleanPhotoUrl,
         landmarks: detection.landmarks,
+        imageWidth: detection.imageWidth,
+        imageHeight: detection.imageHeight,
       });
     } catch (err) {
       console.error(err);

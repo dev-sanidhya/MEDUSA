@@ -2,22 +2,26 @@
 
 /**
  * page.tsx — Medusa main page
- * Orchestrates the full face analysis flow:
- * 1. Upload photo → MediaPipe detection → precision score
- * 2. Send to Claude agent → either asks for more photos or gives full analysis
- * 3. Display face analysis → proceed to tutorial (coming next)
+ * Flow:
+ * 1. welcome → capturing → analyzing → analysis_complete
+ * 2. look_selection → generating_tutorial → tutorial
  */
 
 import { useState } from "react";
 import { PhotoCapture, type CapturedPhoto } from "@/components/PhotoCapture";
 import { FaceAnalysisDisplay } from "@/components/FaceAnalysisDisplay";
+import { LookSelector } from "@/components/LookSelector";
+import { TutorialDisplay } from "@/components/TutorialDisplay";
 import type { AnalyzeFaceRequest, FaceAnalysisResult } from "./api/analyze-face/route";
+import type { GenerateTutorialRequest, GenerateTutorialResult, LookId } from "./api/generate-tutorial/route";
 
 type AppStage =
   | "welcome"
   | "capturing"
   | "analyzing"
   | "analysis_complete"
+  | "look_selection"
+  | "generating_tutorial"
   | "tutorial";
 
 export default function MedusaPage() {
@@ -26,10 +30,12 @@ export default function MedusaPage() {
   const [agentMessage, setAgentMessage] = useState<string | null>(null);
   const [photoInstruction, setPhotoInstruction] = useState<string | undefined>(undefined);
   const [analysisResult, setAnalysisResult] = useState<FaceAnalysisResult["faceAnalysis"] | null>(null);
+  const [tutorialResult, setTutorialResult] = useState<GenerateTutorialResult | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const currentPhotoNumber = capturedPhotos.length + 1;
 
+  // ─── Step 1: photo captured → send to analyze-face ───────────────────────
   const handlePhotoCaptured = async (photo: CapturedPhoto) => {
     const allPhotos = [...capturedPhotos, photo];
     setCapturedPhotos(allPhotos);
@@ -70,11 +76,56 @@ export default function MedusaPage() {
         throw new Error("Unexpected agent response");
       }
     } catch (err) {
-      const msg = err instanceof Error ? err.message : "Something went wrong during analysis. Please try again.";
+      const msg = err instanceof Error ? err.message : "Something went wrong. Please try again.";
       console.error(err);
       setError(msg);
       setStage("capturing");
     }
+  };
+
+  // ─── Step 2: look selected → generate tutorial ────────────────────────────
+  const handleLookSelected = async (look: LookId) => {
+    if (!analysisResult) return;
+    setStage("generating_tutorial");
+    setError(null);
+
+    try {
+      const requestBody: GenerateTutorialRequest = {
+        faceAnalysis: analysisResult,
+        selectedLook: look,
+      };
+
+      const res = await fetch("/api/generate-tutorial", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(requestBody),
+      });
+
+      if (!res.ok) {
+        const errBody = await res.json().catch(() => ({}));
+        throw new Error(errBody.error ?? `API error: ${res.status}`);
+      }
+
+      const tutorial: GenerateTutorialResult = await res.json();
+      setTutorialResult(tutorial);
+      setStage("tutorial");
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Something went wrong. Please try again.";
+      console.error(err);
+      setError(msg);
+      setStage("look_selection");
+    }
+  };
+
+  // ─── Full restart ─────────────────────────────────────────────────────────
+  const handleRestart = () => {
+    setStage("welcome");
+    setCapturedPhotos([]);
+    setAgentMessage(null);
+    setPhotoInstruction(undefined);
+    setAnalysisResult(null);
+    setTutorialResult(null);
+    setError(null);
   };
 
   // ─── WELCOME ───────────────────────────────────────────────────────────────
@@ -94,7 +145,7 @@ export default function MedusaPage() {
             <br />
             <span className="text-stone-500 text-sm">
               Upload a selfie and I&apos;ll map your face with 478-point precision —
-              then guide you step by step to your best look.
+              then build your personalized step-by-step tutorial.
             </span>
           </p>
 
@@ -102,7 +153,7 @@ export default function MedusaPage() {
             {[
               ["◈", "I'll analyze your exact face geometry"],
               ["◉", "I'll read your skin tone and undertone"],
-              ["✦", "I'll build your personalized makeup plan"],
+              ["✦", "I'll tell you what to do — and what to avoid — for YOUR face"],
             ].map(([icon, text]) => (
               <div key={text} className="flex items-center gap-3">
                 <span className="text-rose-400 text-lg w-5">{icon}</span>
@@ -252,36 +303,78 @@ export default function MedusaPage() {
           </div>
           <FaceAnalysisDisplay
             analysis={analysisResult}
-            onProceed={() => setStage("tutorial")}
+            onProceed={() => setStage("look_selection")}
           />
         </div>
       </main>
     );
   }
 
-  // ─── TUTORIAL PLACEHOLDER ──────────────────────────────────────────────────
-  if (stage === "tutorial") {
+  // ─── LOOK SELECTION ────────────────────────────────────────────────────────
+  if (stage === "look_selection") {
     return (
-      <main className="min-h-screen bg-stone-950 flex items-center justify-center px-6">
-        <div className="text-center text-white space-y-4">
-          <h2 className="text-2xl font-bold">Tutorial — Coming Next</h2>
-          <p className="text-stone-400 text-sm max-w-xs">
-            Personalized step-by-step guide with realistic face previews for each step.
-          </p>
-          <button
-            onClick={() => {
-              setStage("welcome");
-              setCapturedPhotos([]);
-              setAnalysisResult(null);
-              setAgentMessage(null);
-              setPhotoInstruction(undefined);
-            }}
-            className="px-6 py-3 bg-rose-500 hover:bg-rose-400 text-white rounded-xl transition-colors text-sm"
-          >
-            Start Over
-          </button>
+      <>
+        <LookSelector onSelect={handleLookSelected} />
+        {error && (
+          <div className="fixed bottom-6 left-1/2 -translate-x-1/2 px-5 py-3 bg-red-900 text-red-100 text-sm rounded-xl shadow-lg">
+            {error}
+          </div>
+        )}
+      </>
+    );
+  }
+
+  // ─── GENERATING TUTORIAL ───────────────────────────────────────────────────
+  if (stage === "generating_tutorial") {
+    return (
+      <main className="min-h-screen bg-stone-950 flex flex-col items-center justify-center px-6">
+        <div className="text-center space-y-6">
+          <div className="relative w-20 h-20 mx-auto">
+            <div className="absolute inset-0 border-2 border-rose-800 rounded-full animate-ping opacity-30" />
+            <div className="absolute inset-2 border-2 border-rose-500 rounded-full animate-spin" />
+            <div className="absolute inset-0 flex items-center justify-center">
+              <span className="text-rose-400 text-2xl">◈</span>
+            </div>
+          </div>
+          <div>
+            <h2 className="text-white text-xl font-semibold">Building your tutorial</h2>
+            <p className="text-stone-400 text-sm mt-2">
+              Writing steps personalized to your exact face geometry
+            </p>
+          </div>
+          <div className="space-y-2 text-left max-w-xs mx-auto">
+            {[
+              "Reviewing your face analysis...",
+              "Personalizing each step...",
+              "Calculating placement for your features...",
+              "Writing geometry-backed warnings...",
+              "Finalizing your tutorial...",
+            ].map((step) => (
+              <div key={step} className="flex items-center gap-2 text-stone-500 text-xs">
+                <span className="w-1 h-1 bg-rose-500 rounded-full animate-pulse" />
+                {step}
+              </div>
+            ))}
+          </div>
         </div>
       </main>
+    );
+  }
+
+  // ─── TUTORIAL ─────────────────────────────────────────────────────────────
+  if (stage === "tutorial" && tutorialResult) {
+    const lastPhoto = capturedPhotos[capturedPhotos.length - 1];
+    return (
+      <TutorialDisplay
+        tutorial={tutorialResult}
+        facePhoto={{
+          photoUrl: lastPhoto.cleanPhotoUrl,
+          landmarks: lastPhoto.landmarks,
+          imageWidth: lastPhoto.imageWidth,
+          imageHeight: lastPhoto.imageHeight,
+        }}
+        onRestart={handleRestart}
+      />
     );
   }
 
