@@ -131,7 +131,9 @@ full_face | under_eye | brows | eye_lid | lash_line | blush | contour | highligh
 ## Rules
 - Personalize every step to this person's face. Nothing generic.
 - Include setting spray as the final step for any look with 7+ steps.
-- If the look needs lashes, include false lash guidance with the style that works for their eye shape.
+- **Brow + lash step is always ONE combined step** (zoneKey: "brows"). In this step, cover: brow filling, PLUS whether to curl lashes (always recommend), PLUS mascara shade/formula (black, brown-black, waterproof, volumizing vs lengthening — pick what suits the eye shape and look).
+- For evening/glam/editorial looks: include a false lash step (zoneKey: "lash_line"). Specify the lash style for their eye shape: downturned eyes → cat-eye/flared; hooded → wispy individual clusters; round → elongating natural band; almond → any style works.
+- **Highlighter is always its own step** (zoneKey: "highlighter"). Specify every point: cheekbones, nose bridge, brow bone, inner corner, cupid bow — which ones to hit for this look and why.
 - Always include a setting powder step — specify shade based on skin tone and concern.`;
 
 // ─── Route handler ────────────────────────────────────────────────────────────

@@ -1,11 +1,5 @@
 "use client";
 
-/**
- * TutorialDisplay.tsx
- * Single-screen layout: compact face zone at top, scrollable step card below.
- * Everything visible without scrolling the page itself.
- */
-
 import { useState } from "react";
 import type { GenerateTutorialResult, TutorialStep } from "@/app/api/generate-tutorial/route";
 import type { RawLandmark } from "@/lib/face-detector";
@@ -45,20 +39,15 @@ export function TutorialDisplay({ tutorial, facePhoto, onRestart }: Props) {
   const isLast = activeStep === total - 1;
 
   return (
-    // Full-screen, no page scroll — inner sections scroll independently
     <main className="h-screen bg-stone-950 flex flex-col overflow-hidden">
 
-      {/* ── Top bar ─────────────────────────────────────────────── */}
-      <div className="shrink-0 px-5 pt-5 pb-2">
-        <div className="flex items-center justify-between mb-0.5">
-          <p className="text-[10px] font-bold uppercase tracking-widest text-rose-400">
-            {tutorial.lookName}
-          </p>
-          <p className="text-xs text-stone-500">{activeStep + 1} / {total}</p>
-        </div>
-
+      {/* ── Top bar ── */}
+      <div className="shrink-0 px-5 pt-4 pb-2 flex items-center justify-between gap-4">
+        <p className="text-[10px] font-bold uppercase tracking-widest text-rose-400 shrink-0">
+          {tutorial.lookName}
+        </p>
         {/* Progress bar */}
-        <div className="flex gap-1 mt-2">
+        <div className="flex gap-1 flex-1">
           {tutorial.steps.map((_, i) => (
             <button
               key={i}
@@ -69,96 +58,104 @@ export function TutorialDisplay({ tutorial, facePhoto, onRestart }: Props) {
             />
           ))}
         </div>
+        <p className="text-xs text-stone-500 shrink-0">{activeStep + 1} / {total}</p>
       </div>
 
-      {/* ── Face zone image — fixed, compact ────────────────────── */}
-      <div className="shrink-0 px-4 pt-2 pb-0">
-        <FaceZoneCanvas
-          photoUrl={facePhoto.photoUrl}
-          landmarks={facePhoto.landmarks}
-          imageWidth={facePhoto.imageWidth}
-          imageHeight={facePhoto.imageHeight}
-          zone={step.zoneKey}
-        />
-      </div>
+      {/* ── Side-by-side body ── */}
+      <div className="flex-1 flex gap-0 overflow-hidden px-4 pb-4 gap-3">
 
-      {/* ── Step card — scrollable ───────────────────────────────── */}
-      <div className="flex-1 overflow-y-auto bg-stone-50 rounded-t-3xl mt-3">
-        <div className="px-5 pt-5 pb-8">
+        {/* LEFT — face zone image, max 80vh tall */}
+        <div className="shrink-0 w-[45%]" style={{ maxHeight: "80vh" }}>
+          <div className="h-full rounded-2xl overflow-hidden">
+            <FaceZoneCanvas
+              photoUrl={facePhoto.photoUrl}
+              landmarks={facePhoto.landmarks}
+              imageWidth={facePhoto.imageWidth}
+              imageHeight={facePhoto.imageHeight}
+              zone={step.zoneKey}
+            />
+          </div>
+        </div>
 
-          {/* Step title */}
-          <div className="flex items-start gap-3 mb-4">
-            <div className="w-8 h-8 rounded-full bg-stone-900 text-white flex items-center justify-center shrink-0 text-xs font-bold">
-              {activeStep + 1}
+        {/* RIGHT — step description, scrollable */}
+        <div className="flex-1 overflow-y-auto">
+          <div className="bg-stone-50 rounded-2xl p-4 min-h-full flex flex-col">
+
+            {/* Step title */}
+            <div className="flex items-start gap-2 mb-4">
+              <div className="w-7 h-7 rounded-full bg-stone-900 text-white flex items-center justify-center shrink-0 text-xs font-bold">
+                {activeStep + 1}
+              </div>
+              <div>
+                <span className={`text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-full ${CATEGORY_COLOR[step.category]}`}>
+                  {CATEGORY_TAG[step.category]}
+                </span>
+                <p className="text-stone-900 font-semibold text-base leading-snug mt-1">{step.title}</p>
+              </div>
             </div>
-            <div>
-              <span className={`text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-full ${CATEGORY_COLOR[step.category]}`}>
-                {CATEGORY_TAG[step.category]}
-              </span>
-              <p className="text-stone-900 font-semibold text-lg leading-snug mt-0.5">{step.title}</p>
+
+            {/* Product */}
+            <div className="bg-white border border-stone-100 rounded-xl p-3 mb-3">
+              <p className="text-[9px] font-bold uppercase tracking-widest text-stone-400 mb-1">What you need</p>
+              <p className="text-stone-900 text-sm font-medium">{step.productType}</p>
+              <p className="text-stone-400 text-xs mt-0.5 leading-relaxed">{step.productColor}</p>
             </div>
-          </div>
 
-          {/* Product */}
-          <div className="bg-white border border-stone-100 rounded-2xl p-4 mb-3">
-            <p className="text-[10px] font-bold uppercase tracking-widest text-stone-400 mb-1.5">What you need</p>
-            <p className="text-stone-900 text-sm font-medium">{step.productType}</p>
-            <p className="text-stone-500 text-xs mt-1 leading-relaxed">{step.productColor}</p>
-          </div>
-
-          {/* What to do */}
-          <div className="mb-3">
-            <p className="text-[10px] font-bold uppercase tracking-widest text-stone-400 mb-1.5">What to do</p>
-            <p className="text-stone-800 text-[15px] leading-relaxed">{step.instruction}</p>
-          </div>
-
-          {/* How to do it */}
-          <div className="mb-3">
-            <p className="text-[10px] font-bold uppercase tracking-widest text-stone-400 mb-1.5">How to do it</p>
-            <p className="text-stone-700 text-sm leading-relaxed">{step.technique}</p>
-          </div>
-
-          {/* Don't */}
-          <div className="bg-stone-900 rounded-2xl p-4 mb-5">
-            <div className="flex items-center gap-2 mb-1.5">
-              <span className="text-rose-400 text-xs">✕</span>
-              <p className="text-[10px] font-bold uppercase tracking-widest text-stone-400">Skip this</p>
+            {/* What to do */}
+            <div className="mb-3">
+              <p className="text-[9px] font-bold uppercase tracking-widest text-stone-400 mb-1">What to do</p>
+              <p className="text-stone-800 text-sm leading-relaxed">{step.instruction}</p>
             </div>
-            <p className="text-stone-300 text-xs leading-relaxed">{step.avoid}</p>
-          </div>
 
-          {/* Nav */}
-          <div className="flex gap-3">
-            {activeStep > 0 && (
-              <button
-                onClick={() => setActiveStep(i => i - 1)}
-                className="flex-1 py-3.5 border border-stone-200 text-stone-600 rounded-2xl text-sm font-medium hover:border-stone-300 transition-colors"
-              >
-                ← Back
-              </button>
-            )}
+            {/* How */}
+            <div className="mb-3">
+              <p className="text-[9px] font-bold uppercase tracking-widest text-stone-400 mb-1">How to do it</p>
+              <p className="text-stone-600 text-xs leading-relaxed">{step.technique}</p>
+            </div>
 
-            {!isLast ? (
-              <button
-                onClick={() => setActiveStep(i => i + 1)}
-                className="flex-1 py-3.5 bg-stone-900 hover:bg-stone-800 text-white rounded-2xl text-sm font-semibold transition-colors"
-              >
-                Next →
-              </button>
-            ) : (
-              <div className="flex-1 space-y-3">
-                <div className="bg-gradient-to-br from-rose-50 to-stone-50 border border-rose-100 rounded-2xl p-4">
-                  <p className="text-[10px] font-bold uppercase tracking-widest text-rose-400 mb-1.5">You&apos;re done ✦</p>
-                  <p className="text-stone-700 text-sm leading-relaxed">{tutorial.closingNote}</p>
-                </div>
-                <button
-                  onClick={onRestart}
-                  className="w-full py-3.5 border border-stone-200 text-stone-600 rounded-2xl text-sm font-medium"
-                >
-                  Start a New Analysis
-                </button>
+            {/* Don't */}
+            <div className="bg-stone-900 rounded-xl p-3 mb-4">
+              <div className="flex items-center gap-1.5 mb-1">
+                <span className="text-rose-400 text-[10px]">✕</span>
+                <p className="text-[9px] font-bold uppercase tracking-widest text-stone-400">Skip this</p>
+              </div>
+              <p className="text-stone-300 text-xs leading-relaxed">{step.avoid}</p>
+            </div>
+
+            {/* Closing note on last step */}
+            {isLast && (
+              <div className="bg-gradient-to-br from-rose-50 to-stone-50 border border-rose-100 rounded-xl p-3 mb-3">
+                <p className="text-[9px] font-bold uppercase tracking-widest text-rose-400 mb-1">You&apos;re done ✦</p>
+                <p className="text-stone-700 text-xs leading-relaxed">{tutorial.closingNote}</p>
               </div>
             )}
+
+            {/* Nav — push to bottom */}
+            <div className="mt-auto pt-2 flex gap-2">
+              {activeStep > 0 && (
+                <button
+                  onClick={() => setActiveStep(i => i - 1)}
+                  className="flex-1 py-3 border border-stone-200 text-stone-600 rounded-xl text-sm font-medium"
+                >
+                  ← Back
+                </button>
+              )}
+              {!isLast ? (
+                <button
+                  onClick={() => setActiveStep(i => i + 1)}
+                  className="flex-1 py-3 bg-stone-900 hover:bg-stone-800 text-white rounded-xl text-sm font-semibold transition-colors"
+                >
+                  Next →
+                </button>
+              ) : (
+                <button
+                  onClick={onRestart}
+                  className="flex-1 py-3 border border-stone-200 text-stone-600 rounded-xl text-sm font-medium"
+                >
+                  New Analysis
+                </button>
+              )}
+            </div>
           </div>
         </div>
       </div>
