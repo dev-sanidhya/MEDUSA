@@ -136,7 +136,7 @@ function scoreZone(
 // ─── Main scorer ─────────────────────────────────────────────────────────────
 
 export function scorePrecision(detection: FaceDetectionResult): PrecisionReport {
-  const { landmarks, facialTransformationMatrix, imageWidth, imageHeight } = detection;
+  const { landmarks, facialTransformationMatrix } = detection;
 
   const issues: PrecisionIssue[] = [];
 
@@ -207,7 +207,7 @@ export function scorePrecision(detection: FaceDetectionResult): PrecisionReport 
   let photoRequest: PhotoRequest | null = null;
 
   if (!canProceed) {
-    photoRequest = buildPhotoRequest(issues, yawOff, pitchOff, rollOff, faceSizeRatio);
+    photoRequest = buildPhotoRequest(issues, yawOff, pitchOff);
   }
 
   // Deduplicate issues
@@ -236,9 +236,7 @@ export function scorePrecision(detection: FaceDetectionResult): PrecisionReport 
 function buildPhotoRequest(
   issues: PrecisionIssue[],
   yawOff: number,
-  pitchOff: number,
-  rollOff: number,
-  faceSizeRatio: number
+  pitchOff: number
 ): PhotoRequest {
   // Priority ordering: pose issues first, then occlusion, then framing
 
