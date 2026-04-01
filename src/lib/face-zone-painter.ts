@@ -89,7 +89,7 @@ function centroid(pts: Pt[]): Pt {
   ];
 }
 
-function span(lm: RawLandmark[], indices: number[], axis: "x" | "y"): number {
+function span(lm: RawLandmark[], indices: readonly number[], axis: "x" | "y"): number {
   const vals = indices.map(i => lm[i][axis]);
   return Math.max(...vals) - Math.min(...vals);
 }
@@ -113,7 +113,7 @@ function paintUnderEye(ctx: CanvasRenderingContext2D, lm: RawLandmark[], w: numb
     const eyeSpanX = Math.abs(outer[0] - inner[0]);
 
     // Bottom of lower lash line (true floor of the eye opening)
-    const lowerPts = (lowerIdx as number[]).map(i => p(lm, i, w, h));
+    const lowerPts = ([...lowerIdx] as number[]).map(i => p(lm, i, w, h));
     const lashBottomY = Math.max(...lowerPts.map(([, y]) => y));
 
     // Triangle apex drops down ~60% of the eye width
