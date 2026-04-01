@@ -1,0 +1,62 @@
+<svg width="128" height="128" viewBox="0 0 128 128" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <radialGradient id="medusa-meta-bg" cx="40%" cy="40%" r="60%">
+      <stop offset="0%" stop-color="#f7b1c7" />
+      <stop offset="50%" stop-color="#d22045" />
+      <stop offset="100%" stop-color="#050508" />
+    </radialGradient>
+    <linearGradient id="medusa-meta-line" x1="12" y1="12" x2="116" y2="116">
+      <stop offset="0%" stop-color="#fff" stop-opacity="0.9" />
+      <stop offset="100%" stop-color="#f43f5e" stop-opacity="0.85" />
+    </linearGradient>
+  </defs>
+
+  <rect width="128" height="128" rx="28" fill="#050508" />
+  <rect width="128" height="128" rx="28" fill="url(#medusa-meta-bg)" opacity="0.6" />
+
+  <path
+    d="M34 36c0-8 8-14 18-14s18 6 18 14v18c0 12-6 18-18 28-12-10-18-16-18-28Z"
+    fill="rgba(5,5,8,0.85)"
+    stroke="url(#medusa-meta-line)"
+    stroke-width="3"
+  />
+
+  <path
+    d="M46 64c4-4 10-4 14 0 6 6 8 14 8 23l-2.5 4-2.5-9"
+    stroke="url(#medusa-meta-line)"
+    stroke-width="2"
+    fill="none"
+    stroke-linecap="round"
+  />
+
+  <path
+    d="M28 74c5-3 14-7 32-7s27 4 32 7c6 4 5 11 1 16-4 5-10 5-18 3l-4-4-4 4c-8 2-14 2-18-3-4-5-5-12 1-16Z"
+    fill="rgba(5,5,8,0.95)"
+    stroke="url(#medusa-meta-line)"
+    stroke-width="2"
+    stroke-linecap="round"
+  />
+
+  <circle cx="48" cy="54" r="3.5" fill="#050508" />
+  <circle cx="76" cy="54" r="3.5" fill="#050508" />
+  <path
+    d="M52 50c3-2 8-2 11 0"
+    stroke="#fff"
+    stroke-width="1.4"
+    stroke-linecap="round"
+  />
+
+  <path
+    d="M30 24c18-12 42-12 60 0"
+    stroke="url(#medusa-meta-line)"
+    stroke-width="2"
+    stroke-linecap="round"
+  />
+
+  <path
+    d="M44 90c5 3 12 3 17 0"
+    stroke="url(#medusa-meta-line)"
+    stroke-width="2"
+    stroke-linecap="round"
+  />
+</svg>

@@ -24,6 +24,11 @@ export const metadata: Metadata = {
     title: "MEDUSA — AI Makeup Artist",
     description: "Your face. Your tutorial. Built by AI.",
     type: "website",
+    images: "/medusa-meta.svg",
+  },
+  icons: {
+    icon: "/medusa-meta.svg",
+    apple: "/medusa-meta.svg",
   },
 };
 
