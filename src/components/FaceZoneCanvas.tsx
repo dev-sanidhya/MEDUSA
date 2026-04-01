@@ -38,7 +38,7 @@ export function FaceZoneCanvas({ photoUrl, landmarks, imageWidth, imageHeight, z
       const fys = oval.map(i => landmarks[i].y * imageHeight);
       const fMinX = Math.min(...fxs), fMaxX = Math.max(...fxs);
       const fMinY = Math.min(...fys), fMaxY = Math.max(...fys);
-      const fW = fMaxX - fMinX, fH = fMaxY - fMinY;
+      const fW = fMaxX - fMinX;
       const fCX = (fMinX + fMaxX) / 2, fCY = (fMinY + fMaxY) / 2;
 
       // ── 3:4 portrait crop centred on face ─────────────────────────────────

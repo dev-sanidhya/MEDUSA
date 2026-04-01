@@ -152,7 +152,7 @@ export function PhotoCapture({
 
       {/* Instruction from agent */}
       {instruction && (
-        <div className="mb-4 p-4 bg-rose-50 border border-rose-200 rounded-xl text-sm text-rose-900 leading-relaxed">
+        <div className="mb-5 rounded-[1.5rem] border border-[color:var(--color-accent-soft)] bg-[rgba(201,131,91,0.12)] p-4 text-sm leading-relaxed text-[color:var(--color-ink)]">
           <span className="font-semibold block mb-1">
             {photoNumber === 1 ? "For your first photo:" : `Photo ${photoNumber} — what I need:`}
           </span>
@@ -163,8 +163,8 @@ export function PhotoCapture({
       {/* Drop zone / upload area */}
       {!previewUrl && (
         <div
-          className={`relative border-2 border-dashed rounded-2xl transition-all cursor-pointer
-            ${isDragging ? "border-rose-400 bg-rose-50" : "border-stone-300 bg-stone-50 hover:border-rose-300 hover:bg-rose-50/50"}
+          className={`relative cursor-pointer rounded-[1.8rem] border-2 border-dashed transition-all
+            ${isDragging ? "border-[color:var(--color-accent)] bg-[rgba(201,131,91,0.08)]" : "border-[rgba(77,29,23,0.12)] bg-[rgba(255,250,247,0.76)] hover:border-[rgba(77,29,23,0.18)] hover:bg-[rgba(255,247,241,0.86)]"}
             ${disabled ? "opacity-50 pointer-events-none" : ""}
           `}
           onClick={() => fileInputRef.current?.click()}
@@ -184,22 +184,22 @@ export function PhotoCapture({
           <div className="flex flex-col items-center justify-center py-14 px-6 text-center">
             {isProcessing ? (
               <>
-                <div className="w-12 h-12 border-3 border-rose-300 border-t-rose-600 rounded-full animate-spin mb-4" />
-                <p className="text-stone-600 font-medium">Analyzing your face...</p>
-                <p className="text-stone-400 text-sm mt-1">Running 478-point facial mapping</p>
+                <div className="mb-4 h-12 w-12 rounded-full border-2 border-[rgba(77,29,23,0.12)] border-t-[color:var(--color-accent)] animate-spin" />
+                <p className="font-medium text-[color:var(--color-ink)]">Analyzing your face...</p>
+                <p className="mt-1 text-sm text-[color:var(--color-sage)]">Running 478-point facial mapping</p>
               </>
             ) : (
               <>
-                <div className="w-16 h-16 bg-rose-100 rounded-full flex items-center justify-center mb-4">
-                  <svg className="w-8 h-8 text-rose-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full border border-[rgba(77,29,23,0.12)] bg-[rgba(158,43,37,0.06)]">
+                  <svg className="h-8 w-8 text-[color:var(--color-accent)]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
                       d="M12 16.5V9.75m0 0 3 3m-3-3-3 3M6.75 19.5a4.5 4.5 0 0 1-1.41-8.775 5.25 5.25 0 0 1 10.233-2.33 3 3 0 0 1 3.758 3.848A3.752 3.752 0 0 1 18 19.5H6.75Z" />
                   </svg>
                 </div>
-                <p className="text-stone-700 font-semibold text-lg">
+                <p className="text-lg font-semibold text-[color:var(--color-ink)]">
                   {photoNumber === 1 ? "Upload your selfie" : `Upload photo ${photoNumber}`}
                 </p>
-                <p className="text-stone-400 text-sm mt-1">
+                <p className="mt-1 text-sm text-[color:var(--color-sage)]">
                   JPG, PNG, or WebP · Drop here or click to browse
                 </p>
               </>
@@ -210,14 +210,16 @@ export function PhotoCapture({
 
       {/* Preview with landmark overlay */}
       {previewUrl && (
-        <div className="relative rounded-2xl overflow-hidden bg-black">
+        <div className="relative overflow-hidden rounded-[1.8rem] border border-[rgba(77,29,23,0.08)] bg-[rgba(255,250,247,0.72)]">
+          {/* Canvas export preview is a data URL, so a plain img element is intentional. */}
+          {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={previewUrl} alt="Your photo with face mapping" className="w-full" />
 
           {/* Precision badge */}
           {precisionScore !== null && (
-            <div className={`absolute top-3 right-3 px-3 py-1.5 rounded-full text-xs font-semibold backdrop-blur-sm
+            <div className={`absolute right-3 top-3 rounded-full px-3 py-1.5 text-xs font-semibold backdrop-blur-sm
               ${precisionScore >= 78
-                ? "bg-green-500/80 text-white"
+                ? "bg-emerald-500/80 text-white"
                 : precisionScore >= 55
                 ? "bg-amber-500/80 text-white"
                 : "bg-red-500/80 text-white"
@@ -230,7 +232,7 @@ export function PhotoCapture({
           {/* Retake button */}
           <button
             onClick={() => { setPreviewUrl(null); setPrecisionScore(null); }}
-            className="absolute bottom-3 right-3 px-3 py-1.5 bg-black/60 hover:bg-black/80 text-white text-xs rounded-full backdrop-blur-sm transition-colors"
+            className="absolute bottom-3 right-3 rounded-full bg-[rgba(36,19,16,0.7)] px-3 py-1.5 text-xs text-white backdrop-blur-sm transition-colors hover:bg-[rgba(36,19,16,0.85)]"
           >
             Retake
           </button>
@@ -239,7 +241,7 @@ export function PhotoCapture({
 
       {/* Error */}
       {error && (
-        <div className="mt-3 p-3 bg-red-50 border border-red-200 rounded-xl text-sm text-red-700">
+        <div className="mt-3 rounded-[1.2rem] border border-red-500/20 bg-red-500/10 p-3 text-sm text-red-700">
           {error}
         </div>
       )}
