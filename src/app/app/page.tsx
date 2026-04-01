@@ -1,21 +1,19 @@
 "use client";
 
-/**
- * /app — Medusa makeup analysis app
- * Flow:
- * 1. welcome → capturing → analyzing → analysis_complete
- * 2. look_selection → generating_tutorial → tutorial
- */
-
 import { useState } from "react";
+import Link from "next/link";
+import Image from "next/image";
 import { PhotoCapture, type CapturedPhoto } from "@/components/PhotoCapture";
 import { FaceAnalysisDisplay } from "@/components/FaceAnalysisDisplay";
 import { LookSelector } from "@/components/LookSelector";
 import { TutorialDisplay } from "@/components/TutorialDisplay";
 import { MedusaLogo } from "@/components/MedusaLogo";
 import type { AnalyzeFaceRequest, FaceAnalysisResult } from "../api/analyze-face/route";
-import type { GenerateTutorialRequest, GenerateTutorialResult, LookId } from "../api/generate-tutorial/route";
-import Link from "next/link";
+import type {
+  GenerateTutorialRequest,
+  GenerateTutorialResult,
+  LookId,
+} from "../api/generate-tutorial/route";
 
 type AppStage =
   | "welcome"
@@ -25,6 +23,16 @@ type AppStage =
   | "look_selection"
   | "generating_tutorial"
   | "tutorial";
+
+const STAGES: AppStage[] = [
+  "welcome",
+  "capturing",
+  "analyzing",
+  "analysis_complete",
+  "look_selection",
+  "generating_tutorial",
+  "tutorial",
+];
 
 export default function MedusaApp() {
   const [stage, setStage] = useState<AppStage>("welcome");
@@ -37,7 +45,6 @@ export default function MedusaApp() {
 
   const currentPhotoNumber = capturedPhotos.length + 1;
 
-  // ─── Step 1: photo captured → send to analyze-face ───────────────────────
   const handlePhotoCaptured = async (photo: CapturedPhoto) => {
     const allPhotos = [...capturedPhotos, photo];
     setCapturedPhotos(allPhotos);
@@ -46,11 +53,11 @@ export default function MedusaApp() {
 
     try {
       const requestBody: AnalyzeFaceRequest = {
-        photos: allPhotos.map((p) => ({
-          base64: p.base64,
-          mimeType: p.mimeType,
-          geometryProfile: p.geometryProfile,
-          precisionReport: p.precisionReport,
+        photos: allPhotos.map((capturedPhoto) => ({
+          base64: capturedPhoto.base64,
+          mimeType: capturedPhoto.mimeType,
+          geometryProfile: capturedPhoto.geometryProfile,
+          precisionReport: capturedPhoto.precisionReport,
         })),
       };
 
@@ -85,7 +92,6 @@ export default function MedusaApp() {
     }
   };
 
-  // ─── Step 2: look selected → generate tutorial ────────────────────────────
   const handleLookSelected = async (look: LookId) => {
     if (!analysisResult) return;
     setStage("generating_tutorial");
@@ -119,7 +125,6 @@ export default function MedusaApp() {
     }
   };
 
-  // ─── Full restart ─────────────────────────────────────────────────────────
   const handleRestart = () => {
     setStage("welcome");
     setCapturedPhotos([]);
@@ -136,246 +141,280 @@ export default function MedusaApp() {
     setStage("look_selection");
   };
 
-  // ─── WELCOME ───────────────────────────────────────────────────────────────
   if (stage === "welcome") {
     return (
-      <main className="min-h-screen bg-stone-950 flex flex-col items-center justify-center px-6">
-        <div className="max-w-md w-full text-center space-y-8">
-          <Link href="/" className="inline-block text-stone-600 text-xs hover:text-stone-400 transition-colors mb-6">
-            ← back to home
-          </Link>
-          <div className="flex justify-center">
-            <MedusaLogo size="lg" showTagline animated />
-          </div>
+      <AppFrame stage={stage}>
+        <main className="mx-auto flex min-h-screen w-full max-w-6xl items-center px-6 py-20">
+          <div className="grid w-full gap-12 lg:grid-cols-[1.05fr_0.95fr] lg:items-center">
+            <div>
+              <p className="mb-5 text-xs uppercase tracking-[0.32em] text-rose-400">Personal Analysis</p>
+              <h1
+                className="text-[clamp(3.5rem,9vw,6.8rem)] font-semibold leading-none text-white"
+                style={{ fontFamily: "var(--font-cormorant), Georgia, serif" }}
+              >
+                Build the
+                <br />
+                tutorial your
+                <br />
+                face deserves.
+              </h1>
+              <p className="mt-6 max-w-xl text-base leading-relaxed text-white/48 md:text-lg">
+                Upload a selfie, let MEDUSA map your geometry, then receive a step-by-step routine
+                written for your exact eyes, lips, structure, and tone.
+              </p>
 
-          <p className="text-stone-300 text-base leading-relaxed">
-            Your face is unique. Your tutorial should be too.
-            <br />
-            <span className="text-stone-500 text-sm">
-              Upload a selfie and I&apos;ll map your face with 478-point precision —
-              then build your personalized step-by-step tutorial.
-            </span>
-          </p>
-
-          <div className="bg-stone-900 rounded-2xl p-5 text-left space-y-3">
-            {[
-              ["◈", "I'll analyze your exact face geometry"],
-              ["◉", "I'll read your skin tone and undertone"],
-              ["✦", "I'll tell you what to do — and what to avoid — for YOUR face"],
-            ].map(([icon, text]) => (
-              <div key={text} className="flex items-center gap-3">
-                <span className="text-rose-400 text-lg w-5">{icon}</span>
-                <span className="text-stone-300 text-sm">{text}</span>
+              <div className="mt-8 flex flex-wrap gap-3">
+                {[
+                  "478 facial landmarks",
+                  "Client-side processing",
+                  "No generic advice",
+                ].map((pill) => (
+                  <span
+                    key={pill}
+                    className="rounded-full border border-white/10 bg-white/[0.03] px-4 py-2 text-xs uppercase tracking-[0.18em] text-white/42"
+                  >
+                    {pill}
+                  </span>
+                ))}
               </div>
-            ))}
+
+              <div className="mt-10 flex flex-col gap-3 sm:flex-row">
+                <button
+                  onClick={() => setStage("capturing")}
+                  className="rounded-full bg-rose-500 px-8 py-4 text-sm font-semibold uppercase tracking-[0.16em] text-white transition-colors hover:bg-rose-400"
+                >
+                  Begin Analysis
+                </button>
+                <Link
+                  href="/"
+                  className="rounded-full border border-white/10 px-8 py-4 text-sm uppercase tracking-[0.16em] text-white/55 transition-colors hover:border-white/18 hover:text-white/75"
+                >
+                  Back to Home
+                </Link>
+              </div>
+            </div>
+
+            <div className="glass-card noise relative overflow-hidden rounded-[2.4rem] border border-white/8 p-7">
+              <div
+                className="pointer-events-none absolute inset-0"
+                style={{ background: "radial-gradient(circle at top right, rgba(244,63,94,0.18), transparent 55%)" }}
+              />
+              <div className="relative">
+                <div className="mb-7 flex justify-center">
+                  <MedusaLogo size="lg" showTagline animated />
+                </div>
+
+                <div className="space-y-4">
+                  {[
+                    ["01", "Capture", "One clean photo, or up to three if the model needs more precision."],
+                    ["02", "Read", "MEDUSA maps structure, eye set, lip proportions, and tone locally."],
+                    ["03", "Compose", "Your tutorial is generated with geometry-backed placements and warnings."],
+                  ].map(([num, title, body]) => (
+                    <div key={num} className="rounded-[1.6rem] border border-white/8 bg-white/[0.03] p-4">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[10px] uppercase tracking-[0.24em] text-rose-300">Step {num}</span>
+                        <span className="text-[10px] uppercase tracking-[0.2em] text-white/22">Live</span>
+                      </div>
+                      <p
+                        className="mt-3 text-2xl font-semibold text-white"
+                        style={{ fontFamily: "var(--font-cormorant), Georgia, serif" }}
+                      >
+                        {title}
+                      </p>
+                      <p className="mt-2 text-sm leading-relaxed text-white/45">{body}</p>
+                    </div>
+                  ))}
+                </div>
+
+                <p className="mt-6 text-center text-xs uppercase tracking-[0.22em] text-white/24">
+                  Photos are processed in your browser and not stored.
+                </p>
+              </div>
+            </div>
           </div>
-
-          <button
-            onClick={() => setStage("capturing")}
-            className="w-full py-4 bg-rose-500 hover:bg-rose-400 text-white font-semibold rounded-2xl transition-colors text-[15px] tracking-wide"
-          >
-            Begin My Analysis →
-          </button>
-
-          <p className="text-stone-600 text-xs">
-            Your photo is processed locally — never stored on our servers.
-          </p>
-        </div>
-      </main>
+        </main>
+      </AppFrame>
     );
   }
 
-  // ─── CAPTURING ─────────────────────────────────────────────────────────────
   if (stage === "capturing") {
     return (
-      <main className="min-h-screen bg-stone-50 px-5 py-10">
-        <div className="max-w-lg mx-auto space-y-6">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="text-stone-900">
-                <MedusaLogo size="sm" />
-              </div>
-            </div>
-            <p className="text-stone-400 text-sm">Photo {currentPhotoNumber} of up to 3</p>
-          </div>
-
-          {agentMessage && (
-            <div className="bg-white border border-stone-200 rounded-2xl p-5 shadow-sm">
-              <div className="flex items-start gap-3">
-                <div className="w-8 h-8 bg-rose-100 rounded-full flex items-center justify-center shrink-0 mt-0.5">
-                  <span className="text-rose-500 text-sm">✦</span>
+      <AppFrame stage={stage}>
+        <main className="mx-auto min-h-screen w-full max-w-6xl px-6 py-10">
+          <div className="grid gap-6 lg:grid-cols-[0.92fr_1.08fr]">
+            <div className="space-y-6">
+              <HeroPanel
+                eyebrow={`Step ${String(Math.min(currentPhotoNumber, 3)).padStart(2, "0")} · Capture`}
+                title="Get the cleanest read possible."
+                body="Natural light, straight-on framing, and a full view of the face give MEDUSA the geometry it needs."
+              >
+                <div className="grid gap-3 sm:grid-cols-2">
+                  {[
+                    "Straight-on angle",
+                    "No heavy shadows",
+                    "Forehead to chin visible",
+                    "Hair pulled away",
+                  ].map((tip) => (
+                    <div key={tip} className="rounded-2xl border border-white/8 bg-white/[0.03] px-4 py-3 text-sm text-white/58">
+                      {tip}
+                    </div>
+                  ))}
                 </div>
-                <div>
-                  <p className="text-xs font-semibold text-rose-500 uppercase tracking-wider mb-1">
-                    I need one more photo
-                  </p>
-                  <p className="text-stone-700 text-sm leading-relaxed">{agentMessage}</p>
-                </div>
-              </div>
-            </div>
-          )}
+              </HeroPanel>
 
-          {capturedPhotos.length > 0 && (
-            <div className="flex gap-2">
-              {capturedPhotos.map((p, i) => (
-                <div key={i} className="relative rounded-lg overflow-hidden w-16 h-16 bg-stone-200">
-                  <img src={p.previewUrl} alt={`Photo ${i + 1}`} className="w-full h-full object-cover" />
-                  <div className="absolute inset-0 bg-black/20 flex items-center justify-center">
-                    <span className="text-white text-xs font-bold">{i + 1}</span>
+              <div className="glass-card rounded-[2rem] border border-white/8 p-6">
+                <p className="text-[11px] uppercase tracking-[0.28em] text-white/35">Capture Progress</p>
+                <div className="mt-5 flex gap-3">
+                  {[0, 1, 2].map((index) => {
+                    const isComplete = index < capturedPhotos.length;
+                    const isActive = index === capturedPhotos.length;
+
+                    return (
+                      <div key={index} className="flex-1">
+                        <div
+                          className={`h-1 rounded-full ${
+                            isComplete ? "bg-rose-400" : isActive ? "bg-white/28" : "bg-white/8"
+                          }`}
+                        />
+                        <p className="mt-2 text-[10px] uppercase tracking-[0.18em] text-white/25">
+                          Photo {index + 1}
+                        </p>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {capturedPhotos.length > 0 && (
+                  <div className="mt-6 grid grid-cols-3 gap-3">
+                    {capturedPhotos.map((photo, index) => (
+                      <div key={`${photo.previewUrl}-${index}`} className="overflow-hidden rounded-[1.25rem] border border-white/10 bg-black">
+                        <Image
+                          src={photo.previewUrl}
+                          alt={`Photo ${index + 1}`}
+                          width={240}
+                          height={320}
+                          unoptimized
+                          className="aspect-[3/4] w-full object-cover"
+                        />
+                      </div>
+                    ))}
                   </div>
+                )}
+              </div>
+            </div>
+
+            <div className="glass-card rounded-[2rem] border border-white/8 p-6">
+              <div className="mb-6 flex items-center justify-between gap-4">
+                <div>
+                  <p className="text-[11px] uppercase tracking-[0.28em] text-rose-300">Upload Panel</p>
+                  <p className="mt-2 text-sm text-white/45">Photo {currentPhotoNumber} of up to 3</p>
                 </div>
-              ))}
-            </div>
-          )}
-
-          {currentPhotoNumber === 1 && (
-            <div className="bg-stone-100 rounded-xl p-4 space-y-1.5">
-              <p className="text-xs font-semibold text-stone-500 uppercase tracking-wider mb-2">For best results</p>
-              {[
-                "Face the camera directly — straight on",
-                "Natural light, no harsh flash",
-                "Hair pulled back, full face visible",
-                "Neutral expression, mouth closed",
-                "Full face in frame — forehead to chin",
-              ].map((tip) => (
-                <div key={tip} className="flex items-start gap-2">
-                  <span className="text-rose-400 text-xs mt-0.5">·</span>
-                  <span className="text-stone-600 text-xs">{tip}</span>
+                <div className="rounded-full border border-white/10 px-3 py-1.5 text-xs text-white/35">
+                  Precision first
                 </div>
-              ))}
-            </div>
-          )}
+              </div>
 
-          <PhotoCapture
-            photoNumber={currentPhotoNumber}
-            onPhotoCaptured={handlePhotoCaptured}
-            instruction={photoInstruction}
-          />
+              {agentMessage && (
+                <div className="mb-5 rounded-[1.6rem] border border-rose-500/18 bg-rose-500/[0.06] p-5">
+                  <p className="text-[10px] uppercase tracking-[0.24em] text-rose-300">One more angle needed</p>
+                  <p className="mt-2 text-sm leading-relaxed text-rose-100/82">{agentMessage}</p>
+                </div>
+              )}
 
-          {error && (
-            <div className="p-4 bg-red-50 border border-red-200 rounded-xl text-sm text-red-700">
-              {error}
+              <PhotoCapture
+                photoNumber={currentPhotoNumber}
+                onPhotoCaptured={handlePhotoCaptured}
+                instruction={photoInstruction}
+              />
+
+              {error && <ErrorBanner message={error} />}
             </div>
-          )}
-        </div>
-      </main>
+          </div>
+        </main>
+      </AppFrame>
     );
   }
 
-  // ─── ANALYZING ─────────────────────────────────────────────────────────────
   if (stage === "analyzing") {
     return (
-      <main className="min-h-screen bg-stone-950 flex flex-col items-center justify-center px-6">
-        <div className="text-center space-y-6">
-          <div className="relative w-20 h-20 mx-auto">
-            <div className="absolute inset-0 border-2 border-rose-800 rounded-full animate-ping opacity-30" />
-            <div className="absolute inset-2 border-2 border-rose-500 rounded-full animate-spin" />
-            <div className="absolute inset-0 flex items-center justify-center">
-              <span className="text-rose-400 text-2xl">✦</span>
-            </div>
-          </div>
-          <div>
-            <h2 className="text-white text-xl font-semibold">Reading your face</h2>
-            <p className="text-stone-400 text-sm mt-2">
-              Analyzing 478 landmark points · Measuring face geometry · Assessing skin tone
-            </p>
-          </div>
-          <div className="space-y-2 text-left max-w-xs mx-auto">
-            {[
-              "Mapping face structure...",
-              "Calculating eye geometry...",
-              "Measuring lip proportions...",
-              "Classifying face shape...",
-              "Reading skin tone...",
-            ].map((step) => (
-              <div key={step} className="flex items-center gap-2 text-stone-500 text-xs">
-                <span className="w-1 h-1 bg-rose-500 rounded-full animate-pulse" />
-                {step}
-              </div>
-            ))}
-          </div>
-        </div>
-      </main>
+      <ProcessingScreen
+        stage={stage}
+        eyebrow="Step 02 · Reading"
+        title="Reading your face."
+        body="Mapping landmarks, checking proportion, and measuring the structure that will shape your tutorial."
+        items={[
+          "Mapping face structure",
+          "Calculating eye geometry",
+          "Measuring lip proportions",
+          "Classifying face shape",
+          "Reading skin tone",
+        ]}
+      />
     );
   }
 
-  // ─── ANALYSIS COMPLETE ─────────────────────────────────────────────────────
   if (stage === "analysis_complete" && analysisResult) {
     return (
-      <main className="min-h-screen bg-stone-50 px-5 py-10">
-        <div className="max-w-2xl mx-auto">
-          <div className="mb-8 text-center">
-            <h1 className="text-3xl font-bold text-stone-900" style={{ fontFamily: "Georgia, serif" }}>
-              Your Face Analysis
-            </h1>
-            <p className="text-stone-400 text-sm mt-2">
-              {capturedPhotos.length} photo{capturedPhotos.length > 1 ? "s" : ""} analyzed ·{" "}
-              {capturedPhotos[capturedPhotos.length - 1]?.precisionReport.overallScore}/100 precision
-            </p>
+      <AppFrame stage={stage}>
+        <main className="mx-auto min-h-screen w-full max-w-6xl px-6 py-10">
+          <div className="mb-8 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+            <HeroHeader
+              eyebrow="Step 02 · Complete"
+              title="Your face analysis."
+              body={`${
+                capturedPhotos.length
+              } photo${capturedPhotos.length > 1 ? "s" : ""} analyzed with ${
+                capturedPhotos[capturedPhotos.length - 1]?.precisionReport.overallScore ?? 0
+              }/100 precision.`}
+            />
+            <button
+              onClick={handleRestart}
+              className="rounded-full border border-white/10 px-5 py-3 text-sm text-white/58 transition-colors hover:border-white/16 hover:text-white/75"
+            >
+              Start Over
+            </button>
           </div>
-          <FaceAnalysisDisplay
-            analysis={analysisResult}
-            onProceed={() => setStage("look_selection")}
-          />
-        </div>
-      </main>
+
+          <FaceAnalysisDisplay analysis={analysisResult} onProceed={() => setStage("look_selection")} />
+        </main>
+      </AppFrame>
     );
   }
 
-  // ─── LOOK SELECTION ────────────────────────────────────────────────────────
   if (stage === "look_selection") {
     return (
       <>
         <LookSelector onSelect={handleLookSelected} />
         {error && (
-          <div className="fixed bottom-6 left-1/2 -translate-x-1/2 px-5 py-3 bg-red-900 text-red-100 text-sm rounded-xl shadow-lg">
-            {error}
+          <div className="fixed bottom-6 left-1/2 -translate-x-1/2">
+            <ErrorBanner message={error} />
           </div>
         )}
       </>
     );
   }
 
-  // ─── GENERATING TUTORIAL ───────────────────────────────────────────────────
   if (stage === "generating_tutorial") {
     return (
-      <main className="min-h-screen bg-stone-950 flex flex-col items-center justify-center px-6">
-        <div className="text-center space-y-6">
-          <div className="relative w-20 h-20 mx-auto">
-            <div className="absolute inset-0 border-2 border-rose-800 rounded-full animate-ping opacity-30" />
-            <div className="absolute inset-2 border-2 border-rose-500 rounded-full animate-spin" />
-            <div className="absolute inset-0 flex items-center justify-center">
-              <span className="text-rose-400 text-2xl">◈</span>
-            </div>
-          </div>
-          <div>
-            <h2 className="text-white text-xl font-semibold">Building your tutorial</h2>
-            <p className="text-stone-400 text-sm mt-2">
-              Writing steps personalized to your exact face geometry
-            </p>
-          </div>
-          <div className="space-y-2 text-left max-w-xs mx-auto">
-            {[
-              "Reviewing your face analysis...",
-              "Personalizing each step...",
-              "Calculating placement for your features...",
-              "Writing geometry-backed warnings...",
-              "Finalizing your tutorial...",
-            ].map((step) => (
-              <div key={step} className="flex items-center gap-2 text-stone-500 text-xs">
-                <span className="w-1 h-1 bg-rose-500 rounded-full animate-pulse" />
-                {step}
-              </div>
-            ))}
-          </div>
-        </div>
-      </main>
+      <ProcessingScreen
+        stage={stage}
+        eyebrow="Step 03 · Writing"
+        title="Building your tutorial."
+        body="Turning your analysis into placements, angles, and cautions written for your exact proportions."
+        items={[
+          "Reviewing your face analysis",
+          "Personalizing each step",
+          "Calculating placements",
+          "Writing geometry-backed warnings",
+          "Finalizing your routine",
+        ]}
+      />
     );
   }
 
-  // ─── TUTORIAL ─────────────────────────────────────────────────────────────
   if (stage === "tutorial" && tutorialResult) {
     const lastPhoto = capturedPhotos[capturedPhotos.length - 1];
+
     return (
       <TutorialDisplay
         tutorial={tutorialResult}
@@ -392,4 +431,163 @@ export default function MedusaApp() {
   }
 
   return null;
+}
+
+function AppFrame({
+  stage,
+  children,
+}: {
+  stage: AppStage;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="relative min-h-screen overflow-hidden bg-[#050508] text-white">
+      <AppBackdrop stage={stage} />
+      <header className="relative z-10 mx-auto flex w-full max-w-6xl items-center justify-between px-6 pt-8">
+        <Link href="/" aria-label="MEDUSA home">
+          <MedusaLogo size="sm" />
+        </Link>
+        <div className="rounded-full border border-white/8 px-4 py-2 text-[10px] uppercase tracking-[0.28em] text-white/30">
+          {getStageLabel(stage)}
+        </div>
+      </header>
+      <div className="relative z-10">{children}</div>
+    </div>
+  );
+}
+
+function AppBackdrop({ stage }: { stage: AppStage }) {
+  const gradients: Record<AppStage, string> = {
+    welcome: "radial-gradient(circle at 18% 25%, rgba(244,63,94,0.16), transparent 34%), radial-gradient(circle at 82% 18%, rgba(255,255,255,0.05), transparent 26%)",
+    capturing: "radial-gradient(circle at 20% 25%, rgba(244,63,94,0.14), transparent 32%), radial-gradient(circle at 85% 75%, rgba(109,40,217,0.08), transparent 30%)",
+    analyzing: "radial-gradient(circle at 50% 28%, rgba(244,63,94,0.18), transparent 34%)",
+    analysis_complete: "radial-gradient(circle at 80% 20%, rgba(244,63,94,0.14), transparent 30%), radial-gradient(circle at 10% 75%, rgba(255,255,255,0.04), transparent 28%)",
+    look_selection: "radial-gradient(circle at 16% 18%, rgba(244,63,94,0.12), transparent 28%), radial-gradient(circle at 84% 82%, rgba(109,40,217,0.09), transparent 28%)",
+    generating_tutorial: "radial-gradient(circle at 50% 28%, rgba(244,63,94,0.18), transparent 34%)",
+    tutorial: "radial-gradient(circle at 82% 18%, rgba(244,63,94,0.12), transparent 30%), radial-gradient(circle at 12% 85%, rgba(255,255,255,0.04), transparent 28%)",
+  };
+
+  return (
+    <>
+      <div className="absolute inset-0 opacity-95" style={{ background: gradients[stage] }} />
+      <div className="absolute inset-0 opacity-[0.03]">
+        <svg className="h-full w-full" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <pattern id="medusa-grid" x="0" y="0" width="32" height="32" patternUnits="userSpaceOnUse">
+              <circle cx="1" cy="1" r="1" fill="white" />
+            </pattern>
+          </defs>
+          <rect width="100%" height="100%" fill="url(#medusa-grid)" />
+        </svg>
+      </div>
+    </>
+  );
+}
+
+function HeroHeader({
+  eyebrow,
+  title,
+  body,
+}: {
+  eyebrow: string;
+  title: string;
+  body: string;
+}) {
+  return (
+    <div className="max-w-2xl">
+      <p className="mb-4 text-xs uppercase tracking-[0.3em] text-rose-400">{eyebrow}</p>
+      <h1
+        className="text-5xl font-semibold leading-none text-white md:text-6xl"
+        style={{ fontFamily: "var(--font-cormorant), Georgia, serif" }}
+      >
+        {title}
+      </h1>
+      <p className="mt-5 text-sm leading-relaxed text-white/48 md:text-base">{body}</p>
+    </div>
+  );
+}
+
+function HeroPanel({
+  eyebrow,
+  title,
+  body,
+  children,
+}: {
+  eyebrow: string;
+  title: string;
+  body: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="glass-card rounded-[2rem] border border-white/8 p-6">
+      <p className="mb-4 text-xs uppercase tracking-[0.28em] text-rose-400">{eyebrow}</p>
+      <h1
+        className="text-4xl font-semibold leading-none text-white md:text-5xl"
+        style={{ fontFamily: "var(--font-cormorant), Georgia, serif" }}
+      >
+        {title}
+      </h1>
+      <p className="mt-4 text-sm leading-relaxed text-white/48 md:text-base">{body}</p>
+      <div className="mt-6">{children}</div>
+    </div>
+  );
+}
+
+function ProcessingScreen({
+  stage,
+  eyebrow,
+  title,
+  body,
+  items,
+}: {
+  stage: AppStage;
+  eyebrow: string;
+  title: string;
+  body: string;
+  items: string[];
+}) {
+  return (
+    <AppFrame stage={stage}>
+      <main className="mx-auto flex min-h-screen w-full max-w-3xl items-center px-6 py-16">
+        <div className="glass-card w-full rounded-[2.4rem] border border-white/8 px-8 py-12 text-center">
+          <div className="mx-auto mb-8 flex h-24 w-24 items-center justify-center rounded-full border border-rose-500/18 bg-rose-500/[0.06]">
+            <div className="h-14 w-14 rounded-full border border-rose-400/22 border-t-rose-400 animate-spin" />
+          </div>
+          <p className="text-xs uppercase tracking-[0.3em] text-rose-400">{eyebrow}</p>
+          <h1
+            className="mt-4 text-5xl font-semibold leading-none text-white"
+            style={{ fontFamily: "var(--font-cormorant), Georgia, serif" }}
+          >
+            {title}
+          </h1>
+          <p className="mx-auto mt-5 max-w-xl text-sm leading-relaxed text-white/45 md:text-base">{body}</p>
+
+          <div className="mx-auto mt-10 max-w-xl space-y-3 text-left">
+            {items.map((item) => (
+              <div
+                key={item}
+                className="flex items-center gap-3 rounded-full border border-white/8 bg-white/[0.03] px-4 py-3 text-sm text-white/58"
+              >
+                <span className="h-2 w-2 rounded-full bg-rose-400 animate-pulse" />
+                {item}...
+              </div>
+            ))}
+          </div>
+        </div>
+      </main>
+    </AppFrame>
+  );
+}
+
+function ErrorBanner({ message }: { message: string }) {
+  return (
+    <div className="rounded-2xl border border-rose-500/20 bg-rose-500/[0.08] px-5 py-3 text-sm text-rose-100/85 backdrop-blur-sm">
+      {message}
+    </div>
+  );
+}
+
+function getStageLabel(stage: AppStage) {
+  const index = STAGES.indexOf(stage);
+  return index >= 0 ? `${String(index + 1).padStart(2, "0")} / ${String(STAGES.length).padStart(2, "0")}` : "MEDUSA";
 }

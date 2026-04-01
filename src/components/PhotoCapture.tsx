@@ -8,6 +8,7 @@
  */
 
 import { useRef, useState, useCallback } from "react";
+import Image from "next/image";
 import {
   detectFaceLandmarks,
   LANDMARK_INDICES,
@@ -152,8 +153,8 @@ export function PhotoCapture({
 
       {/* Instruction from agent */}
       {instruction && (
-        <div className="mb-4 p-4 bg-rose-50 border border-rose-200 rounded-xl text-sm text-rose-900 leading-relaxed">
-          <span className="font-semibold block mb-1">
+        <div className="mb-5 rounded-[1.4rem] border border-rose-500/20 bg-rose-500/8 px-5 py-4 text-sm text-white/72 leading-relaxed backdrop-blur-sm">
+          <span className="mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.22em] text-rose-300">
             {photoNumber === 1 ? "For your first photo:" : `Photo ${photoNumber} — what I need:`}
           </span>
           {instruction}
@@ -163,8 +164,8 @@ export function PhotoCapture({
       {/* Drop zone / upload area */}
       {!previewUrl && (
         <div
-          className={`relative border-2 border-dashed rounded-2xl transition-all cursor-pointer
-            ${isDragging ? "border-rose-400 bg-rose-50" : "border-stone-300 bg-stone-50 hover:border-rose-300 hover:bg-rose-50/50"}
+          className={`relative overflow-hidden rounded-[2rem] border border-dashed transition-all cursor-pointer
+            ${isDragging ? "border-rose-400 bg-[rgba(244,63,94,0.08)]" : "border-white/12 bg-[rgba(13,13,20,0.72)] hover:border-rose-400/45 hover:bg-[rgba(244,63,94,0.04)]"}
             ${disabled ? "opacity-50 pointer-events-none" : ""}
           `}
           onClick={() => fileInputRef.current?.click()}
@@ -172,6 +173,10 @@ export function PhotoCapture({
           onDragLeave={() => setIsDragging(false)}
           onDrop={handleDrop}
         >
+          <div
+            className="pointer-events-none absolute inset-0"
+            style={{ background: "radial-gradient(circle at top, rgba(244,63,94,0.1), transparent 58%)" }}
+          />
           <input
             ref={fileInputRef}
             type="file"
@@ -181,27 +186,31 @@ export function PhotoCapture({
             disabled={disabled}
           />
 
-          <div className="flex flex-col items-center justify-center py-14 px-6 text-center">
+          <div className="relative flex flex-col items-center justify-center px-6 py-16 text-center">
             {isProcessing ? (
               <>
-                <div className="w-12 h-12 border-3 border-rose-300 border-t-rose-600 rounded-full animate-spin mb-4" />
-                <p className="text-stone-600 font-medium">Analyzing your face...</p>
-                <p className="text-stone-400 text-sm mt-1">Running 478-point facial mapping</p>
+                <div className="mb-5 h-14 w-14 rounded-full border border-rose-400/25 border-t-rose-400 animate-spin" />
+                <p className="font-medium text-white">Analyzing your face...</p>
+                <p className="mt-1 text-sm text-white/45">Running 478-point facial mapping</p>
               </>
             ) : (
               <>
-                <div className="w-16 h-16 bg-rose-100 rounded-full flex items-center justify-center mb-4">
-                  <svg className="w-8 h-8 text-rose-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <div className="mb-5 flex h-18 w-18 items-center justify-center rounded-full border border-rose-500/20 bg-rose-500/10">
+                  <svg className="h-8 w-8 text-rose-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
                       d="M12 16.5V9.75m0 0 3 3m-3-3-3 3M6.75 19.5a4.5 4.5 0 0 1-1.41-8.775 5.25 5.25 0 0 1 10.233-2.33 3 3 0 0 1 3.758 3.848A3.752 3.752 0 0 1 18 19.5H6.75Z" />
                   </svg>
                 </div>
-                <p className="text-stone-700 font-semibold text-lg">
+                <p className="text-lg font-semibold text-white">
                   {photoNumber === 1 ? "Upload your selfie" : `Upload photo ${photoNumber}`}
                 </p>
-                <p className="text-stone-400 text-sm mt-1">
+                <p className="mt-1 text-sm text-white/45">
                   JPG, PNG, or WebP · Drop here or click to browse
                 </p>
+                <div className="mt-5 inline-flex items-center gap-2 rounded-full border border-white/10 px-3 py-1.5 text-[11px] uppercase tracking-[0.2em] text-white/35">
+                  <span className="h-1.5 w-1.5 rounded-full bg-rose-400" />
+                  Local processing only
+                </div>
               </>
             )}
           </div>
@@ -210,17 +219,24 @@ export function PhotoCapture({
 
       {/* Preview with landmark overlay */}
       {previewUrl && (
-        <div className="relative rounded-2xl overflow-hidden bg-black">
-          <img src={previewUrl} alt="Your photo with face mapping" className="w-full" />
+        <div className="relative overflow-hidden rounded-[2rem] border border-white/10 bg-black shadow-[0_14px_40px_rgba(0,0,0,0.45)]">
+          <Image
+            src={previewUrl}
+            alt="Your photo with face mapping"
+            width={900}
+            height={1200}
+            unoptimized
+            className="w-full"
+          />
 
           {/* Precision badge */}
           {precisionScore !== null && (
-            <div className={`absolute top-3 right-3 px-3 py-1.5 rounded-full text-xs font-semibold backdrop-blur-sm
+            <div className={`absolute right-3 top-3 rounded-full px-3 py-1.5 text-xs font-semibold backdrop-blur-sm
               ${precisionScore >= 78
-                ? "bg-green-500/80 text-white"
+                ? "bg-emerald-500/80 text-white"
                 : precisionScore >= 55
-                ? "bg-amber-500/80 text-white"
-                : "bg-red-500/80 text-white"
+                ? "bg-amber-500/80 text-stone-950"
+                : "bg-rose-500/85 text-white"
               }`}>
               {precisionScore >= 78 ? "✓ High Precision" : precisionScore >= 55 ? "⚠ Medium Precision" : "✗ Low Precision"}
               {" "}{precisionScore}/100
@@ -230,7 +246,7 @@ export function PhotoCapture({
           {/* Retake button */}
           <button
             onClick={() => { setPreviewUrl(null); setPrecisionScore(null); }}
-            className="absolute bottom-3 right-3 px-3 py-1.5 bg-black/60 hover:bg-black/80 text-white text-xs rounded-full backdrop-blur-sm transition-colors"
+            className="absolute bottom-3 right-3 rounded-full border border-white/12 bg-black/55 px-3 py-1.5 text-xs text-white/85 backdrop-blur-sm transition-colors hover:bg-black/75"
           >
             Retake
           </button>
@@ -239,7 +255,7 @@ export function PhotoCapture({
 
       {/* Error */}
       {error && (
-        <div className="mt-3 p-3 bg-red-50 border border-red-200 rounded-xl text-sm text-red-700">
+        <div className="mt-3 rounded-2xl border border-rose-500/18 bg-rose-500/8 p-3 text-sm text-rose-200">
           {error}
         </div>
       )}
