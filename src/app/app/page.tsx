@@ -251,7 +251,7 @@ export default function MedusaApp() {
                 </div>
 
                 <p className="mt-6 text-center text-xs uppercase tracking-[0.22em] text-white/24">
-                  Photos are processed in your browser and not stored.
+                  Analysis starts with your facial geometry.
                 </p>
               </div>
             </div>

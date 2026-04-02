@@ -310,7 +310,7 @@ function HeroSection() {
           {[
             "478 Landmark Points",
             "Zero Generic Advice",
-            "Privacy First",
+            "Look-Specific Guidance",
             "Personalized to You",
           ].map((pill) => (
             <span
@@ -347,14 +347,14 @@ function HeroSection() {
           </a>
         </motion.div>
 
-        {/* Privacy note */}
+        {/* Product note */}
         <motion.p
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 1, duration: 0.6 }}
           className="text-xs text-white/25 mt-8"
         >
-          Photos processed locally — never uploaded or stored.
+          Built around your geometry, your features, and the look you choose.
         </motion.p>
       </motion.div>
 
@@ -858,8 +858,8 @@ function FeaturesSection() {
     },
     {
       icon: "◧",
-      title: "Privacy by Design",
-      body: "No account. No storage. No uploads. Your photo is processed client-side and discarded the moment you close the tab.",
+      title: "Face-Specific Output",
+      body: "MEDUSA turns your geometry into placements, product direction, and look-specific warnings you can actually follow.",
     },
   ];
 
@@ -1120,7 +1120,7 @@ function CTASection() {
           transition={{ delay: 0.5 }}
           className="text-white/20 text-xs mt-6"
         >
-          Free · No account required · Photos stay on your device
+          Free · No account required · Personalized step-by-step guidance
         </motion.p>
       </div>
     </section>
@@ -1160,7 +1160,7 @@ function Footer() {
         </div>
 
         <p className="text-white/20 text-xs">
-          Photos processed locally. Zero data stored.
+          Geometry-backed tutorials for real faces.
         </p>
       </div>
     </footer>

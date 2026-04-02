@@ -2,7 +2,7 @@
 
 /**
  * PhotoCapture.tsx
- * Handles photo upload, runs MediaPipe on the client,
+ * Handles photo upload, runs MediaPipe on the client via a worker,
  * overlays detected landmarks on the photo,
  * and shows precision feedback to the user.
  */
@@ -10,10 +10,10 @@
 import { useRef, useState, useCallback } from "react";
 import Image from "next/image";
 import {
-  detectFaceLandmarks,
   LANDMARK_INDICES,
   type RawLandmark,
 } from "@/lib/face-detector";
+import { detectFaceLandmarksInWorker } from "@/lib/face-detection-worker";
 import { calculateFaceProfile } from "@/lib/geometry-calculator";
 import { scorePrecision, type PrecisionReport } from "@/lib/precision-scorer";
 import type { FaceProfile } from "@/lib/geometry-calculator";
@@ -25,16 +25,16 @@ export interface CapturedPhoto {
   geometryProfile: FaceProfile;
   precisionReport: PrecisionReport;
   previewUrl: string;
-  cleanPhotoUrl: string;      // face photo without landmark overlay — used for zone canvas
+  cleanPhotoUrl: string;
   landmarks: RawLandmark[];
   imageWidth: number;
   imageHeight: number;
 }
 
 interface PhotoCaptureProps {
-  photoNumber: number;          // 1, 2, or 3
+  photoNumber: number;
   onPhotoCaptured: (photo: CapturedPhoto) => void;
-  instruction?: string;         // guidance from agent for this specific photo
+  instruction?: string;
   disabled?: boolean;
 }
 
@@ -64,14 +64,9 @@ export function PhotoCapture({
     setPrecisionScore(null);
 
     try {
-      // Decode image into an in-memory bitmap — no URL dependency, works reliably with MediaPipe
-      const bitmap = await createImageBitmap(file);
-
-      // Run MediaPipe
-      const detection = await detectFaceLandmarks(bitmap);
+      const detection = await detectFaceLandmarksInWorker(file);
 
       if (!detection) {
-        bitmap.close();
         setError(
           "I couldn't detect a face in this photo. Please make sure your face is fully visible and well-lit."
         );
@@ -79,25 +74,22 @@ export function PhotoCapture({
         return;
       }
 
-      // Calculate geometry
       const profile = calculateFaceProfile(
         detection.landmarks,
         detection.imageWidth,
         detection.imageHeight
       );
 
-      // Score precision
       const precision = scorePrecision(detection);
       setPrecisionScore(precision.overallScore);
 
-      // Draw preview with landmark overlay
+      const bitmap = await createImageBitmap(file);
       const canvas = canvasRef.current!;
       canvas.width = detection.imageWidth;
       canvas.height = detection.imageHeight;
       const ctx = canvas.getContext("2d")!;
       ctx.drawImage(bitmap, 0, 0);
 
-      // Capture clean photo before drawing overlays
       const cleanPhotoUrl = canvas.toDataURL("image/jpeg", 0.92);
 
       bitmap.close();
@@ -106,7 +98,6 @@ export function PhotoCapture({
       const preview = canvas.toDataURL("image/jpeg", 0.92);
       setPreviewUrl(preview);
 
-      // Convert original file to base64 for API
       const base64 = await fileToBase64(file);
       const mimeType = (
         file.type === "image/png" ? "image/png" :
@@ -148,20 +139,17 @@ export function PhotoCapture({
 
   return (
     <div className="w-full">
-      {/* Hidden canvas for landmark rendering */}
       <canvas ref={canvasRef} className="hidden" />
 
-      {/* Instruction from agent */}
       {instruction && (
         <div className="mb-5 rounded-[1.4rem] border border-rose-500/20 bg-rose-500/8 px-5 py-4 text-sm text-white/72 leading-relaxed backdrop-blur-sm">
           <span className="mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.22em] text-rose-300">
-            {photoNumber === 1 ? "For your first photo:" : `Photo ${photoNumber} — what I need:`}
+            {photoNumber === 1 ? "For your first photo:" : `Photo ${photoNumber} - what I need:`}
           </span>
           {instruction}
         </div>
       )}
 
-      {/* Drop zone / upload area */}
       {!previewUrl && (
         <div
           className={`relative overflow-hidden rounded-[2rem] border border-dashed transition-all cursor-pointer
@@ -205,11 +193,11 @@ export function PhotoCapture({
                   {photoNumber === 1 ? "Upload your selfie" : `Upload photo ${photoNumber}`}
                 </p>
                 <p className="mt-1 text-sm text-white/45">
-                  JPG, PNG, or WebP · Drop here or click to browse
+                  JPG, PNG, or WebP - Drop here or click to browse
                 </p>
                 <div className="mt-5 inline-flex items-center gap-2 rounded-full border border-white/10 px-3 py-1.5 text-[11px] uppercase tracking-[0.2em] text-white/35">
                   <span className="h-1.5 w-1.5 rounded-full bg-rose-400" />
-                  Local processing only
+                  Geometry-first analysis
                 </div>
               </>
             )}
@@ -217,7 +205,6 @@ export function PhotoCapture({
         </div>
       )}
 
-      {/* Preview with landmark overlay */}
       {previewUrl && (
         <div className="relative overflow-hidden rounded-[2rem] border border-white/10 bg-black shadow-[0_14px_40px_rgba(0,0,0,0.45)]">
           <Image
@@ -229,7 +216,6 @@ export function PhotoCapture({
             className="w-full"
           />
 
-          {/* Precision badge */}
           {precisionScore !== null && (
             <div className={`absolute right-3 top-3 rounded-full px-3 py-1.5 text-xs font-semibold backdrop-blur-sm
               ${precisionScore >= 78
@@ -238,12 +224,11 @@ export function PhotoCapture({
                 ? "bg-amber-500/80 text-stone-950"
                 : "bg-rose-500/85 text-white"
               }`}>
-              {precisionScore >= 78 ? "✓ High Precision" : precisionScore >= 55 ? "⚠ Medium Precision" : "✗ Low Precision"}
+              {precisionScore >= 78 ? "High Precision" : precisionScore >= 55 ? "Medium Precision" : "Low Precision"}
               {" "}{precisionScore}/100
             </div>
           )}
 
-          {/* Retake button */}
           <button
             onClick={() => { setPreviewUrl(null); setPrecisionScore(null); }}
             className="absolute bottom-3 right-3 rounded-full border border-white/12 bg-black/55 px-3 py-1.5 text-xs text-white/85 backdrop-blur-sm transition-colors hover:bg-black/75"
@@ -253,7 +238,6 @@ export function PhotoCapture({
         </div>
       )}
 
-      {/* Error */}
       {error && (
         <div className="mt-3 rounded-2xl border border-rose-500/18 bg-rose-500/8 p-3 text-sm text-rose-200">
           {error}
@@ -262,8 +246,6 @@ export function PhotoCapture({
     </div>
   );
 }
-
-// ─── Landmark overlay drawing ─────────────────────────────────────────────────
 
 function drawLandmarkOverlay(
   ctx: CanvasRenderingContext2D,
@@ -277,34 +259,25 @@ function drawLandmarkOverlay(
     landmarks[idx].y * h,
   ];
 
-  // Color based on precision
   const color = precision.overallScore >= 78
-    ? "rgba(134, 239, 172, 0.9)"   // green
+    ? "rgba(134, 239, 172, 0.9)"
     : precision.overallScore >= 55
-    ? "rgba(253, 224, 71, 0.9)"    // yellow
-    : "rgba(252, 165, 165, 0.9)";  // red
+    ? "rgba(253, 224, 71, 0.9)"
+    : "rgba(252, 165, 165, 0.9)";
 
   ctx.lineWidth = 1;
   ctx.strokeStyle = color;
 
-  // Draw face oval
   drawPolyline(ctx, LANDMARK_INDICES.faceOval.map(i => px(i)), true, color, 1.5);
-
-  // Draw eyes
   drawPolyline(ctx, LANDMARK_INDICES.leftEyeUpper.map(i => px(i)), false, color, 1);
   drawPolyline(ctx, LANDMARK_INDICES.leftEyeLower.map(i => px(i)), false, color, 1);
   drawPolyline(ctx, LANDMARK_INDICES.rightEyeUpper.map(i => px(i)), false, color, 1);
   drawPolyline(ctx, LANDMARK_INDICES.rightEyeLower.map(i => px(i)), false, color, 1);
-
-  // Draw lips
   drawPolyline(ctx, LANDMARK_INDICES.lipsOuter.map(i => px(i)), true, color, 1.2);
   drawPolyline(ctx, LANDMARK_INDICES.lipsInner.map(i => px(i)), true, "rgba(255,255,255,0.5)", 0.8);
-
-  // Draw eyebrows
   drawPolyline(ctx, LANDMARK_INDICES.leftEyebrow.map(i => px(i)), false, color, 1);
   drawPolyline(ctx, LANDMARK_INDICES.rightEyebrow.map(i => px(i)), false, color, 1);
 
-  // Nose
   drawPolyline(ctx, [
     px(LANDMARK_INDICES.noseBridgeTop[0]),
     px(LANDMARK_INDICES.noseBridgeMid[0]),
@@ -314,7 +287,6 @@ function drawLandmarkOverlay(
     px(LANDMARK_INDICES.noseTip[0]),
   ], false, color, 1);
 
-  // Key landmark dots
   const keyPoints = [
     LANDMARK_INDICES.foreheadTop[0],
     LANDMARK_INDICES.chinBottom[0],
@@ -353,14 +325,11 @@ function drawPolyline(
   ctx.stroke();
 }
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
-
 function fileToBase64(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = () => {
       const result = reader.result as string;
-      // Strip the data URI prefix
       resolve(result.split(",")[1]);
     };
     reader.onerror = reject;
