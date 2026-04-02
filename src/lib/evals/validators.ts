@@ -165,6 +165,21 @@ export function validateTutorialIssues(
     issues.push(warn("tutorial.first_step_copy", "Step 1 should read like skin prep and mention moisturizer or prep explicitly."));
   }
 
+  const secondStep = result.steps[1];
+  if (!secondStep || secondStep.zoneKey !== "under_eye" || !textIncludes(secondStep, ["correct", "peach", "apricot", "salmon", "orange", "green"])) {
+    issues.push(fail("tutorial.color_correction_missing", "Step 2 should be under-eye or discoloration correction with a specific corrector hue."));
+  }
+
+  const thirdStep = result.steps[2];
+  if (!thirdStep || thirdStep.zoneKey !== "under_eye" || !textIncludes(thirdStep, ["conceal", "under-eye triangle", "spot conceal"])) {
+    issues.push(fail("tutorial.concealer_step_missing", "Step 3 should be a concealer step covering under-eye and spot concealment."));
+  }
+
+  const fourthStep = result.steps[3];
+  if (!fourthStep || fourthStep.zoneKey !== "under_eye" || !textIncludes(fourthStep, ["powder", "set", "bake", "loose powder"])) {
+    issues.push(fail("tutorial.concealer_setting_missing", "Step 4 should set the concealer with powder or baking guidance."));
+  }
+
   const underEyeSteps = result.steps.filter((step) => step.zoneKey === "under_eye");
   if (underEyeSteps.length < 2) {
     issues.push(fail("tutorial.under_eye_coverage", "Tutorial should include under-eye correction/concealer coverage and setting."));

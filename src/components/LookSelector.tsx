@@ -2,23 +2,7 @@
 
 import type { LookId } from "@/app/api/generate-tutorial/route";
 import type { ProfileHistoryResult } from "@/app/api/profile/history/route";
-
-interface Look {
-  id: LookId;
-  label: string;
-  subtitle: string;
-  tag: string;
-  accent: string;
-}
-
-const LOOKS: Look[] = [
-  { id: "natural", label: "Natural", subtitle: "Enhance, don't cover", tag: "Minimal", accent: "rgba(244,63,94,0.18)" },
-  { id: "soft-glam", label: "Soft Glam", subtitle: "Effortless elegance", tag: "Polished", accent: "rgba(255,255,255,0.1)" },
-  { id: "evening", label: "Evening", subtitle: "Dramatic and dimensional", tag: "Full Face", accent: "rgba(190,24,93,0.24)" },
-  { id: "bold-lip", label: "Bold Lip", subtitle: "One statement feature", tag: "Focused", accent: "rgba(251,113,133,0.18)" },
-  { id: "monochromatic", label: "Monochromatic", subtitle: "Tone-on-tone flush", tag: "Cohesive", accent: "rgba(255,255,255,0.08)" },
-  { id: "editorial", label: "Editorial", subtitle: "High fashion edge, then pick a style", tag: "Creative", accent: "rgba(109,40,217,0.16)" },
-];
+import { LOOK_PRESENTATIONS } from "@/lib/medusa/look-config";
 
 interface Props {
   onSelect: (look: LookId) => void;
@@ -55,7 +39,7 @@ export function LookSelector({ onSelect, preferenceSummary }: Props) {
         </div>
 
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-          {LOOKS.map((look, index) => {
+          {LOOK_PRESENTATIONS.map((look, index) => {
             const isPreferred = preferredLooks.has(look.id);
             const isDiscouraged = discouragedLooks.has(look.id);
             const isRecent = recentLooks.has(look.id);
@@ -83,7 +67,7 @@ export function LookSelector({ onSelect, preferenceSummary }: Props) {
                       </p>
                     </div>
                     <span className="rounded-full border border-white/10 px-3 py-1 text-[10px] uppercase tracking-[0.2em] text-white/35">
-                      Face-fit
+                      Face read holds
                     </span>
                   </div>
 
@@ -110,14 +94,14 @@ export function LookSelector({ onSelect, preferenceSummary }: Props) {
                     )}
                     {isDiscouraged && (
                       <span className="rounded-full border border-amber-400/18 bg-amber-500/[0.08] px-3 py-1 text-[10px] uppercase tracking-[0.18em] text-amber-100/78">
-                        Lower Taste Match
+                        Lower Match
                       </span>
                     )}
                   </div>
 
                   <div className="mt-8 flex items-center gap-2 text-sm font-medium text-rose-300">
                     Choose this look
-                    <span className="transition-transform group-hover:translate-x-1">â†’</span>
+                    <span className="transition-transform group-hover:translate-x-1">-&gt;</span>
                   </div>
                 </div>
               </button>

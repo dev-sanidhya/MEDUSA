@@ -10,16 +10,14 @@ import {
 } from "@/lib/evals/versioning";
 import type { FaceAnalysis } from "@/lib/medusa/analyze-face";
 import { MEDUSA_CLAUDE_MODEL } from "@/lib/claude/models";
+import {
+  EDITORIAL_SUBTYPE_DEFINITIONS,
+  type EditorialSubtype,
+  LOOK_DEFINITIONS,
+  type LookId,
+} from "@/lib/medusa/look-config";
 
-export type LookId =
-  | "natural"
-  | "soft-glam"
-  | "evening"
-  | "bold-lip"
-  | "monochromatic"
-  | "editorial";
-
-export type EditorialSubtype = "sharp" | "glossy" | "messy" | "soft";
+export type { EditorialSubtype, LookId };
 
 export type ZoneKey =
   | "full_face"
@@ -47,10 +45,11 @@ export interface TutorialStep {
 }
 
 export interface GenerateTutorialRequest {
-  faceAnalysis: FaceAnalysis;
+  faceAnalysis?: FaceAnalysis;
   analysisRunId?: string | null;
   selectedLook: LookId;
   selectedEditorialSubtype?: EditorialSubtype;
+  preferenceProfile?: PersonalizationProfile | null;
 }
 
 export interface GenerateTutorialResult {
@@ -70,21 +69,6 @@ export interface PersonalizationProfile {
   positiveTags: string[];
   dislikedTags: string[];
 }
-
-const EDITORIAL_SUBTYPE_DEFINITIONS: Record<EditorialSubtype, string> = {
-  sharp: "Sharp Editorial - crisp structure, graphic edges, clean symmetry, strong shape control. Think precise liner, clean negative space, sculpted placement, and polished finish.",
-  glossy: "Glossy Editorial - wet-looking shine, reflective lids or skin, fresh base, controlled glow, and modern shine without looking greasy. Keep gloss intentional and placed with restraint.",
-  messy: "Messy Editorial - intentionally undone, smudged, lived-in texture with attitude. Think blurred edges, slept-in eyes, imperfect diffusion, and cool contrast, but still deliberately designed.",
-  soft: "Soft Editorial - diffused, airy, washed, and fashion-led rather than dramatic. Think hazy edges, blended tones, gentle glow, blurred lips, and softer transitions everywhere.",
-};
-const LOOK_DEFINITIONS: Record<LookId, string> = {
-  natural: "Natural / Everyday - 5-7 steps. Skin-first, barely-there. Tinted moisturizer or light coverage, groomed brows, sheer lid wash, tinted lip balm.",
-  "soft-glam": "Soft Glam - 8-10 steps. Polished without being heavy. Seamless base, warm neutral eyes with soft liner, blush, highlight on cheekbones, MLBB or nude satin lip.",
-  evening: "Evening / Dramatic - 10-12 steps. Full face with impact. Foundation + concealer, sculpted contour, dimensional eyes (crease depth + liner + lashes), bold or rich lip.",
-  "bold-lip": "Bold Lip - 7-9 steps. Lip is the hero. Light even skin, barely-there brows, zero eye makeup beyond mascara, everything framed around one saturated statement lip.",
-  monochromatic: "Monochromatic - 7-9 steps. One color family everywhere. Pick a tone (rose/peach/berry/terracotta), use it on eyes, cheeks, and lips at different intensities.",
-  editorial: "Editorial - 8-12 steps. Bold, directional, photogenic. Can include graphic liner, cut crease, unusual color placement, or a statement fashion-forward element.",
-};
 
 const ZONE_KEYS = ["full_face", "under_eye", "brows", "eye_lid", "lash_line", "blush", "contour", "highlighter", "lips", "nose", "t_zone"];
 

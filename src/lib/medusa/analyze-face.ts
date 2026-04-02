@@ -15,7 +15,7 @@ import type {
   SkinTone,
   SkinUndertone,
 } from "@/lib/geometry-calculator";
-import type { PrecisionReport } from "@/lib/precision-scorer";
+import { mergeReports, type PrecisionReport } from "@/lib/precision-scorer";
 
 export interface AnalyzeFacePhoto {
   base64: string;
@@ -267,9 +267,12 @@ Warm, direct, and plain-spoken. Talk like a friend who knows makeup well. Short 
 
 export async function analyzeFace(photos: AnalyzeFacePhoto[]): Promise<FaceAnalysisResult> {
   const boundedPhotos = photos.slice(0, 3);
-  const latestPhoto = boundedPhotos[boundedPhotos.length - 1];
   const photoCount = boundedPhotos.length;
   const startedAt = Date.now();
+  const mergedPrecision = mergeReports(boundedPhotos.map((photo) => photo.precisionReport));
+  const representativePhoto = boundedPhotos.reduce((best, candidate) =>
+    candidate.precisionReport.overallScore > best.precisionReport.overallScore ? candidate : best
+  );
 
   const content: ClaudeContentBlock[] = [];
 
@@ -288,8 +291,8 @@ export async function analyzeFace(photos: AnalyzeFacePhoto[]): Promise<FaceAnaly
   content.push({
     type: "text",
     text: buildGeometryPrompt(
-      latestPhoto.geometryProfile,
-      latestPhoto.precisionReport,
+      representativePhoto.geometryProfile,
+      mergedPrecision,
       photoCount
     ),
   });

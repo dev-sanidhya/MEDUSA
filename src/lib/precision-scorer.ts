@@ -109,34 +109,66 @@ const CHEEK_INDICES = [
 
 // ─── Scoring helpers ─────────────────────────────────────────────────────────
 
-function avgVisibility(landmarks: RawLandmark[], indices: number[]): number {
-  const raw = indices.map(i => landmarks[i]?.visibility);
-  // FaceLandmarker doesn't output visibility — values are 0 or undefined.
-  // When no landmark reports a meaningful value, assume full visibility
-  // and let pose/framing drive the score instead.
-  const meaningful = raw.filter((v): v is number => v !== undefined && v > 0);
-  if (meaningful.length === 0) return 1;
-  return meaningful.reduce((a, b) => a + b, 0) / meaningful.length;
-}
-
 function scoreZone(
   landmarks: RawLandmark[],
   indices: number[],
-  lowThreshold = 0.5,
-  issueKey: PrecisionIssue
+  issueKey: PrecisionIssue,
+  {
+    minScore = 70,
+    marginX = 0.03,
+    marginY = 0.03,
+    yawWeight = 0.5,
+    pitchWeight = 0.3,
+    rollWeight = 0.25,
+  }: {
+    minScore?: number;
+    marginX?: number;
+    marginY?: number;
+    yawWeight?: number;
+    pitchWeight?: number;
+    rollWeight?: number;
+  },
+  headPose: { yaw: number; pitch: number; roll: number }
 ): ZonePrecision {
-  const avg = avgVisibility(landmarks, indices);
-  const score = Math.round(avg * 100);
+  const points = indices.map((index) => landmarks[index]).filter(Boolean);
+  const xs = points.map((point) => point.x);
+  const ys = points.map((point) => point.y);
+
+  const minX = Math.min(...xs);
+  const maxX = Math.max(...xs);
+  const minY = Math.min(...ys);
+  const maxY = Math.max(...ys);
+
+  const edgePenalty =
+    overflowPenalty(minX, marginX) +
+    overflowPenalty(1 - maxX, marginX) +
+    overflowPenalty(minY, marginY) +
+    overflowPenalty(1 - maxY, marginY);
+
+  const posePenalty =
+    Math.abs(headPose.yaw) * yawWeight +
+    Math.abs(headPose.pitch) * pitchWeight +
+    Math.abs(headPose.roll) * rollWeight;
+
+  const score = Math.max(0, Math.min(100, Math.round(100 - edgePenalty - posePenalty)));
   return {
     score,
-    issues: score < lowThreshold * 100 ? [issueKey] : [],
+    issues: score < minScore ? [issueKey] : [],
   };
+}
+
+function overflowPenalty(distanceToEdge: number, targetMargin: number) {
+  if (distanceToEdge >= targetMargin) {
+    return 0;
+  }
+
+  return ((targetMargin - Math.max(distanceToEdge, 0)) / targetMargin) * 20;
 }
 
 // ─── Main scorer ─────────────────────────────────────────────────────────────
 
 export function scorePrecision(detection: FaceDetectionResult): PrecisionReport {
-  const { landmarks, facialTransformationMatrix, imageWidth, imageHeight } = detection;
+  const { landmarks, facialTransformationMatrix, faceCount } = detection;
 
   const issues: PrecisionIssue[] = [];
 
@@ -153,6 +185,7 @@ export function scorePrecision(detection: FaceDetectionResult): PrecisionReport 
   if (yawOff > 15) issues.push("face_angle_yaw");
   if (pitchOff > 15) issues.push("face_angle_pitch");
   if (rollOff > 12) issues.push("face_angle_roll");
+  if (faceCount > 1) issues.push("multiple_faces");
 
   const isFrontal = yawOff <= 15 && pitchOff <= 15 && rollOff <= 12;
 
@@ -160,12 +193,55 @@ export function scorePrecision(detection: FaceDetectionResult): PrecisionReport 
   const posePenalty = Math.min(40, (yawOff + pitchOff + rollOff) * 0.8);
 
   // ── Zone precision ─────────────────────────────────────────────────────────
-  const eyeZone = scoreZone(landmarks, EYE_INDICES, 0.55, "eyes_partially_occluded");
-  const lipZone = scoreZone(landmarks, LIP_INDICES, 0.55, "lips_partially_occluded");
-  const noseZone = scoreZone(landmarks, NOSE_INDICES, 0.6, "nose_occluded");
-  const jawZone = scoreZone(landmarks, JAW_INDICES, 0.5, "jaw_occluded");
-  const foreheadZone = scoreZone(landmarks, FOREHEAD_INDICES, 0.5, "low_landmark_confidence");
-  const cheekZone = scoreZone(landmarks, CHEEK_INDICES, 0.5, "low_landmark_confidence");
+  const headPose = { yaw, pitch, roll };
+  const eyeZone = scoreZone(landmarks, EYE_INDICES, "eyes_partially_occluded", {
+    minScore: 72,
+    marginX: 0.05,
+    marginY: 0.05,
+    yawWeight: 0.7,
+    pitchWeight: 0.35,
+    rollWeight: 0.25,
+  }, headPose);
+  const lipZone = scoreZone(landmarks, LIP_INDICES, "lips_partially_occluded", {
+    minScore: 72,
+    marginX: 0.04,
+    marginY: 0.04,
+    yawWeight: 0.45,
+    pitchWeight: 0.4,
+    rollWeight: 0.2,
+  }, headPose);
+  const noseZone = scoreZone(landmarks, NOSE_INDICES, "nose_occluded", {
+    minScore: 70,
+    marginX: 0.03,
+    marginY: 0.03,
+    yawWeight: 0.55,
+    pitchWeight: 0.35,
+    rollWeight: 0.15,
+  }, headPose);
+  const jawZone = scoreZone(landmarks, JAW_INDICES, "jaw_occluded", {
+    minScore: 70,
+    marginX: 0.04,
+    marginY: 0.02,
+    yawWeight: 0.55,
+    pitchWeight: 0.45,
+    rollWeight: 0.2,
+  }, headPose);
+  const foreheadZone = scoreZone(landmarks, FOREHEAD_INDICES, "low_landmark_confidence", {
+    minScore: 68,
+    marginX: 0.03,
+    marginY: 0.02,
+    yawWeight: 0.35,
+    pitchWeight: 0.55,
+    rollWeight: 0.15,
+  }, headPose);
+  const cheekZone = scoreZone(landmarks, CHEEK_INDICES, "low_landmark_confidence", {
+    minScore: 68,
+    marginX: 0.03,
+    marginY: 0.03,
+    yawWeight: 0.5,
+    pitchWeight: 0.25,
+    rollWeight: 0.15,
+  }, headPose);
 
   for (const z of [eyeZone, lipZone, noseZone, jawZone, foreheadZone, cheekZone]) {
     issues.push(...z.issues);
@@ -201,13 +277,20 @@ export function scorePrecision(detection: FaceDetectionResult): PrecisionReport 
   if (isTooSmall) overallScore = Math.max(0, overallScore - 20);
   if (isTooClose) overallScore = Math.max(0, overallScore - 10);
 
-  const canProceed = overallScore >= 78 && !issues.includes("face_angle_yaw") && !isTooSmall;
+  const blockingIssues: PrecisionIssue[] = [
+    "face_angle_yaw",
+    "face_angle_pitch",
+    "face_angle_roll",
+    "face_too_small",
+    "multiple_faces",
+  ];
+  const canProceed = overallScore >= 78 && !issues.some((issue) => blockingIssues.includes(issue));
 
   // ── Photo request ──────────────────────────────────────────────────────────
   let photoRequest: PhotoRequest | null = null;
 
   if (!canProceed) {
-    photoRequest = buildPhotoRequest(issues, yawOff, pitchOff, rollOff, faceSizeRatio);
+    photoRequest = buildPhotoRequest(issues, yaw, pitch);
   }
 
   // Deduplicate issues
@@ -235,10 +318,8 @@ export function scorePrecision(detection: FaceDetectionResult): PrecisionReport 
 
 function buildPhotoRequest(
   issues: PrecisionIssue[],
-  yawOff: number,
-  pitchOff: number,
-  rollOff: number,
-  faceSizeRatio: number
+  yaw: number,
+  pitch: number
 ): PhotoRequest {
   // Priority ordering: pose issues first, then occlusion, then framing
 
@@ -252,7 +333,7 @@ function buildPhotoRequest(
   }
 
   if (issues.includes("face_angle_yaw")) {
-    const direction = yawOff > 0 ? "slightly to the right" : "slightly to the left";
+    const direction = yaw > 0 ? "slightly to the right" : "slightly to the left";
     return {
       reason: `Your face is turned ${direction} in this photo. I need a straight-on view to measure your face structure precisely — even a small angle affects the accuracy of cheekbone width, eye spacing, and jaw measurements.`,
       instruction: "Could you take another photo facing directly forward? Imagine looking straight into a mirror. Your nose should point straight at the camera.",
@@ -262,7 +343,7 @@ function buildPhotoRequest(
   }
 
   if (issues.includes("face_angle_pitch")) {
-    const direction = pitchOff > 0 ? "tilted upward" : "tilted downward";
+    const direction = pitch > 0 ? "tilted upward" : "tilted downward";
     return {
       reason: `Your chin is ${direction} in this photo. This changes how your face proportions appear and affects my measurement of the face thirds (forehead:midface:chin ratio).`,
       instruction: "Try holding your phone at eye level and looking straight into the camera — chin parallel to the floor, not tucked or raised.",
@@ -277,6 +358,14 @@ function buildPhotoRequest(
       instruction: "Could you straighten your head so it's not tilted left or right? Imagine a vertical line running from the top of your head through your chin.",
       priority: "required",
       angleHint: "head straight, no tilt",
+    };
+  }
+
+  if (issues.includes("multiple_faces")) {
+    return {
+      reason: "I can see more than one face in frame, so I can't be sure which features to measure.",
+      instruction: "Take another photo with only your face in frame and keep the background clear of other people or portraits.",
+      priority: "required",
     };
   }
 
@@ -321,6 +410,7 @@ export function mergeReports(reports: PrecisionReport[]): PrecisionReport {
   if (reports.length === 1) return reports[0];
 
   const best = reports.reduce((a, b) => (a.overallScore > b.overallScore ? a : b));
+  const mergedIssues = [...new Set(reports.flatMap((report) => report.issues))];
 
   // Take the best zone score from any photo
   const mergedZones = {
@@ -335,14 +425,21 @@ export function mergeReports(reports: PrecisionReport[]): PrecisionReport {
   const mergedOverall = Math.round(
     Object.values(mergedZones).reduce((s, z) => s + z.score, 0) / 6
   );
-  const mergedCanProceed = mergedOverall >= 78;
+  const blockingIssues: PrecisionIssue[] = [
+    "face_angle_yaw",
+    "face_angle_pitch",
+    "face_angle_roll",
+    "face_too_small",
+    "multiple_faces",
+  ];
+  const mergedCanProceed = mergedOverall >= 78 && !mergedIssues.some((issue) => blockingIssues.includes(issue));
 
   return {
     ...best,
     overallScore: mergedOverall,
     canProceed: mergedCanProceed,
     zones: mergedZones,
-    issues: mergedCanProceed ? [] : best.issues,
-    photoRequest: mergedCanProceed ? null : best.photoRequest,
+    issues: mergedCanProceed ? [] : mergedIssues,
+    photoRequest: mergedCanProceed ? null : buildPhotoRequest(mergedIssues, best.headPose.yaw, best.headPose.pitch),
   };
 }

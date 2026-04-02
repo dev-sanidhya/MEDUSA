@@ -18,7 +18,7 @@ export type ClaudeImageBlock = {
 
 export type ClaudeContentBlock = ClaudeTextBlock | ClaudeImageBlock;
 
-interface RunClaudeJsonQueryParams<T> {
+interface RunClaudeJsonQueryParams {
   content: string | ClaudeContentBlock[];
   systemPrompt: string;
   schema: Record<string, unknown>;
@@ -30,7 +30,7 @@ export async function runClaudeJsonQuery<T>({
   systemPrompt,
   schema,
   errorTag,
-}: RunClaudeJsonQueryParams<T>): Promise<T> {
+}: RunClaudeJsonQueryParams): Promise<T> {
   assertClaudeRuntime();
 
   const sessionId = crypto.randomUUID();

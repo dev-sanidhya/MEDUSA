@@ -25,6 +25,7 @@ export interface FaceDetectionResult {
   landmarks: RawLandmark[];            // 478 landmarks
   blendShapes: Record<string, number>; // 52 blend shape scores (expression data)
   facialTransformationMatrix: number[] | null; // 4x4 pose matrix — gives us yaw/pitch/roll
+  faceCount: number;
   imageWidth: number;
   imageHeight: number;
 }
@@ -91,7 +92,7 @@ async function getLandmarker(): Promise<FaceLandmarker> {
         outputFaceBlendshapes: true,
         outputFacialTransformationMatrixes: true,
         runningMode: "IMAGE",
-        numFaces: 1,
+        numFaces: 2,
       });
     });
   } finally {
@@ -147,6 +148,7 @@ export async function detectFaceLandmarks(
     landmarks: rawLandmarks,
     blendShapes,
     facialTransformationMatrix: matrix,
+    faceCount: result.faceLandmarks.length,
     imageWidth: width,
     imageHeight: height,
   };
