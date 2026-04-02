@@ -5,6 +5,7 @@ import type {
   TutorialStep,
   ZoneKey,
 } from "@/lib/medusa/generate-tutorial";
+import { LOOK_DEFINITIONS } from "@/lib/medusa/look-config";
 import type { AutomaticEvalResult, EvalIssue } from "@/lib/evals/types";
 
 interface LookRule {
@@ -138,7 +139,15 @@ export function validateTutorialIssues(
 ): EvalIssue[] {
   const issues: EvalIssue[] = [];
   const rules = LOOK_RULES[look];
+  const lookDef = LOOK_DEFINITIONS[look];
   const zones = result.steps.map((step) => step.zoneKey);
+  const allText = [
+    result.lookDescription,
+    result.lookIntent.colorStrategy,
+    result.lookIntent.finishStrategy,
+    result.lookIntent.statementPlacement,
+    ...result.steps.map((step) => `${step.title} ${step.productType} ${step.productColor} ${step.instruction} ${step.technique} ${step.avoid}`),
+  ].join(" ").toLowerCase();
 
   if (result.steps.length < rules.minSteps || result.steps.length > rules.maxSteps) {
     issues.push(fail(
@@ -146,6 +155,44 @@ export function validateTutorialIssues(
       `${look} should have ${rules.minSteps}-${rules.maxSteps} steps, but got ${result.steps.length}.`,
       { expectedMin: rules.minSteps, expectedMax: rules.maxSteps, actual: result.steps.length }
     ));
+  }
+
+  if (result.lookName.trim().toLowerCase() !== lookDef.label.toLowerCase()) {
+    issues.push(warn("tutorial.look_name_drift", `lookName should match ${lookDef.label}.`));
+  }
+
+  if (result.lookIntent.primaryAxis !== lookDef.engine.primaryAxis) {
+    issues.push(fail("tutorial.intent_axis_mismatch", `${look} should declare primaryAxis=${lookDef.engine.primaryAxis}.`));
+  }
+
+  if (result.lookIntent.anchorFeature !== lookDef.engine.anchorFeature) {
+    issues.push(fail("tutorial.intent_anchor_mismatch", `${look} should declare anchorFeature=${lookDef.engine.anchorFeature}.`));
+  }
+
+  if (result.lookIntent.intensity !== lookDef.engine.defaultIntensity) {
+    issues.push(warn("tutorial.intent_intensity_drift", `${look} should usually declare intensity=${lookDef.engine.defaultIntensity}.`));
+  }
+
+  if (!containsWord(result.lookIntent.colorStrategy, [
+    lookDef.engine.colorDiscipline,
+    "palette",
+    "tone",
+    "undertone",
+    "contrast",
+    "cohesive",
+    "guided",
+    "strict",
+    "free",
+  ])) {
+    issues.push(warn("tutorial.intent_color_strategy_thin", "lookIntent.colorStrategy should describe the palette or color discipline clearly."));
+  }
+
+  if (!containsWord(result.lookIntent.finishStrategy, finishKeywordsForLook(look))) {
+    issues.push(warn("tutorial.intent_finish_strategy_thin", `${look} should describe a finish strategy that matches the look.`));
+  }
+
+  if (!containsWord(result.lookIntent.statementPlacement, statementKeywordsForLook(look))) {
+    issues.push(warn("tutorial.intent_statement_thin", `${look} should describe where the look's statement or emphasis sits.`));
   }
 
   result.steps.forEach((step, index) => {
@@ -166,8 +213,11 @@ export function validateTutorialIssues(
   }
 
   const secondStep = result.steps[1];
-  if (!secondStep || secondStep.zoneKey !== "under_eye" || !textIncludes(secondStep, ["correct", "peach", "apricot", "salmon", "orange", "green"])) {
-    issues.push(fail("tutorial.color_correction_missing", "Step 2 should be under-eye or discoloration correction with a specific corrector hue."));
+  const correctionSkipped = containsWord(result.closingNote, ["skip correction", "no correction", "even skin", "didn't need correction"]);
+  if (!correctionSkipped) {
+    if (!secondStep || secondStep.zoneKey !== "under_eye" || !textIncludes(secondStep, ["correct", "peach", "apricot", "salmon", "orange", "green"])) {
+      issues.push(fail("tutorial.color_correction_missing", "Step 2 should be under-eye or discoloration correction with a specific corrector hue."));
+    }
   }
 
   const thirdStep = result.steps[2];
@@ -227,11 +277,48 @@ export function validateTutorialIssues(
     }
   }
 
-  if (look === "editorial") {
-    const editorialAnchorZones: ZoneKey[] = ["eye_lid", "lash_line", "blush", "lips"];
-    const anchorCount = editorialAnchorZones.filter((zone) => zones.includes(zone)).length;
-    if (anchorCount < 2) {
-      issues.push(fail("tutorial.editorial_anchor", "editorial should have at least two strong statement zones among eye_lid, lash_line, blush, and lips."));
+  switch (look) {
+    case "natural":
+      if (containsWord(allText, ["full coverage", "dramatic", "cat-eye", "sharp contour", "false lash"])) {
+        issues.push(fail("tutorial.natural_overbuilt", "natural should not drift into heavy coverage or dramatic structure."));
+      }
+      break;
+    case "soft-glam":
+      if (!containsWord(allText, ["satin", "soft liner", "neutral", "polished", "warm brown", "champagne", "mlbb"])) {
+        issues.push(warn("tutorial.soft_glam_signature_missing", "soft-glam should read polished, neutral, and softly structured."));
+      }
+      if (containsWord(allText, ["graphic", "floating liner", "statement lip only", "zero eyeshadow"])) {
+        issues.push(fail("tutorial.soft_glam_drift", "soft-glam should not collapse into editorial or bold-lip logic."));
+      }
+      break;
+    case "evening":
+      if (!containsWord(allText, ["full coverage", "bake", "long-wear", "rich", "dramatic", "contour", "false lash"])) {
+        issues.push(fail("tutorial.evening_signature_missing", "evening should read like a full-impact long-wear look."));
+      }
+      break;
+    case "bold-lip":
+      if (!containsWord(allText, ["statement lip", "lip prep", "liner", "saturated", "hero lip"])) {
+        issues.push(fail("tutorial.bold_lip_signature_missing", "bold-lip should explicitly treat the lip as the hero."));
+      }
+      if (containsWord(allText, ["crease shadow", "cat-eye", "graphic liner", "false lash", "smoky eye"])) {
+        issues.push(fail("tutorial.bold_lip_competition", "bold-lip should not add competing eye drama."));
+      }
+      break;
+    case "monochromatic":
+      if (!containsWord(allText, ["same family", "tone story", "one color family", "same palette", "monoch", "matching family"])) {
+        issues.push(fail("tutorial.monochromatic_story_missing", "monochromatic tutorial should explicitly describe one shared color family or tone story."));
+      }
+      break;
+    case "editorial": {
+      const editorialAnchorZones: ZoneKey[] = ["eye_lid", "lash_line", "blush", "lips"];
+      const anchorCount = editorialAnchorZones.filter((zone) => zones.includes(zone)).length;
+      if (anchorCount < 2) {
+        issues.push(fail("tutorial.editorial_anchor", "editorial should have at least two strong statement zones among eye_lid, lash_line, blush, and lips."));
+      }
+      if (!containsWord(allText, ["graphic", "statement", "directional", "drape", "concept", "negative space", "editorial"])) {
+        issues.push(fail("tutorial.editorial_signature_missing", "editorial should read concept-led and directional, not like softened glam."));
+      }
+      break;
     }
   }
 
@@ -252,18 +339,41 @@ export function validateTutorialIssues(
     }
   }
 
-  if (look === "monochromatic") {
-    const text = [
-      result.lookDescription,
-      ...result.steps.map((step) => `${step.productColor} ${step.instruction} ${step.technique}`),
-    ].join(" ").toLowerCase();
-
-    if (!containsWord(text, ["same family", "tone story", "one color family", "same palette", "monoch"])) {
-      issues.push(fail("tutorial.monochromatic_story_missing", "monochromatic tutorial should explicitly describe one shared color family or tone story."));
-    }
-  }
-
   return issues;
+}
+
+function finishKeywordsForLook(look: LookId): string[] {
+  switch (look) {
+    case "natural":
+      return ["fresh", "skin-like", "dewy", "light-reflective"];
+    case "soft-glam":
+      return ["satin", "dimensional", "polished", "refined"];
+    case "evening":
+      return ["long-wear", "camera-ready", "set", "controlled"];
+    case "bold-lip":
+      return ["clean", "quiet", "supportive", "framed"];
+    case "monochromatic":
+      return ["cohesive", "harmon", "tonal", "unified"];
+    case "editorial":
+      return ["directional", "fashion", "designed", "intentional"];
+  }
+}
+
+function statementKeywordsForLook(look: LookId): string[] {
+  switch (look) {
+    case "natural":
+      return ["none", "understated", "overall face", "soft complexion"];
+    case "soft-glam":
+      return ["overall polish", "eyes", "balanced face", "soft structure"];
+    case "evening":
+      return ["eyes and structure", "full face", "contrast", "multiple zones"];
+    case "bold-lip":
+      return ["lip", "mouth", "statement lip", "hero lip"];
+    case "monochromatic":
+      return ["palette", "eyes cheeks lips", "color family", "tone story"];
+    case "editorial":
+      return ["statement", "graphic", "drape", "placement", "concept"];
+  }
 }
 
 function validateRankedOptions(

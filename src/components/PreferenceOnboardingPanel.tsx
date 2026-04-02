@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { LOOK_PRESENTATIONS } from "@/lib/medusa/look-config";
 import type { ProfileExplicitPreferences } from "@/lib/persistence/types";
 
 interface Props {
@@ -10,15 +11,6 @@ interface Props {
   body?: string;
   submitLabel?: string;
 }
-
-const LOOK_OPTIONS = [
-  { id: "natural", label: "Natural" },
-  { id: "soft-glam", label: "Soft Glam" },
-  { id: "evening", label: "Evening" },
-  { id: "bold-lip", label: "Bold Lip" },
-  { id: "monochromatic", label: "Monochromatic" },
-  { id: "editorial", label: "Editorial" },
-] as const;
 
 export function PreferenceOnboardingPanel({
   initialPreferences,
@@ -212,7 +204,7 @@ function LookGroup({
     <div>
       <p className="mb-2 text-[10px] uppercase tracking-[0.24em] text-white/34">{label}</p>
       <div className="flex flex-wrap gap-2">
-        {LOOK_OPTIONS.map((option) => {
+        {LOOK_PRESENTATIONS.map((option) => {
           const isActive = values.includes(option.id);
 
           return (

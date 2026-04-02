@@ -1,4 +1,5 @@
 import { runClaudeJsonQuery } from "@/lib/claude/client";
+import { MEDUSA_CLAUDE_MODEL } from "@/lib/claude/models";
 import { recordInferenceRun } from "@/lib/evals/store";
 import type { InferenceRunRecord } from "@/lib/evals/types";
 import { summarizeTutorialInput, summarizeTutorialOutput } from "@/lib/evals/sanitize";
@@ -9,11 +10,13 @@ import {
   VALIDATOR_VERSION,
 } from "@/lib/evals/versioning";
 import type { FaceAnalysis } from "@/lib/medusa/analyze-face";
-import { MEDUSA_CLAUDE_MODEL } from "@/lib/claude/models";
 import {
   EDITORIAL_SUBTYPE_DEFINITIONS,
-  type EditorialSubtype,
+  LOOK_ANCHOR_FEATURES,
   LOOK_DEFINITIONS,
+  LOOK_INTENSITIES,
+  LOOK_PRIMARY_AXES,
+  type EditorialSubtype,
   type LookId,
 } from "@/lib/medusa/look-config";
 
@@ -56,6 +59,14 @@ export interface GenerateTutorialResult {
   tutorialRunId?: string | null;
   lookName: string;
   lookDescription: string;
+  lookIntent: {
+    primaryAxis: (typeof LOOK_PRIMARY_AXES)[number];
+    intensity: (typeof LOOK_INTENSITIES)[number];
+    anchorFeature: (typeof LOOK_ANCHOR_FEATURES)[number];
+    colorStrategy: string;
+    finishStrategy: string;
+    statementPlacement: string;
+  };
   steps: TutorialStep[];
   closingNote: string;
 }
@@ -70,15 +81,39 @@ export interface PersonalizationProfile {
   dislikedTags: string[];
 }
 
-const ZONE_KEYS = ["full_face", "under_eye", "brows", "eye_lid", "lash_line", "blush", "contour", "highlighter", "lips", "nose", "t_zone"];
+const ZONE_KEYS = [
+  "full_face",
+  "under_eye",
+  "brows",
+  "eye_lid",
+  "lash_line",
+  "blush",
+  "contour",
+  "highlighter",
+  "lips",
+  "nose",
+  "t_zone",
+] as const;
 
 const TUTORIAL_SCHEMA = {
   type: "object",
-  required: ["lookName", "lookDescription", "steps", "closingNote"],
+  required: ["lookName", "lookDescription", "lookIntent", "steps", "closingNote"],
   properties: {
     lookName: { type: "string" },
     lookDescription: { type: "string" },
     closingNote: { type: "string" },
+    lookIntent: {
+      type: "object",
+      required: ["primaryAxis", "intensity", "anchorFeature", "colorStrategy", "finishStrategy", "statementPlacement"],
+      properties: {
+        primaryAxis: { type: "string", enum: LOOK_PRIMARY_AXES },
+        intensity: { type: "string", enum: LOOK_INTENSITIES },
+        anchorFeature: { type: "string", enum: LOOK_ANCHOR_FEATURES },
+        colorStrategy: { type: "string" },
+        finishStrategy: { type: "string" },
+        statementPlacement: { type: "string" },
+      },
+    },
     steps: {
       type: "array",
       items: {
@@ -100,139 +135,47 @@ const TUTORIAL_SCHEMA = {
   },
 };
 
-const SYSTEM_PROMPT = `You are MEDUSA - a top-tier professional makeup artist with deep editorial, bridal, and everyday expertise. You've studied this person's face geometry, skin tone, undertone, and individual features from their analysis. Speak directly to them like a trusted pro who knows their face.
+const SYSTEM_PROMPT = `You are MEDUSA's tutorial engine. You are a luxury makeup artist writing face-specific routines from a fixed look contract.
 
-## Writing Style
-- Plain words. Short sentences. No textbook language, no jargon.
-- Reference their actual features: "your neutral-set eyes", "your fuller lower lip", "your warm olive skin tone". Nothing generic.
-- instruction = 1-2 sentences max. technique = 2-3 sentences max. avoid = 1-2 sentences max.
-- The avoid field is the most important - be direct and geometry-specific. "Don't do X because on YOUR face it causes Y."
+## Writing Rules
+- Speak directly to the user. Reference their actual features. Nothing generic.
+- Plain words. Short sentences. No beauty-blog filler.
+- instruction = 1-2 sentences. technique = 2-3 sentences. avoid = 1-2 sentences.
+- The avoid field must explain why a placement or finish fails on their face.
 
-## Artistry Depth
-Write like someone with serious modern makeup training, not a beauty blog.
-- Complexion should be built in thin layers. Preserve light in the center face. Add depth with intention around the perimeter and under structure, not by blanketing the whole face.
-- Do not confuse bronzer with contour. Bronzer adds warmth. Contour creates shadow. If both appear, describe them differently.
-- Every eye look needs architecture: what is the shape map, where the depth sits, where the brightness sits, and how the edge finishes.
-- When the look is creative or editorial, push contrast, shape, and placement on purpose. A strong look should still look controlled, not messy.
-- The technique field should feel like a masterclass: tool choice, pressure, order of placement, blend direction, and what visual effect that creates on their face.
-- Every tutorial should leave the user feeling like they learned WHY the placement works, not just where to put product.
+## Non-Negotiable Structure
+- Return JSON that matches the schema exactly.
+- Include lookIntent and make it match the supplied look contract.
+- Step 1 must be skin prep on full_face.
+- Step 2 must be color correction on under_eye unless the prompt explicitly says to skip correction.
+- Step 3 must be concealer on under_eye and cover both under-eye brightening and spot concealment.
+- Step 4 must set the concealer on under_eye with loose powder or baking guidance.
+- Brows and mascara belong in one combined brows step.
+- Looks with 7 or more steps need their own highlighter step and should finish with setting spray.
+- Evening and editorial must include a lash_line step with false lashes.
 
-## MANDATORY STEPS - every tutorial must include these, in this order at the start
+## Technique Rules
+- Build complexion in thin layers. Keep center-face light when the look allows it.
+- Distinguish bronzer from contour. Bronzer adds warmth. Contour creates shadow.
+- Every eye look needs architecture: depth, brightness, edge finish, and why it flatters this face.
+- ProductColor must be specific, not vague. Name tone family, finish, and undertone fit where relevant.
+- Use zoneKey based on actual placement, not category vibes.
 
-### 1. Skin Prep (zoneKey: "full_face")
-This step must appear in every tutorial before complexion products.
-- Always include moisturizer. Say what finish it should have for the chosen look: lightweight or dewy for natural/soft looks, balanced but well-set for glam, editorial, and long-wear looks.
-- If the look is soft-glam, evening, bold-lip, monochromatic, or editorial, also include primer and explain why: gripping/smoothing for longevity, pore blur through the center face, or glow only where the look needs it.
-- The instruction should clearly tell them where it goes: moisturizer pressed over the full face, primer focused where makeup needs to last or where texture shows most.
-- Editorial specifically must mention skin prep as part of the polished finish. Do not jump straight into color products.
+## Under-Eye Sequence
+- Corrector hue must match the discoloration and complexion depth.
+- Concealer must mention the under-eye triangle and spot-conceal placement.
+- Powder choice must respect complexion depth and avoid flashback or dullness.
+- If correction is skipped because the face reads genuinely even, say that in closingNote and keep the under-eye sequence otherwise intact.
 
-### 2. Color Correction (zoneKey: "under_eye")
-Color correctors cancel discoloration BEFORE concealer. They must be picked based on what you see in the face analysis:
-- **Brown/blue-toned dark circles, medium-warm/olive skin** -> salmon or brick-red corrector (warm orange-red neutralizes blue-brown)
-- **Purple or blue-tinted circles, fair/light skin** -> peach or apricot corrector
-- **Very deep, near-black circles, deep/dark skin** -> bold orange or red-orange corrector (only orange cuts through)
-- **Active redness, acne, broken capillaries anywhere on face** -> green corrector stippled directly on those spots
-- **PIH (post-inflammatory hyperpigmentation / dark spots)** -> orange-red corrector pressed on each spot
-- If the analysis shows genuinely even skin with no notable discoloration, skip this step; mention it in the closingNote.
-- productColor: always name the exact corrector hue family AND explain in plain English why that color counteracts their specific discoloration.
+## Look Logic
+- The supplied look contract is authoritative.
+- The selected look decides intensity, anchor feature, color discipline, complexion behavior, and statement placement.
+- Editorial subtype only modifies the editorial direction. It does not replace the main look contract.
+- Preferences can steer finish or emphasis, but they cannot override the selected look.
 
-### 3. Concealer (zoneKey: "under_eye")
-Always two placements - always both:
-1. **Under-eye triangle**: start at inner corner, draw to outer corner, let the apex point down toward the nose wing - this triangle covers the whole dark zone. Pat with a damp sponge, blend the edges UPWARD into the lash line. Never swipe - it creases.
-2. **Spot concealment**: stipple on any blemishes/dark spots with a small brush. Blend the edges only, leave the center opaque.
-- productColor: under-eye = 1 shade lighter than their foundation for a lifting effect. Spots = exact skin-tone match.
-- Finish: always cream or liquid concealer (not powder, not stick).
-
-### 4. Setting the Concealer (zoneKey: "under_eye")
-Lock concealer before it moves. Use a loose powder - NEVER a pressed powder, it looks cakey.
-- **Fair skin** -> translucent or slightly pink-toned powder
-- **Medium warm/olive skin** -> banana yellow powder (brightens, adds warmth, counteracts dullness)
-- **Medium cool skin** -> translucent or pink-lavender powder
-- **Deep skin** -> deep banana, golden, or orange-toned powder - NOT white translucent (will flashback grey in photos)
-- Glam/evening looks: bake (press and leave 3-5 min, then dust off) for maximum longevity. Natural/soft looks: light press only.
-
-## LOOK DNA - each look is fundamentally different. Do not repeat the same steps.
-
-### Natural / Everyday (5-7 steps total)
-Skin is the star. Goal: "your face but healthier and more awake," not coverage.
-- Base: skin tint or tinted moisturizer ONLY. No full foundation - it defeats the point.
-- Eyes: one neutral wash of shadow OR none. No liner. Curl lashes + single coat mascara.
-- Brows: brushed, groomed, filled only in sparse gaps. Fluffy and natural.
-- Lips: tinted balm or clear gloss. No defined liner.
-- No sculpted contour. Cream blush pressed on with fingers is the max.
-- Setting: light powder on T-zone only if oily. Dewy or hydrating setting spray, never matte.
-
-### Soft Glam (8-10 steps total)
-Polished and put-together. The dinner out, the event, the "effortlessly done" look.
-- Base: buildable liquid foundation, blended to a satin finish. Spot conceal.
-- Complexion should look expensive and seamless. Build coverage where needed, then keep the center of the face clean and bright so it does not read heavy.
-- Eyes: neutral warm palette - dirty taupe or soft champagne on lid, medium warm brown in crease, light shimmer or satin on inner corner. Thin upper liner or tight-lined waterline. 2 coats mascara.
-- Brows: filled, arched softly, set with tinted gel.
-- Lips: MLBB, warm nude, muted rose, or dusty berry - satin or cream finish.
-- Blush: warm peach or rosy nude, swept from apples diagonally toward temples.
-- Highlighter: glowy cheekbones and inner corners only - not blinding, just dimensional.
-- Setting: translucent/banana powder on T-zone, satin finish setting spray.
-
-### Evening / Dramatic (10-12 steps total)
-Full face with serious impact. This is the heavy artillery - every zone gets attention.
-- Base: full-coverage foundation, color-corrected, fully set with powder. Bake under-eye.
-- Build drama through contrast and structure, not just by piling on more product.
-- Eyes: dimensional - rich lid color + defined crease shadow + full liner or cat-eye + false lash band matched to eye shape.
-- Contour: place it under the cheekbone line first, sweeping back toward the temple so the structure reads lifted. Add jawline contour only when the face actually needs extra edge; never replace cheekbone sculpting with a jaw stripe.
-- Highlighter: every point - cheekbones, nose bridge, brow bone, inner corners, cupid bow.
-- Lip: rich and bold - deep berry, classic red, plum, or warm brick. Lined and filled.
-- Setting: full baking under-eye, powder all zones, lock with long-wear setting spray.
-
-### Bold Lip (7-9 steps total)
-The lip is the ONLY hero. Everything else steps back.
-- Base: even but light skin - spot conceal, no heavy foundation. Skip contour.
-- Eyes: zero eyeshadow. Zero liner. Clean brows. Mascara optional - 1 light coat max.
-- Lip prep is its own step: exfoliate lip, apply lip primer or nude liner all over to extend wear, then fill with the statement color. This step matters enormously for longevity.
-- No heavy blush. A soft warm matte bronzer on the temples max - just to avoid the face looking flat.
-- Lip color tied to undertone: warm skin -> brick red, terracotta, warm coral, tomato. Cool skin -> true red, raspberry, wine, berry.
-
-### Monochromatic (7-9 steps total)
-One color family, three intensities, worn on eyes + cheeks + lips simultaneously.
-- Choose the tone based on undertone: rose-pink (cool), peach-coral (warm/neutral), terracotta-bronze (warm-deep), berry-plum (cool-deep).
-- Eyes: lightest intensity wash on lid. Mid-tone in the outer V and crease.
-- Cheeks: same color family, mid intensity, swept from apples to temples.
-- Lips: deepest intensity in the same family - cream or satin, not matte (too flat with the rest).
-- Base: sheer to medium coverage. This look is about the COLOR story, not coverage.
-- Every product should visually feel like it belongs to the same palette.
-
-### Editorial (8-12 steps total)
-One bold, directional statement element. Everything else supports it.
-- Skin prep must be visible in the instructions: moisturizer first, then primer chosen for the finish and wear time. Editorial skin should look intentional before color goes on.
-- Choose ONE anchor: graphic liner, floating liner, bold cut crease, unexpected color placement, blush draping, or a statement lip in an unusual shade.
-- If the statement is on the eyes -> lip is nude, brows are clean, base is perfect.
-- If the statement is the lip -> eyes are completely bare, brows minimal.
-- If contour appears, it follows the underside of the cheekbone and lifts toward the temple. Do not default to a low jawline stripe unless the face analysis explicitly calls for it.
-- Blush draping: sweep blush HIGH onto the orbital bone / temple, even under the eye - this is the editorial technique that elevates it.
-- Be specific: describe exactly where the graphic element goes on THEIR face.
-- Eye looks can be more graphic here: stronger crease mapping, cleaner edges, sharper contrast, and more intentional negative space are all welcome if they suit this face.
-
-## Product Color Rules (always specific, never vague)
-- **Foundation/concealer**: undertone match + coverage level + finish
-- **Eyeshadow**: 2-3 specific shade descriptors (e.g. "warm terracotta on the lid, chocolate brown in the crease, gold shimmer on the inner corner")
-- **Blush**: shade + finish (matte vs satin) + placement tied to look
-- **Highlighter**: texture (powder/liquid/cream) + exact shade family
-- **Lip**: finish + shade category + undertone match
-- **False lashes**: style tied to eye shape (downturned -> cat-eye flared end; hooded -> wispy clusters; round -> elongating natural band; almond -> any style works)
-- **Setting spray**: matte-finish for oily/dramatic, hydrating-dewy for dry/natural
-
-## zoneKey - use the zone that best matches WHERE this product is applied:
-full_face | under_eye | brows | eye_lid | lash_line | blush | contour | highlighter | lips | nose | t_zone
-
-## Structural Rules
-- Personalize every step to this specific person's geometry. Nothing generic.
-- Use their makeupPriorities to decide what gets the most attention in the tutorial.
-- If saved preferences are provided, use them to steer intensity, emphasis, and finish as long as they do not break the selected look or face-fit guidance.
-- Respect negative memory. If they repeatedly dislike looks that feel too bold or too generic, avoid drifting there unless the selected look explicitly calls for it.
-- If they prefer eye focus, invest more detail and artistry in the eye architecture. If they prefer lip focus, make the lip choice especially intentional within the look.
-- **Brows + mascara = one combined step** (zoneKey: "brows"). Cover: brow shape/fill technique for their specific shape + lash curl recommendation + mascara formula choice.
-- **Highlighter = always its own step** (zoneKey: "highlighter") for looks 7+ steps.
-- **False lashes required** for evening/editorial (zoneKey: "lash_line").
-- **Setting spray = final step** for all looks 7+ steps.`;
+## Output Goal
+- Teach the user what to do and why it works on their face.
+- Make the look feel clearly different from the other MEDUSA looks.`;
 
 export async function generateTutorial(
   faceAnalysis: FaceAnalysis,
@@ -249,7 +192,7 @@ export async function generateTutorial(
 
   try {
     const initialResult = await runTutorialQuery(
-      buildTutorialPrompt(faceAnalysis, selectedLook, lookDef, selectedEditorialSubtype, preferenceProfile),
+      buildTutorialPrompt(faceAnalysis, lookDef, selectedEditorialSubtype, preferenceProfile),
       "generate-tutorial"
     );
 
@@ -348,22 +291,21 @@ function runTutorialQuery(
 
 function buildTutorialPrompt(
   analysis: FaceAnalysis,
-  selectedLook: LookId,
-  lookDef: string,
+  lookDef: (typeof LOOK_DEFINITIONS)[LookId],
   selectedEditorialSubtype?: EditorialSubtype,
   preferenceProfile?: PersonalizationProfile | null
 ): string {
   const editorialSubtypeBlock =
-    selectedLook === "editorial" && selectedEditorialSubtype
+    lookDef.id === "editorial" && selectedEditorialSubtype
       ? `
 ## Editorial subtype to build
-${EDITORIAL_SUBTYPE_DEFINITIONS[selectedEditorialSubtype]}
+${EDITORIAL_SUBTYPE_DEFINITIONS[selectedEditorialSubtype].promptDefinition}
 
-Subtype rules:
-- sharp: prioritize crisp edges, clean liner geometry, strong contrast, and polished placement.
-- glossy: prioritize reflective lids/skin, fresh base, and glass-like shine with controlled placement.
-- messy: prioritize intentionally smudged edges, grungy texture, lived-in eyes, and imperfect-looking diffusion that is still deliberate.
-- soft: prioritize blurred edges, airy wash, low harshness, and subtle editorial shape.
+Subtype contract:
+- Contrast level: ${EDITORIAL_SUBTYPE_DEFINITIONS[selectedEditorialSubtype].engine.contrastLevel}
+- Edge style: ${EDITORIAL_SUBTYPE_DEFINITIONS[selectedEditorialSubtype].engine.edgeStyle}
+- Texture style: ${EDITORIAL_SUBTYPE_DEFINITIONS[selectedEditorialSubtype].engine.textureStyle}
+- Statement placement: ${EDITORIAL_SUBTYPE_DEFINITIONS[selectedEditorialSubtype].engine.statementPlacement}
 `
       : "";
 
@@ -393,20 +335,31 @@ Subtype rules:
 - Makeup priorities: ${analysis.makeupPriorities.join(" · ")}
 - Known avoid rules: ${analysis.avoidTechniques.map((technique, index) => `${index + 1}. ${technique}`).join(" | ")}
 
-## Look to build
-${lookDef}
+## Look Contract
+- Selected look: ${lookDef.label}
+- Look definition: ${lookDef.promptDefinition}
+- Primary axis: ${lookDef.engine.primaryAxis}
+- Default intensity: ${lookDef.engine.defaultIntensity}
+- Anchor feature: ${lookDef.engine.anchorFeature}
+- Color discipline: ${lookDef.engine.colorDiscipline}
+- Complexion directive: ${lookDef.engine.complexionDirective}
+- Eye directive: ${lookDef.engine.eyeDirective}
+- Lip directive: ${lookDef.engine.lipDirective}
+- Contour directive: ${lookDef.engine.contourDirective}
+- Finish directive: ${lookDef.engine.finishDirective}
+- Statement directive: ${lookDef.engine.statementDirective}
 
 ${preferenceBlock}
 ${editorialSubtypeBlock}
 
-Build the complete step-by-step tutorial. Keep writing style casual and short. Return JSON matching the schema.
+Return JSON matching the schema. The lookIntent fields must align with the look contract above, not generic defaults.
 `.trim();
 }
 
 function buildRepairPrompt(
   analysis: FaceAnalysis,
   selectedLook: LookId,
-  lookDef: string,
+  lookDef: (typeof LOOK_DEFINITIONS)[LookId],
   previousResult: GenerateTutorialResult,
   issues: string[],
   selectedEditorialSubtype?: EditorialSubtype,
@@ -419,7 +372,13 @@ Editorial subtype:
 ${selectedEditorialSubtype}
 
 Subtype definition:
-${EDITORIAL_SUBTYPE_DEFINITIONS[selectedEditorialSubtype]}
+${EDITORIAL_SUBTYPE_DEFINITIONS[selectedEditorialSubtype].promptDefinition}
+
+Subtype contract:
+- Contrast level: ${EDITORIAL_SUBTYPE_DEFINITIONS[selectedEditorialSubtype].engine.contrastLevel}
+- Edge style: ${EDITORIAL_SUBTYPE_DEFINITIONS[selectedEditorialSubtype].engine.edgeStyle}
+- Texture style: ${EDITORIAL_SUBTYPE_DEFINITIONS[selectedEditorialSubtype].engine.textureStyle}
+- Statement placement: ${EDITORIAL_SUBTYPE_DEFINITIONS[selectedEditorialSubtype].engine.statementPlacement}
 `
       : "";
 
@@ -441,8 +400,19 @@ The previous tutorial did not match the selected look strongly enough.
 Selected look:
 ${selectedLook}
 
-Look definition:
-${lookDef}
+Look contract:
+- Label: ${lookDef.label}
+- Definition: ${lookDef.promptDefinition}
+- Primary axis: ${lookDef.engine.primaryAxis}
+- Default intensity: ${lookDef.engine.defaultIntensity}
+- Anchor feature: ${lookDef.engine.anchorFeature}
+- Color discipline: ${lookDef.engine.colorDiscipline}
+- Complexion directive: ${lookDef.engine.complexionDirective}
+- Eye directive: ${lookDef.engine.eyeDirective}
+- Lip directive: ${lookDef.engine.lipDirective}
+- Contour directive: ${lookDef.engine.contourDirective}
+- Finish directive: ${lookDef.engine.finishDirective}
+- Statement directive: ${lookDef.engine.statementDirective}
 
 ${editorialSubtypeBlock}
 ${preferenceBlock}
@@ -467,7 +437,7 @@ Rebuild the tutorial so it fully matches the selected look and still matches the
 - Makeup priorities: ${analysis.makeupPriorities.join(" · ")}
 - Known avoid rules: ${analysis.avoidTechniques.map((technique, index) => `${index + 1}. ${technique}`).join(" | ")}
 
-Return only corrected JSON matching the schema.
+Return only corrected JSON matching the schema. The lookIntent object must match the supplied contract.
 `.trim();
 }
 
