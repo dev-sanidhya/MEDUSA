@@ -19,17 +19,17 @@ export interface MotionArrow {
 }
 
 export const ZONE_META: Record<ZoneKey, { label: string; color: string; accent: string }> = {
-  full_face:   { label: "Full Face",    color: "rgba(255,215,170,0.32)", accent: "#d49a52" },
-  under_eye:   { label: "Under Eye",   color: "rgba(255,205,155,0.45)", accent: "#c07030" },
+  full_face:   { label: "Full Face",    color: "rgba(90,170,255,0.28)",  accent: "#5aaaff" },
+  under_eye:   { label: "Under Eye",   color: "rgba(90,170,255,0.38)",  accent: "#5aaaff" },
   brows:       { label: "Brows + Lash",color: "rgba(110,70,30,0.42)",   accent: "#7a4520" },
   eye_lid:     { label: "Lid & Crease",color: "rgba(160,130,210,0.45)", accent: "#8055c8" },
   lash_line:   { label: "Lash Line",   color: "rgba(20,20,20,0.70)",    accent: "#444444" },
-  blush:       { label: "Blush Zone",  color: "rgba(255,130,130,0.40)", accent: "#d45555" },
-  contour:     { label: "Contour",     color: "rgba(120,72,30,0.40)",   accent: "#7a4010" },
-  highlighter: { label: "Highlight",   color: "rgba(255,245,185,0.65)", accent: "#c8aa30" },
+  blush:       { label: "Blush Zone",  color: "rgba(70,160,255,0.34)",  accent: "#4a9dff" },
+  contour:     { label: "Contour",     color: "rgba(55,135,235,0.32)",  accent: "#3d8be6" },
+  highlighter: { label: "Highlight",   color: "rgba(125,200,255,0.46)", accent: "#77c7ff" },
   lips:        { label: "Lips",        color: "rgba(210,65,65,0.50)",   accent: "#c03030" },
-  nose:        { label: "Nose",        color: "rgba(130,82,40,0.38)",   accent: "#7a4a10" },
-  t_zone:      { label: "T-Zone",      color: "rgba(255,225,185,0.38)", accent: "#b88840" },
+  nose:        { label: "Nose",        color: "rgba(65,145,245,0.30)",  accent: "#4a9dff" },
+  t_zone:      { label: "T-Zone",      color: "rgba(90,170,255,0.28)",  accent: "#5aaaff" },
 };
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -340,16 +340,16 @@ export function getMotionGuides(lm: RawLandmark[], zone: ZoneKey, w: number, h: 
       const lCheek = f(LANDMARK_INDICES.leftCheekbone[0]);
       const rCheek = f(LANDMARK_INDICES.rightCheekbone[0]);
       return [
-        { x: lCheek[0], y: lCheek[1], dx: 0.15, dy: -0.25, label: "sweep upward" },
-        { x: rCheek[0], y: rCheek[1], dx: -0.15, dy: -0.25 },
+        { x: lCheek[0] - 0.015, y: lCheek[1] + 0.05, dx: 0.12, dy: -0.34, label: "lift upward" },
+        { x: rCheek[0] + 0.015, y: rCheek[1] + 0.05, dx: -0.12, dy: -0.34 },
       ];
     }
     case "contour": {
       const lCheek = f(LANDMARK_INDICES.leftCheekbone[0]);
       const rCheek = f(LANDMARK_INDICES.rightCheekbone[0]);
       return [
-        { x: lCheek[0] - 0.02, y: lCheek[1] + 0.03, dx: 0.2, dy: -0.12, label: "follow cheekbone line" },
-        { x: rCheek[0] + 0.02, y: rCheek[1] + 0.03, dx: -0.2, dy: -0.12 },
+        { x: lCheek[0] - 0.03, y: lCheek[1] + 0.05, dx: 0.18, dy: -0.26, label: "lift to temple" },
+        { x: rCheek[0] + 0.03, y: rCheek[1] + 0.05, dx: -0.18, dy: -0.26 },
       ];
     }
     case "highlighter": {

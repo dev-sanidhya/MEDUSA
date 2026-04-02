@@ -20,6 +20,10 @@ export function FaceZoneCanvas({ photoUrl, landmarks, imageWidth, imageHeight, z
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [motionGuides, setMotionGuides] = useState<MotionArrow[]>([]);
   const meta = ZONE_META[zone];
+  const useDefaultGuideStyle = zone === "brows" || zone === "eye_lid" || zone === "lash_line";
+  const guideStroke = useDefaultGuideStyle ? "rgba(255,255,255,0.85)" : "rgba(120,205,255,0.95)";
+  const guideDot = useDefaultGuideStyle ? "rgba(255,245,180,0.9)" : "rgba(120,205,255,0.95)";
+  const guideLabel = useDefaultGuideStyle ? "rgba(255,255,255,0.75)" : "rgba(185,230,255,0.95)";
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -92,7 +96,7 @@ export function FaceZoneCanvas({ photoUrl, landmarks, imageWidth, imageHeight, z
         >
           <defs>
             <marker id="arrowhead" markerWidth="6" markerHeight="6" refX="3" refY="3" orient="auto">
-              <path d="M0,0 L6,3 L0,6 Z" fill="rgba(255,255,255,0.85)" />
+              <path d="M0,0 L6,3 L0,6 Z" fill={guideStroke} />
             </marker>
             <filter id="glow">
               <feGaussianBlur stdDeviation="0.5" result="blur" />
@@ -114,7 +118,7 @@ export function FaceZoneCanvas({ photoUrl, landmarks, imageWidth, imageHeight, z
               <g key={i} filter="url(#glow)">
                 {isDot ? (
                   // Pulsing dot for "tap here" zones (highlighter)
-                  <circle cx={x1} cy={y1} r="1.8" fill="rgba(255,245,180,0.9)">
+                  <circle cx={x1} cy={y1} r="1.8" fill={guideDot}>
                     <animate attributeName="r" values="1.2;2.8;1.2" dur="1.4s" repeatCount="indefinite" />
                     <animate attributeName="opacity" values="0.9;0.4;0.9" dur="1.4s" repeatCount="indefinite" />
                   </circle>
@@ -122,7 +126,7 @@ export function FaceZoneCanvas({ photoUrl, landmarks, imageWidth, imageHeight, z
                   // Animated stroke arrow
                   <line
                     x1={x1} y1={y1} x2={x2} y2={y2}
-                    stroke="rgba(255,255,255,0.85)"
+                    stroke={guideStroke}
                     strokeWidth="0.8"
                     strokeLinecap="round"
                     markerEnd="url(#arrowhead)"
@@ -153,7 +157,7 @@ export function FaceZoneCanvas({ photoUrl, landmarks, imageWidth, imageHeight, z
               x={motionGuides[0].x * 100}
               y={Math.min(97, motionGuides[0].y * 100 + 14)}
               textAnchor="middle"
-              fill="rgba(255,255,255,0.75)"
+              fill={guideLabel}
               fontSize="3.2"
               fontFamily="system-ui, sans-serif"
               letterSpacing="0.3"
