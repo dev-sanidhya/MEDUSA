@@ -1,36 +1,42 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# MEDUSA
 
-## Getting Started
+MEDUSA is a Next.js beauty intelligence app that:
 
-First, run the development server:
+- captures face geometry client-side with MediaPipe
+- analyzes the face with Claude Sonnet
+- generates look-specific makeup tutorials
+- overlays those steps back onto the user’s own face
+
+## Local Setup
+
+Install dependencies and start the dev server:
 
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Runtime env:
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+- `CLAUDE_CODE_OAUTH_TOKEN` or `ANTHROPIC_API_KEY`
+- `DATABASE_URL` for production eval persistence
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Evals
 
-## Learn More
+Production eval persistence is backed by Postgres.
 
-To learn more about Next.js, take a look at the following resources:
+Apply:
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+```bash
+db/migrations/001_inference_evals.sql
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Then set:
 
-## Deploy on Vercel
+```bash
+DATABASE_URL=postgres://...
+```
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+When `DATABASE_URL` is not set, the product still runs, but eval rows are not persisted.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Detailed notes live in `docs/evals.md`.

@@ -1,5 +1,15 @@
 import { runClaudeJsonQuery } from "@/lib/claude/client";
+import { recordInferenceRun } from "@/lib/evals/store";
+import type { InferenceRunRecord } from "@/lib/evals/types";
+import { summarizeTutorialInput, summarizeTutorialOutput } from "@/lib/evals/sanitize";
+import { evaluateTutorialResult, validateTutorialIssues } from "@/lib/evals/validators";
+import {
+  TUTORIAL_PROMPT_VERSION,
+  TUTORIAL_SCHEMA_VERSION,
+  VALIDATOR_VERSION,
+} from "@/lib/evals/versioning";
 import type { FaceAnalysis } from "@/lib/medusa/analyze-face";
+import { MEDUSA_CLAUDE_MODEL } from "@/lib/claude/models";
 
 export type LookId =
   | "natural"
@@ -49,21 +59,12 @@ export interface GenerateTutorialResult {
   closingNote: string;
 }
 
-interface LookRule {
-  minSteps: number;
-  maxSteps: number;
-  requiredZones?: ZoneKey[];
-  forbiddenZones?: ZoneKey[];
-  maxZoneOccurrences?: Partial<Record<ZoneKey, number>>;
-}
-
 const EDITORIAL_SUBTYPE_DEFINITIONS: Record<EditorialSubtype, string> = {
   sharp: "Sharp Editorial - crisp structure, graphic edges, clean symmetry, strong shape control. Think precise liner, clean negative space, sculpted placement, and polished finish.",
   glossy: "Glossy Editorial - wet-looking shine, reflective lids or skin, fresh base, controlled glow, and modern shine without looking greasy. Keep gloss intentional and placed with restraint.",
   messy: "Messy Editorial - intentionally undone, smudged, lived-in texture with attitude. Think blurred edges, slept-in eyes, imperfect diffusion, and cool contrast, but still deliberately designed.",
   soft: "Soft Editorial - diffused, airy, washed, and fashion-led rather than dramatic. Think hazy edges, blended tones, gentle glow, blurred lips, and softer transitions everywhere.",
 };
-
 const LOOK_DEFINITIONS: Record<LookId, string> = {
   natural: "Natural / Everyday - 5-7 steps. Skin-first, barely-there. Tinted moisturizer or light coverage, groomed brows, sheer lid wash, tinted lip balm.",
   "soft-glam": "Soft Glam - 8-10 steps. Polished without being heavy. Seamless base, warm neutral eyes with soft liner, blush, highlight on cheekbones, MLBB or nude satin lip.",
@@ -71,49 +72,6 @@ const LOOK_DEFINITIONS: Record<LookId, string> = {
   "bold-lip": "Bold Lip - 7-9 steps. Lip is the hero. Light even skin, barely-there brows, zero eye makeup beyond mascara, everything framed around one saturated statement lip.",
   monochromatic: "Monochromatic - 7-9 steps. One color family everywhere. Pick a tone (rose/peach/berry/terracotta), use it on eyes, cheeks, and lips at different intensities.",
   editorial: "Editorial - 8-12 steps. Bold, directional, photogenic. Can include graphic liner, cut crease, unusual color placement, or a statement fashion-forward element.",
-};
-
-const LOOK_RULES: Record<LookId, LookRule> = {
-  natural: {
-    minSteps: 5,
-    maxSteps: 7,
-    requiredZones: ["full_face", "under_eye", "brows", "lips"],
-    forbiddenZones: ["contour", "lash_line"],
-    maxZoneOccurrences: {
-      eye_lid: 1,
-      highlighter: 1,
-    },
-  },
-  "soft-glam": {
-    minSteps: 8,
-    maxSteps: 10,
-    requiredZones: ["full_face", "under_eye", "brows", "eye_lid", "blush", "highlighter", "lips"],
-  },
-  evening: {
-    minSteps: 10,
-    maxSteps: 12,
-    requiredZones: ["full_face", "under_eye", "brows", "eye_lid", "lash_line", "contour", "highlighter", "lips"],
-  },
-  "bold-lip": {
-    minSteps: 7,
-    maxSteps: 9,
-    requiredZones: ["full_face", "under_eye", "brows", "lips"],
-    forbiddenZones: ["contour", "eye_lid", "lash_line"],
-    maxZoneOccurrences: {
-      blush: 1,
-      highlighter: 1,
-    },
-  },
-  monochromatic: {
-    minSteps: 7,
-    maxSteps: 9,
-    requiredZones: ["full_face", "under_eye", "brows", "eye_lid", "blush", "lips"],
-  },
-  editorial: {
-    minSteps: 8,
-    maxSteps: 12,
-    requiredZones: ["full_face", "under_eye", "brows"],
-  },
 };
 
 const ZONE_KEYS = ["full_face", "under_eye", "brows", "eye_lid", "lash_line", "blush", "contour", "highlighter", "lips", "nose", "t_zone"];
@@ -283,32 +241,96 @@ export async function generateTutorial(
   selectedEditorialSubtype?: EditorialSubtype
 ): Promise<GenerateTutorialResult> {
   const lookDef = LOOK_DEFINITIONS[selectedLook];
+  const startedAt = Date.now();
 
   if (!lookDef) {
     throw new Error("Invalid look");
   }
 
-  const initialResult = await runTutorialQuery(
-    buildTutorialPrompt(faceAnalysis, selectedLook, lookDef, selectedEditorialSubtype),
-    "generate-tutorial"
-  );
+  try {
+    const initialResult = await runTutorialQuery(
+      buildTutorialPrompt(faceAnalysis, selectedLook, lookDef, selectedEditorialSubtype),
+      "generate-tutorial"
+    );
 
-  const issues = validateTutorialForLook(initialResult, selectedLook);
-  if (issues.length === 0) {
-    return initialResult;
+    const initialEvaluation = evaluateTutorialResult(initialResult, selectedLook);
+    if (initialEvaluation.passed) {
+      await persistEval({
+        executionStatus: "succeeded",
+        outputStatus: "initial_pass",
+        selectedLook,
+        requestSummary: summarizeTutorialInput(faceAnalysis, selectedLook, selectedEditorialSubtype),
+        responseSummary: summarizeTutorialOutput(initialResult),
+        automaticEvaluation: initialEvaluation,
+        metrics: {
+          durationMs: Date.now() - startedAt,
+          repairAttempted: false,
+          validatorVersion: VALIDATOR_VERSION,
+        },
+      });
+
+      return initialResult;
+    }
+
+    const repairedResult = await runTutorialQuery(
+      buildRepairPrompt(
+        faceAnalysis,
+        selectedLook,
+        lookDef,
+        initialResult,
+        initialEvaluation.issues.map((issue) => issue.message),
+        selectedEditorialSubtype
+      ),
+      "generate-tutorial-repair"
+    );
+
+    const repairedEvaluation = evaluateTutorialResult(repairedResult, selectedLook);
+    if (!repairedEvaluation.passed) {
+      console.warn(
+        "[generate-tutorial] Tutorial still failed look validation:",
+        repairedEvaluation.issues.map((issue) => issue.message)
+      );
+    }
+
+    await persistEval({
+      executionStatus: "succeeded",
+      outputStatus: repairedEvaluation.passed ? "repaired_pass" : "repaired_with_issues",
+      selectedLook,
+      requestSummary: summarizeTutorialInput(faceAnalysis, selectedLook, selectedEditorialSubtype),
+      responseSummary: {
+        final: summarizeTutorialOutput(repairedResult),
+        repair: {
+          attempted: true,
+          initialResult: summarizeTutorialOutput(initialResult),
+          initialIssues: initialEvaluation.issues,
+        },
+      },
+      automaticEvaluation: repairedEvaluation,
+      metrics: {
+        durationMs: Date.now() - startedAt,
+        repairAttempted: true,
+        initialScore: initialEvaluation.score,
+        repairedScore: repairedEvaluation.score,
+        validatorVersion: VALIDATOR_VERSION,
+      },
+    });
+
+    return repairedResult;
+  } catch (error) {
+    await persistEval({
+      executionStatus: "failed",
+      selectedLook,
+      requestSummary: summarizeTutorialInput(faceAnalysis, selectedLook, selectedEditorialSubtype),
+      metrics: {
+        durationMs: Date.now() - startedAt,
+        validatorVersion: VALIDATOR_VERSION,
+      },
+      errorTag: "generate-tutorial",
+      errorMessage: error instanceof Error ? error.message : "Unknown tutorial error",
+    });
+
+    throw error;
   }
-
-  const repairedResult = await runTutorialQuery(
-    buildRepairPrompt(faceAnalysis, selectedLook, lookDef, initialResult, issues, selectedEditorialSubtype),
-    "generate-tutorial-repair"
-  );
-
-  const repairedIssues = validateTutorialForLook(repairedResult, selectedLook);
-  if (repairedIssues.length > 0) {
-    console.warn("[generate-tutorial] Tutorial still failed look validation:", repairedIssues);
-  }
-
-  return repairedResult;
 }
 
 function runTutorialQuery(
@@ -419,65 +441,28 @@ Return only corrected JSON matching the schema.
 `.trim();
 }
 
-function validateTutorialForLook(
+export function validateTutorialForLook(
   result: GenerateTutorialResult,
   look: LookId
 ): string[] {
-  const issues: string[] = [];
-  const rules = LOOK_RULES[look];
-  const zones = result.steps.map((step) => step.zoneKey);
+  return validateTutorialIssues(result, look).map((issue) => issue.message);
+}
 
-  if (result.steps.length < rules.minSteps || result.steps.length > rules.maxSteps) {
-    issues.push(`${look} should have ${rules.minSteps}-${rules.maxSteps} steps, but got ${result.steps.length}.`);
+type TutorialEvalRecord = Omit<
+  InferenceRunRecord,
+  "workflow" | "model" | "promptVersion" | "schemaVersion"
+>;
+
+async function persistEval(params: TutorialEvalRecord) {
+  try {
+    await recordInferenceRun({
+      workflow: "tutorial_generation",
+      model: MEDUSA_CLAUDE_MODEL,
+      promptVersion: TUTORIAL_PROMPT_VERSION,
+      schemaVersion: TUTORIAL_SCHEMA_VERSION,
+      ...params,
+    });
+  } catch (error) {
+    console.error("[evals:tutorial] Failed to persist eval run", error);
   }
-
-  result.steps.forEach((step, index) => {
-    if (step.stepNumber !== index + 1) {
-      issues.push(`Step numbering must be sequential starting at 1. Expected ${index + 1}, got ${step.stepNumber}.`);
-    }
-  });
-
-  const firstStep = result.steps[0];
-  if (!firstStep || firstStep.zoneKey !== "full_face") {
-    issues.push("Step 1 should be skin prep on the full face.");
-  }
-
-  for (const zone of rules.requiredZones ?? []) {
-    if (!zones.includes(zone)) {
-      issues.push(`${look} must include a ${zone} step.`);
-    }
-  }
-
-  for (const zone of rules.forbiddenZones ?? []) {
-    if (zones.includes(zone)) {
-      issues.push(`${look} should not include a ${zone} step.`);
-    }
-  }
-
-  for (const [zone, maxOccurrences] of Object.entries(rules.maxZoneOccurrences ?? {})) {
-    const count = zones.filter((value) => value === zone).length;
-    if (count > (maxOccurrences ?? 0)) {
-      issues.push(`${look} should not use ${zone} more than ${maxOccurrences} time(s), but got ${count}.`);
-    }
-  }
-
-  if (look === "editorial") {
-    const editorialAnchorZones: ZoneKey[] = ["eye_lid", "lash_line", "blush", "lips"];
-    const anchorCount = editorialAnchorZones.filter((zone) => zones.includes(zone)).length;
-    if (anchorCount < 2) {
-      issues.push("editorial should have at least two strong statement zones among eye_lid, lash_line, blush, and lips.");
-    }
-  }
-
-  if (look === "monochromatic") {
-    const text = [
-      result.lookDescription,
-      ...result.steps.map((step) => `${step.productColor} ${step.instruction} ${step.technique}`),
-    ].join(" ").toLowerCase();
-    if (!text.includes("same family") && !text.includes("tone") && !text.includes("monoch")) {
-      issues.push("monochromatic tutorial should explicitly describe one shared color family or tone story.");
-    }
-  }
-
-  return issues;
 }

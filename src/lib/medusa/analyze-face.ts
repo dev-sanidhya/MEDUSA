@@ -1,5 +1,15 @@
 import type { ClaudeContentBlock } from "@/lib/claude/client";
 import { runClaudeJsonQuery } from "@/lib/claude/client";
+import { MEDUSA_CLAUDE_MODEL } from "@/lib/claude/models";
+import { recordInferenceRun } from "@/lib/evals/store";
+import type { InferenceRunRecord } from "@/lib/evals/types";
+import { summarizeAnalyzeFaceInput, summarizeAnalyzeFaceOutput } from "@/lib/evals/sanitize";
+import { evaluateFaceAnalysisResult } from "@/lib/evals/validators";
+import {
+  FACE_ANALYSIS_PROMPT_VERSION,
+  FACE_ANALYSIS_SCHEMA_VERSION,
+  VALIDATOR_VERSION,
+} from "@/lib/evals/versioning";
 import type {
   FaceProfile,
   SkinTone,
@@ -258,6 +268,7 @@ export async function analyzeFace(photos: AnalyzeFacePhoto[]): Promise<FaceAnaly
   const boundedPhotos = photos.slice(0, 3);
   const latestPhoto = boundedPhotos[boundedPhotos.length - 1];
   const photoCount = boundedPhotos.length;
+  const startedAt = Date.now();
 
   const content: ClaudeContentBlock[] = [];
 
@@ -282,12 +293,45 @@ export async function analyzeFace(photos: AnalyzeFacePhoto[]): Promise<FaceAnaly
     ),
   });
 
-  return runClaudeJsonQuery<FaceAnalysisResult>({
-    content,
-    systemPrompt: SYSTEM_PROMPT,
-    schema: FACE_ANALYSIS_SCHEMA,
-    errorTag: "analyze-face",
-  });
+  try {
+    const result = await runClaudeJsonQuery<FaceAnalysisResult>({
+      content,
+      systemPrompt: SYSTEM_PROMPT,
+      schema: FACE_ANALYSIS_SCHEMA,
+      errorTag: "analyze-face",
+    });
+
+    const automaticEvaluation = evaluateFaceAnalysisResult(result, photoCount);
+
+    await persistEval({
+      executionStatus: "succeeded",
+      outputStatus: result.status,
+      requestSummary: summarizeAnalyzeFaceInput(boundedPhotos),
+      responseSummary: summarizeAnalyzeFaceOutput(result),
+      automaticEvaluation,
+      metrics: {
+        durationMs: Date.now() - startedAt,
+        photoCount,
+        validatorVersion: VALIDATOR_VERSION,
+      },
+    });
+
+    return result;
+  } catch (error) {
+    await persistEval({
+      executionStatus: "failed",
+      requestSummary: summarizeAnalyzeFaceInput(boundedPhotos),
+      metrics: {
+        durationMs: Date.now() - startedAt,
+        photoCount,
+        validatorVersion: VALIDATOR_VERSION,
+      },
+      errorTag: "analyze-face",
+      errorMessage: error instanceof Error ? error.message : "Unknown analysis error",
+    });
+
+    throw error;
+  }
 }
 
 function buildGeometryPrompt(
@@ -352,4 +396,23 @@ function buildGeometryPrompt(
 
 Based on the photos AND geometric measurements above, return your analysis as structured JSON matching the output schema.
 `.trim();
+}
+
+type FaceAnalysisEvalRecord = Omit<
+  InferenceRunRecord,
+  "workflow" | "model" | "promptVersion" | "schemaVersion"
+>;
+
+async function persistEval(params: FaceAnalysisEvalRecord) {
+  try {
+    await recordInferenceRun({
+      workflow: "face_analysis",
+      model: MEDUSA_CLAUDE_MODEL,
+      promptVersion: FACE_ANALYSIS_PROMPT_VERSION,
+      schemaVersion: FACE_ANALYSIS_SCHEMA_VERSION,
+      ...params,
+    });
+  } catch (error) {
+    console.error("[evals:face-analysis] Failed to persist eval run", error);
+  }
 }
