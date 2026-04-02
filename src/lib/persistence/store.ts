@@ -16,6 +16,13 @@ import type {
   GenerateTutorialResult,
   LookId,
 } from "@/lib/medusa/generate-tutorial";
+import type {
+  FeedbackEventRecord,
+  ProfileAnalysisHistoryItem,
+  ProfileHistoryResult,
+  ProfileTutorialHistoryItem,
+  RecordedFeedbackEvent,
+} from "@/lib/persistence/types";
 
 let hasWarnedMissingDatabaseUrl = false;
 
@@ -203,6 +210,185 @@ export async function persistTutorialRun({
   }
 
   return { id: runId };
+}
+
+export async function getProfileHistory(
+  profileId: string,
+  { limit = 6 }: { limit?: number } = {}
+): Promise<ProfileHistoryResult | null> {
+  const db = getPersistencePool();
+
+  if (!db) {
+    return null;
+  }
+
+  const boundedLimit = Math.max(1, Math.min(limit, 20));
+
+  try {
+    const [analysesResult, tutorialsResult] = await Promise.all([
+      db.query<{
+        id: string;
+        status: "needs_more_photos" | "analysis_complete";
+        photo_count: number;
+        created_at: Date;
+        completed_at: Date;
+        face_analysis: {
+          personalReading?: string;
+          faceShape?: string;
+          skinTone?: string;
+          skinUndertone?: string;
+          beautyHighlights?: string[];
+          precisionLevel?: string;
+        } | null;
+      }>(
+        `
+          SELECT
+            id,
+            status,
+            photo_count,
+            created_at,
+            completed_at,
+            face_analysis
+          FROM medusa_analysis_runs
+          WHERE profile_id = $1::uuid
+          ORDER BY created_at DESC
+          LIMIT $2
+        `,
+        [profileId, boundedLimit]
+      ),
+      db.query<{
+        id: string;
+        analysis_run_id: string | null;
+        selected_look: string;
+        selected_editorial_subtype: string | null;
+        created_at: Date;
+        completed_at: Date;
+        tutorial: {
+          lookName?: string;
+          lookDescription?: string;
+          steps?: unknown[];
+          closingNote?: string;
+        };
+      }>(
+        `
+          SELECT
+            id,
+            analysis_run_id,
+            selected_look,
+            selected_editorial_subtype,
+            created_at,
+            completed_at,
+            tutorial
+          FROM medusa_tutorial_runs
+          WHERE profile_id = $1::uuid
+          ORDER BY created_at DESC
+          LIMIT $2
+        `,
+        [profileId, boundedLimit]
+      ),
+    ]);
+
+    const analyses: ProfileAnalysisHistoryItem[] = analysesResult.rows.map((row) => ({
+      id: row.id,
+      status: row.status,
+      photoCount: row.photo_count,
+      createdAt: row.created_at.toISOString(),
+      completedAt: row.completed_at.toISOString(),
+      analysisSummary: row.face_analysis
+        ? {
+            personalReading: row.face_analysis.personalReading ?? null,
+            faceShape: row.face_analysis.faceShape ?? null,
+            skinTone: row.face_analysis.skinTone ?? null,
+            skinUndertone: row.face_analysis.skinUndertone ?? null,
+            beautyHighlights: row.face_analysis.beautyHighlights ?? [],
+            precisionLevel: row.face_analysis.precisionLevel ?? null,
+          }
+        : null,
+    }));
+
+    const tutorials: ProfileTutorialHistoryItem[] = tutorialsResult.rows.map((row) => ({
+      id: row.id,
+      analysisRunId: row.analysis_run_id,
+      selectedLook: row.selected_look,
+      selectedEditorialSubtype: row.selected_editorial_subtype,
+      createdAt: row.created_at.toISOString(),
+      completedAt: row.completed_at.toISOString(),
+      tutorialSummary: {
+        lookName: row.tutorial.lookName ?? null,
+        lookDescription: row.tutorial.lookDescription ?? null,
+        stepCount: Array.isArray(row.tutorial.steps) ? row.tutorial.steps.length : 0,
+        closingNote: row.tutorial.closingNote ?? null,
+      },
+    }));
+
+    return {
+      profileId,
+      analyses,
+      tutorials,
+    };
+  } catch (error) {
+    console.error("[persistence] Failed to load profile history", error);
+    return null;
+  }
+}
+
+export async function recordFeedbackEvent(
+  record: FeedbackEventRecord
+): Promise<RecordedFeedbackEvent | null> {
+  const db = getPersistencePool();
+
+  if (!db) {
+    return null;
+  }
+
+  const eventId = crypto.randomUUID();
+
+  try {
+    await db.query(
+      `
+        INSERT INTO medusa_feedback_events (
+          id,
+          profile_id,
+          analysis_run_id,
+          tutorial_run_id,
+          event_type,
+          rating,
+          tags,
+          feedback_text,
+          metadata,
+          created_at
+        )
+        VALUES (
+          $1::uuid,
+          $2::uuid,
+          $3::uuid,
+          $4::uuid,
+          $5,
+          $6,
+          $7::text[],
+          $8,
+          $9::jsonb,
+          NOW()
+        )
+      `,
+      [
+        eventId,
+        record.profileId,
+        record.analysisRunId ?? null,
+        record.tutorialRunId ?? null,
+        record.eventType,
+        record.rating ?? null,
+        record.tags ?? [],
+        record.feedbackText ?? null,
+        JSON.stringify(record.metadata ?? {}),
+      ]
+    );
+  } catch (error) {
+    console.error("[persistence] Failed to record feedback event", error);
+    return null;
+  }
+
+  return { id: eventId };
 }
 
 function getPersistencePool() {

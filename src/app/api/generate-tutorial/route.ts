@@ -2,8 +2,12 @@ import { NextRequest, NextResponse } from "next/server";
 import {
   generateTutorial,
   type GenerateTutorialRequest,
-  type GenerateTutorialResult,
 } from "@/lib/medusa/generate-tutorial";
+import { attachProfileCookie, resolveProfileId } from "@/lib/persistence/profile-cookie";
+import {
+  ensureAnonymousProfile,
+  persistTutorialRun,
+} from "@/lib/persistence/store";
 
 export const runtime = "nodejs";
 
@@ -24,12 +28,34 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "faceAnalysis and selectedLook are required" }, { status: 400 });
     }
 
+    const { profileId, shouldSetCookie } = resolveProfileId(req);
+    await ensureAnonymousProfile(profileId);
+
     const result = await generateTutorial(
       body.faceAnalysis,
       body.selectedLook,
       body.selectedEditorialSubtype
     );
-    return NextResponse.json(result);
+
+    const persistedRun = await persistTutorialRun({
+      profileId,
+      analysisRunId: body.analysisRunId,
+      faceAnalysis: body.faceAnalysis,
+      selectedLook: body.selectedLook,
+      selectedEditorialSubtype: body.selectedEditorialSubtype,
+      tutorial: result,
+    });
+
+    const response = NextResponse.json({
+      ...result,
+      tutorialRunId: persistedRun?.id ?? null,
+    });
+
+    if (shouldSetCookie) {
+      attachProfileCookie(response, profileId);
+    }
+
+    return response;
   } catch (err) {
     console.error("[generate-tutorial]", err);
     const message = err instanceof Error ? err.message : "Internal server error";
