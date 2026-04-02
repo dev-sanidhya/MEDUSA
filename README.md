@@ -18,7 +18,7 @@ npm run dev
 
 Runtime env:
 
-- `CLAUDE_CODE_OAUTH_TOKEN` or `ANTHROPIC_API_KEY`
+- `CLAUDE_CODE_OAUTH_TOKEN`
 - `DATABASE_URL` for production eval persistence
 
 ## Evals
