@@ -16,12 +16,12 @@ const dmSans = DM_Sans({
 });
 
 export const metadata: Metadata = {
-  title: "MEDUSA — AI Makeup Artist",
+  title: "MEDUSA - AI Makeup Artist",
   description:
     "478-point face analysis. Zero generic advice. Your personalized makeup tutorial, built for your exact face geometry.",
   keywords: ["makeup", "AI", "personalized", "face analysis", "tutorial", "beauty"],
   openGraph: {
-    title: "MEDUSA — AI Makeup Artist",
+    title: "MEDUSA - AI Makeup Artist",
     description: "Your face. Your tutorial. Built by AI.",
     type: "website",
     images: "/medusa-meta.svg",

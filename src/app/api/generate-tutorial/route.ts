@@ -10,6 +10,7 @@ export const runtime = "nodejs";
 export type {
   GenerateTutorialRequest,
   GenerateTutorialResult,
+  EditorialSubtype,
   LookId,
   TutorialStep,
   ZoneKey,
@@ -23,7 +24,11 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "faceAnalysis and selectedLook are required" }, { status: 400 });
     }
 
-    const result = await generateTutorial(body.faceAnalysis, body.selectedLook);
+    const result = await generateTutorial(
+      body.faceAnalysis,
+      body.selectedLook,
+      body.selectedEditorialSubtype
+    );
     return NextResponse.json(result);
   } catch (err) {
     console.error("[generate-tutorial]", err);

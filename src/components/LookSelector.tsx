@@ -16,7 +16,7 @@ const LOOKS: Look[] = [
   { id: "evening", label: "Evening", subtitle: "Dramatic and dimensional", tag: "Full Face", accent: "rgba(190,24,93,0.24)" },
   { id: "bold-lip", label: "Bold Lip", subtitle: "One statement feature", tag: "Focused", accent: "rgba(251,113,133,0.18)" },
   { id: "monochromatic", label: "Monochromatic", subtitle: "Tone-on-tone flush", tag: "Cohesive", accent: "rgba(255,255,255,0.08)" },
-  { id: "editorial", label: "Editorial", subtitle: "High fashion edge", tag: "Creative", accent: "rgba(109,40,217,0.16)" },
+  { id: "editorial", label: "Editorial", subtitle: "High fashion edge, then pick a style", tag: "Creative", accent: "rgba(109,40,217,0.16)" },
 ];
 
 interface Props {

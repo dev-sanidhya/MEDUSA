@@ -19,6 +19,8 @@ export type LookId =
   | "monochromatic"
   | "editorial";
 
+export type EditorialSubtype = "sharp" | "glossy" | "messy" | "soft";
+
 export type ZoneKey =
   | "full_face"
   | "under_eye"
@@ -47,6 +49,7 @@ export interface TutorialStep {
 export interface GenerateTutorialRequest {
   faceAnalysis: FaceAnalysis;
   selectedLook: LookId;
+  selectedEditorialSubtype?: EditorialSubtype;
 }
 
 export interface GenerateTutorialResult {
@@ -56,6 +59,12 @@ export interface GenerateTutorialResult {
   closingNote: string;
 }
 
+const EDITORIAL_SUBTYPE_DEFINITIONS: Record<EditorialSubtype, string> = {
+  sharp: "Sharp Editorial - crisp structure, graphic edges, clean symmetry, strong shape control. Think precise liner, clean negative space, sculpted placement, and polished finish.",
+  glossy: "Glossy Editorial - wet-looking shine, reflective lids or skin, fresh base, controlled glow, and modern shine without looking greasy. Keep gloss intentional and placed with restraint.",
+  messy: "Messy Editorial - intentionally undone, smudged, lived-in texture with attitude. Think blurred edges, slept-in eyes, imperfect diffusion, and cool contrast, but still deliberately designed.",
+  soft: "Soft Editorial - diffused, airy, washed, and fashion-led rather than dramatic. Think hazy edges, blended tones, gentle glow, blurred lips, and softer transitions everywhere.",
+};
 const LOOK_DEFINITIONS: Record<LookId, string> = {
   natural: "Natural / Everyday - 5-7 steps. Skin-first, barely-there. Tinted moisturizer or light coverage, groomed brows, sheer lid wash, tinted lip balm.",
   "soft-glam": "Soft Glam - 8-10 steps. Polished without being heavy. Seamless base, warm neutral eyes with soft liner, blush, highlight on cheekbones, MLBB or nude satin lip.",
@@ -228,7 +237,8 @@ full_face | under_eye | brows | eye_lid | lash_line | blush | contour | highligh
 
 export async function generateTutorial(
   faceAnalysis: FaceAnalysis,
-  selectedLook: LookId
+  selectedLook: LookId,
+  selectedEditorialSubtype?: EditorialSubtype
 ): Promise<GenerateTutorialResult> {
   const lookDef = LOOK_DEFINITIONS[selectedLook];
   const startedAt = Date.now();
@@ -239,7 +249,7 @@ export async function generateTutorial(
 
   try {
     const initialResult = await runTutorialQuery(
-      buildTutorialPrompt(faceAnalysis, lookDef),
+      buildTutorialPrompt(faceAnalysis, selectedLook, lookDef, selectedEditorialSubtype),
       "generate-tutorial"
     );
 
@@ -249,7 +259,7 @@ export async function generateTutorial(
         executionStatus: "succeeded",
         outputStatus: "initial_pass",
         selectedLook,
-        requestSummary: summarizeTutorialInput(faceAnalysis, selectedLook),
+        requestSummary: summarizeTutorialInput(faceAnalysis, selectedLook, selectedEditorialSubtype),
         responseSummary: summarizeTutorialOutput(initialResult),
         automaticEvaluation: initialEvaluation,
         metrics: {
@@ -263,7 +273,14 @@ export async function generateTutorial(
     }
 
     const repairedResult = await runTutorialQuery(
-      buildRepairPrompt(faceAnalysis, selectedLook, lookDef, initialResult, initialEvaluation.issues.map((issue) => issue.message)),
+      buildRepairPrompt(
+        faceAnalysis,
+        selectedLook,
+        lookDef,
+        initialResult,
+        initialEvaluation.issues.map((issue) => issue.message),
+        selectedEditorialSubtype
+      ),
       "generate-tutorial-repair"
     );
 
@@ -279,7 +296,7 @@ export async function generateTutorial(
       executionStatus: "succeeded",
       outputStatus: repairedEvaluation.passed ? "repaired_pass" : "repaired_with_issues",
       selectedLook,
-      requestSummary: summarizeTutorialInput(faceAnalysis, selectedLook),
+      requestSummary: summarizeTutorialInput(faceAnalysis, selectedLook, selectedEditorialSubtype),
       responseSummary: {
         final: summarizeTutorialOutput(repairedResult),
         repair: {
@@ -303,7 +320,7 @@ export async function generateTutorial(
     await persistEval({
       executionStatus: "failed",
       selectedLook,
-      requestSummary: summarizeTutorialInput(faceAnalysis, selectedLook),
+      requestSummary: summarizeTutorialInput(faceAnalysis, selectedLook, selectedEditorialSubtype),
       metrics: {
         durationMs: Date.now() - startedAt,
         validatorVersion: VALIDATOR_VERSION,
@@ -330,8 +347,24 @@ function runTutorialQuery(
 
 function buildTutorialPrompt(
   analysis: FaceAnalysis,
-  lookDef: string
+  selectedLook: LookId,
+  lookDef: string,
+  selectedEditorialSubtype?: EditorialSubtype
 ): string {
+  const editorialSubtypeBlock =
+    selectedLook === "editorial" && selectedEditorialSubtype
+      ? `
+## Editorial subtype to build
+${EDITORIAL_SUBTYPE_DEFINITIONS[selectedEditorialSubtype]}
+
+Subtype rules:
+- sharp: prioritize crisp edges, clean liner geometry, strong contrast, and polished placement.
+- glossy: prioritize reflective lids/skin, fresh base, and glass-like shine with controlled placement.
+- messy: prioritize intentionally smudged edges, grungy texture, lived-in eyes, and imperfect-looking diffusion that is still deliberate.
+- soft: prioritize blurred edges, airy wash, low harshness, and subtle editorial shape.
+`
+      : "";
+
   return `
 ## Their Face
 - Shape: ${analysis.faceShape} - ${analysis.faceShapeExplanation}
@@ -348,6 +381,8 @@ function buildTutorialPrompt(
 ## Look to build
 ${lookDef}
 
+${editorialSubtypeBlock}
+
 Build the complete step-by-step tutorial. Keep writing style casual and short. Return JSON matching the schema.
 `.trim();
 }
@@ -357,8 +392,20 @@ function buildRepairPrompt(
   selectedLook: LookId,
   lookDef: string,
   previousResult: GenerateTutorialResult,
-  issues: string[]
+  issues: string[],
+  selectedEditorialSubtype?: EditorialSubtype
 ): string {
+  const editorialSubtypeBlock =
+    selectedLook === "editorial" && selectedEditorialSubtype
+      ? `
+Editorial subtype:
+${selectedEditorialSubtype}
+
+Subtype definition:
+${EDITORIAL_SUBTYPE_DEFINITIONS[selectedEditorialSubtype]}
+`
+      : "";
+
   return `
 The previous tutorial did not match the selected look strongly enough.
 
@@ -367,6 +414,8 @@ ${selectedLook}
 
 Look definition:
 ${lookDef}
+
+${editorialSubtypeBlock}
 
 Validation failures:
 ${issues.map((issue, index) => `${index + 1}. ${issue}`).join("\n")}

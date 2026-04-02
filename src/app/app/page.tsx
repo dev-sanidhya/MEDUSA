@@ -11,6 +11,7 @@ import { TutorialDisplay } from "@/components/TutorialDisplay";
 import { MedusaLogo } from "@/components/MedusaLogo";
 import type { AnalyzeFaceRequest, FaceAnalysisResult } from "../api/analyze-face/route";
 import type {
+  EditorialSubtype,
   GenerateTutorialRequest,
   GenerateTutorialResult,
   LookId,
@@ -25,6 +26,7 @@ type AppStage =
   | "tone_override"
   | "analysis_complete"
   | "look_selection"
+  | "editorial_selection"
   | "generating_tutorial"
   | "tutorial";
 
@@ -35,6 +37,7 @@ const STAGES: AppStage[] = [
   "tone_override",
   "analysis_complete",
   "look_selection",
+  "editorial_selection",
   "generating_tutorial",
   "tutorial",
 ];
@@ -47,6 +50,7 @@ export default function MedusaApp() {
   const [analysisResult, setAnalysisResult] = useState<ResolvedFaceAnalysis | null>(null);
   const [selectedSkinTone, setSelectedSkinTone] = useState<ResolvedFaceAnalysis["skinTone"] | null>(null);
   const [selectedSkinUndertone, setSelectedSkinUndertone] = useState<ResolvedFaceAnalysis["skinUndertone"] | null>(null);
+  const [selectedEditorialSubtype, setSelectedEditorialSubtype] = useState<EditorialSubtype | null>(null);
   const [tutorialResult, setTutorialResult] = useState<GenerateTutorialResult | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -102,6 +106,24 @@ export default function MedusaApp() {
   };
 
   const handleLookSelected = async (look: LookId) => {
+    if (look === "editorial") {
+      setSelectedEditorialSubtype("sharp");
+      setStage("editorial_selection");
+      return;
+    }
+
+    await generateSelectedLookTutorial(look);
+  };
+
+  const handleEditorialSubtypeSelected = async (subtype: EditorialSubtype) => {
+    setSelectedEditorialSubtype(subtype);
+    await generateSelectedLookTutorial("editorial", subtype);
+  };
+
+  const generateSelectedLookTutorial = async (
+    look: LookId,
+    editorialSubtype?: EditorialSubtype
+  ) => {
     if (!analysisResult || !selectedSkinTone || !selectedSkinUndertone) return;
     setStage("generating_tutorial");
     setError(null);
@@ -114,6 +136,7 @@ export default function MedusaApp() {
           skinUndertone: selectedSkinUndertone,
         },
         selectedLook: look,
+        selectedEditorialSubtype: editorialSubtype,
       };
 
       const res = await fetch("/api/generate-tutorial", {
@@ -134,7 +157,7 @@ export default function MedusaApp() {
       const msg = err instanceof Error ? err.message : "Something went wrong. Please try again.";
       console.error(err);
       setError(msg);
-      setStage("look_selection");
+      setStage(look === "editorial" ? "editorial_selection" : "look_selection");
     }
   };
 
@@ -146,6 +169,7 @@ export default function MedusaApp() {
     setAnalysisResult(null);
     setSelectedSkinTone(null);
     setSelectedSkinUndertone(null);
+    setSelectedEditorialSubtype(null);
     setTutorialResult(null);
     setError(null);
   };
@@ -438,6 +462,23 @@ export default function MedusaApp() {
     );
   }
 
+  if (stage === "editorial_selection") {
+    return (
+      <>
+        <EditorialStyleSelector
+          selected={selectedEditorialSubtype}
+          onBack={() => setStage("look_selection")}
+          onSelect={handleEditorialSubtypeSelected}
+        />
+        {error && (
+          <div className="fixed bottom-6 left-1/2 -translate-x-1/2">
+            <ErrorBanner message={error} />
+          </div>
+        )}
+      </>
+    );
+  }
+
   if (stage === "generating_tutorial") {
     return (
       <ProcessingScreen
@@ -508,6 +549,7 @@ function AppBackdrop({ stage }: { stage: AppStage }) {
     tone_override: "radial-gradient(circle at 50% 20%, rgba(244,63,94,0.18), transparent 28%), radial-gradient(circle at 15% 80%, rgba(255,255,255,0.04), transparent 26%)",
     analysis_complete: "radial-gradient(circle at 80% 20%, rgba(244,63,94,0.14), transparent 30%), radial-gradient(circle at 10% 75%, rgba(255,255,255,0.04), transparent 28%)",
     look_selection: "radial-gradient(circle at 16% 18%, rgba(244,63,94,0.12), transparent 28%), radial-gradient(circle at 84% 82%, rgba(109,40,217,0.09), transparent 28%)",
+    editorial_selection: "radial-gradient(circle at 80% 16%, rgba(109,40,217,0.16), transparent 28%), radial-gradient(circle at 12% 82%, rgba(244,63,94,0.08), transparent 26%)",
     generating_tutorial: "radial-gradient(circle at 50% 28%, rgba(244,63,94,0.18), transparent 34%)",
     tutorial: "radial-gradient(circle at 82% 18%, rgba(244,63,94,0.12), transparent 30%), radial-gradient(circle at 12% 85%, rgba(255,255,255,0.04), transparent 28%)",
   };
@@ -788,6 +830,133 @@ function ToneChoiceCard<T extends string>({
         })}
       </div>
     </div>
+  );
+}
+
+const EDITORIAL_STYLES: Array<{
+  id: EditorialSubtype;
+  label: string;
+  subtitle: string;
+  body: string;
+  accent: string;
+}> = [
+  {
+    id: "sharp",
+    label: "Sharp",
+    subtitle: "Graphic and precise",
+    body: "Clean lines, strong shape, crisp edges, and a high-fashion finish.",
+    accent: "rgba(244,63,94,0.16)",
+  },
+  {
+    id: "glossy",
+    label: "Glossy",
+    subtitle: "Wet-look shine",
+    body: "Reflective lids or skin, fresh texture, and controlled shine that catches light.",
+    accent: "rgba(96,165,250,0.16)",
+  },
+  {
+    id: "messy",
+    label: "Messy",
+    subtitle: "Lived-in and smudged",
+    body: "Deliberately blurred, grungy, and undone, but still designed with intent.",
+    accent: "rgba(168,85,247,0.16)",
+  },
+  {
+    id: "soft",
+    label: "Soft",
+    subtitle: "Diffused and airy",
+    body: "Washed color, blurred edges, and a gentler editorial look with less harsh contrast.",
+    accent: "rgba(251,191,36,0.12)",
+  },
+];
+
+function EditorialStyleSelector({
+  selected,
+  onSelect,
+  onBack,
+}: {
+  selected: EditorialSubtype | null;
+  onSelect: (style: EditorialSubtype) => void;
+  onBack: () => void;
+}) {
+  return (
+    <main className="min-h-screen bg-[#050508] px-6 py-12 text-white">
+      <div className="mx-auto max-w-6xl">
+        <div className="mb-12 flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
+          <div className="max-w-3xl">
+            <p className="mb-4 text-xs uppercase tracking-[0.3em] text-violet-300">Editorial Style</p>
+            <h1
+              className="text-5xl font-semibold leading-none md:text-7xl"
+              style={{ fontFamily: "var(--font-cormorant), Georgia, serif" }}
+            >
+              Pick your editorial
+              <br />
+              <span style={{ fontStyle: "italic" }}>direction.</span>
+            </h1>
+            <p className="mt-6 max-w-2xl text-base leading-relaxed text-white/48">
+              Editorial makeup is not just one look. Choose the mood you want, and MEDUSA will build the tutorial around that exact editorial style.
+            </p>
+          </div>
+          <button
+            onClick={onBack}
+            className="rounded-full border border-white/10 px-6 py-3 text-sm text-white/62 transition-colors hover:border-white/18 hover:text-white/80"
+          >
+            Back to Looks
+          </button>
+        </div>
+
+        <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-4">
+          {EDITORIAL_STYLES.map((style) => {
+            const isSelected = selected === style.id;
+
+            return (
+              <button
+                key={style.id}
+                onClick={() => onSelect(style.id)}
+                className={`group relative overflow-hidden rounded-[2rem] border p-6 text-left transition-all duration-200 hover:-translate-y-1 ${
+                  isSelected
+                    ? "border-violet-300/35 bg-[rgba(18,18,28,0.92)] shadow-[0_24px_80px_rgba(0,0,0,0.35)]"
+                    : "border-white/8 bg-[rgba(13,13,20,0.8)] hover:border-violet-300/24"
+                }`}
+              >
+                <div
+                  className="pointer-events-none absolute inset-0 opacity-95 transition-opacity duration-200 group-hover:opacity-100"
+                  style={{ background: `radial-gradient(circle at top right, ${style.accent}, transparent 56%)` }}
+                />
+                <div className="relative">
+                  <div className="mb-10 flex items-start justify-between gap-4">
+                    <div>
+                      <p className="text-[10px] uppercase tracking-[0.24em] text-violet-300">{style.subtitle}</p>
+                      <p className="mt-2 text-[11px] uppercase tracking-[0.22em] text-white/22">
+                        Editorial
+                      </p>
+                    </div>
+                    <span className="rounded-full border border-white/10 px-3 py-1 text-[10px] uppercase tracking-[0.2em] text-white/35">
+                      Style
+                    </span>
+                  </div>
+
+                  <h2
+                    className="text-3xl font-semibold leading-none text-white"
+                    style={{ fontFamily: "var(--font-cormorant), Georgia, serif" }}
+                  >
+                    {style.label}
+                  </h2>
+                  <p className="mt-3 text-sm leading-relaxed text-white/48">
+                    {style.body}
+                  </p>
+
+                  <div className="mt-8 flex items-center gap-2 text-sm font-medium text-violet-300">
+                    Build this editorial tutorial
+                    <span className="transition-transform group-hover:translate-x-1">→</span>
+                  </div>
+                </div>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+    </main>
   );
 }
 

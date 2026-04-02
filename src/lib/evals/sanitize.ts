@@ -3,7 +3,11 @@ import type {
   FaceAnalysis,
   FaceAnalysisResult,
 } from "@/lib/medusa/analyze-face";
-import type { GenerateTutorialResult, LookId } from "@/lib/medusa/generate-tutorial";
+import type {
+  EditorialSubtype,
+  GenerateTutorialResult,
+  LookId,
+} from "@/lib/medusa/generate-tutorial";
 
 export function summarizeAnalyzeFaceInput(photos: AnalyzeFacePhoto[]) {
   return {
@@ -23,10 +27,12 @@ export function summarizeAnalyzeFaceOutput(result: FaceAnalysisResult) {
 
 export function summarizeTutorialInput(
   faceAnalysis: FaceAnalysis,
-  selectedLook: LookId
+  selectedLook: LookId,
+  selectedEditorialSubtype?: EditorialSubtype
 ) {
   return {
     selectedLook,
+    selectedEditorialSubtype: selectedEditorialSubtype ?? null,
     faceAnalysis,
   };
 }
