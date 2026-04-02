@@ -1,21 +1,26 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import Link from "next/link";
 import Image from "next/image";
+import { FeedbackPanel } from "@/components/FeedbackPanel";
 import { PhotoCapture, type CapturedPhoto } from "@/components/PhotoCapture";
 import { FaceAnalysisDisplay } from "@/components/FaceAnalysisDisplay";
 import { LookSelector } from "@/components/LookSelector";
+import { ProfileHistoryPanel } from "@/components/ProfileHistoryPanel";
 import { TutorialDisplay } from "@/components/TutorialDisplay";
 import { MedusaLogo } from "@/components/MedusaLogo";
 import type { AnalyzeFaceRequest, FaceAnalysisResult } from "../api/analyze-face/route";
+import type { FeedbackRequest } from "../api/feedback/route";
 import type {
   EditorialSubtype,
   GenerateTutorialRequest,
   GenerateTutorialResult,
   LookId,
+  PersonalizationProfile,
 } from "../api/generate-tutorial/route";
+import type { ProfileHistoryResult } from "../api/profile/history/route";
 
 type ResolvedFaceAnalysis = NonNullable<FaceAnalysisResult["faceAnalysis"]>;
 
@@ -48,13 +53,50 @@ export default function MedusaApp() {
   const [agentMessage, setAgentMessage] = useState<string | null>(null);
   const [photoInstruction, setPhotoInstruction] = useState<string | undefined>(undefined);
   const [analysisResult, setAnalysisResult] = useState<ResolvedFaceAnalysis | null>(null);
+  const [analysisRunId, setAnalysisRunId] = useState<string | null>(null);
   const [selectedSkinTone, setSelectedSkinTone] = useState<ResolvedFaceAnalysis["skinTone"] | null>(null);
   const [selectedSkinUndertone, setSelectedSkinUndertone] = useState<ResolvedFaceAnalysis["skinUndertone"] | null>(null);
   const [selectedEditorialSubtype, setSelectedEditorialSubtype] = useState<EditorialSubtype | null>(null);
   const [tutorialResult, setTutorialResult] = useState<GenerateTutorialResult | null>(null);
+  const [tutorialRunId, setTutorialRunId] = useState<string | null>(null);
+  const [history, setHistory] = useState<ProfileHistoryResult | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const currentPhotoNumber = capturedPhotos.length + 1;
+
+  useEffect(() => {
+    void loadProfileHistory();
+  }, []);
+
+  const loadProfileHistory = async () => {
+    try {
+      const res = await fetch("/api/profile/history?limit=6");
+
+      if (!res.ok) {
+        return;
+      }
+
+      const result: ProfileHistoryResult = await res.json();
+      setHistory(result);
+    } catch (err) {
+      console.error("[profile-history]", err);
+    }
+  };
+
+  const submitFeedback = async (payload: FeedbackRequest) => {
+    const res = await fetch("/api/feedback", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+
+    if (!res.ok) {
+      const errBody = await res.json().catch(() => ({}));
+      throw new Error(errBody.error ?? `API error: ${res.status}`);
+    }
+
+    await loadProfileHistory();
+  };
 
   const handlePhotoCaptured = async (photo: CapturedPhoto) => {
     const allPhotos = [...capturedPhotos, photo];
@@ -84,6 +126,7 @@ export default function MedusaApp() {
       }
 
       const result: FaceAnalysisResult = await res.json();
+      setAnalysisRunId(result.analysisRunId ?? null);
 
       if (result.status === "needs_more_photos" && result.photoRequest) {
         setAgentMessage(result.photoRequest.message);
@@ -94,6 +137,7 @@ export default function MedusaApp() {
         setSelectedSkinTone(result.faceAnalysis.skinToneOptions[0] ?? result.faceAnalysis.skinTone);
         setSelectedSkinUndertone(result.faceAnalysis.skinUndertoneOptions[0] ?? result.faceAnalysis.skinUndertone);
         setStage("analysis_complete");
+        void loadProfileHistory();
       } else {
         throw new Error("Unexpected agent response");
       }
@@ -130,11 +174,13 @@ export default function MedusaApp() {
 
     try {
       const requestBody: GenerateTutorialRequest = {
+        analysisRunId,
         faceAnalysis: {
           ...analysisResult,
           skinTone: selectedSkinTone,
           skinUndertone: selectedSkinUndertone,
         },
+        preferenceProfile: history ? buildPersonalizationProfile(history.preferenceSummary) : null,
         selectedLook: look,
         selectedEditorialSubtype: editorialSubtype,
       };
@@ -152,7 +198,9 @@ export default function MedusaApp() {
 
       const tutorial: GenerateTutorialResult = await res.json();
       setTutorialResult(tutorial);
+      setTutorialRunId(tutorial.tutorialRunId ?? null);
       setStage("tutorial");
+      void loadProfileHistory();
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Something went wrong. Please try again.";
       console.error(err);
@@ -167,15 +215,18 @@ export default function MedusaApp() {
     setAgentMessage(null);
     setPhotoInstruction(undefined);
     setAnalysisResult(null);
+    setAnalysisRunId(null);
     setSelectedSkinTone(null);
     setSelectedSkinUndertone(null);
     setSelectedEditorialSubtype(null);
     setTutorialResult(null);
+    setTutorialRunId(null);
     setError(null);
   };
 
   const handleChooseAnotherLook = () => {
     setTutorialResult(null);
+    setTutorialRunId(null);
     setError(null);
     setStage("look_selection");
   };
@@ -240,6 +291,12 @@ export default function MedusaApp() {
                   Back to Home
                 </Link>
               </div>
+
+              {history && (
+                <div className="mt-10">
+                  <ProfileHistoryPanel history={history} />
+                </div>
+              )}
             </div>
 
             <div className="glass-card noise relative overflow-hidden rounded-[2.4rem] border border-white/8 p-7">
@@ -444,6 +501,30 @@ export default function MedusaApp() {
             onProceed={() => setStage("look_selection")}
             onAdjustTone={handleOpenToneOverride}
           />
+
+          {analysisRunId && (
+            <div className="mt-6">
+              <FeedbackPanel
+                title="Rate This Face Read"
+                body="Tell MEDUSA whether this read felt right. This is the first layer of personal memory."
+                tagOptions={[
+                  { id: "accurate", label: "Accurate" },
+                  { id: "face_fit", label: "Face Fit" },
+                  { id: "tone_off", label: "Tone Off" },
+                  { id: "too_generic", label: "Too Generic" },
+                ]}
+                submitLabel="Save Analysis Feedback"
+                onSubmit={({ rating, tags }) =>
+                  submitFeedback({
+                    eventType: "analysis_rating",
+                    analysisRunId,
+                    rating,
+                    tags,
+                  })
+                }
+              />
+            </div>
+          )}
         </main>
       </AppFrame>
     );
@@ -452,7 +533,10 @@ export default function MedusaApp() {
   if (stage === "look_selection") {
     return (
       <>
-        <LookSelector onSelect={handleLookSelected} />
+        <LookSelector
+          onSelect={handleLookSelected}
+          preferenceSummary={history?.preferenceSummary ?? null}
+        />
         {error && (
           <div className="fixed bottom-6 left-1/2 -translate-x-1/2">
             <ErrorBanner message={error} />
@@ -511,6 +595,34 @@ export default function MedusaApp() {
         }}
         onChooseAnotherLook={handleChooseAnotherLook}
         onRestart={handleRestart}
+        feedbackSlot={
+          tutorialRunId ? (
+            <FeedbackPanel
+              title="Rate This Routine"
+              body="Tell MEDUSA what landed and what did not. This feedback will start shaping both recommendations and tutorial tone."
+              tagOptions={[
+                { id: "accurate", label: "Accurate" },
+                { id: "my_style", label: "My Style" },
+                { id: "eye_focus", label: "Eye Focus" },
+                { id: "lip_focus", label: "Lip Focus" },
+                { id: "too_generic", label: "Too Generic" },
+                { id: "not_my_style", label: "Not My Style" },
+                { id: "too_bold", label: "Too Bold" },
+                { id: "too_soft", label: "Too Soft" },
+              ]}
+              submitLabel="Save Routine Feedback"
+              onSubmit={({ rating, tags }) =>
+                submitFeedback({
+                  eventType: "tutorial_rating",
+                  analysisRunId,
+                  tutorialRunId,
+                  rating,
+                  tags,
+                })
+              }
+            />
+          ) : null
+        }
       />
     );
   }
@@ -963,4 +1075,29 @@ function EditorialStyleSelector({
 function getStageLabel(stage: AppStage) {
   const index = STAGES.indexOf(stage);
   return index >= 0 ? `${String(index + 1).padStart(2, "0")} / ${String(STAGES.length).padStart(2, "0")}` : "MEDUSA";
+}
+
+function buildPersonalizationProfile(
+  summary: ProfileHistoryResult["preferenceSummary"]
+): PersonalizationProfile {
+  return {
+    preferredLooks: summary.preferredLooks.filter(isLookId),
+    discouragedLooks: summary.discouragedLooks.filter(isLookId),
+    recentLooks: summary.recentLooks.filter(isLookId),
+    intensityPreference: summary.intensityPreference,
+    featureFocus: summary.featureFocus,
+    positiveTags: summary.positiveTags,
+    dislikedTags: summary.dislikedTags,
+  };
+}
+
+function isLookId(value: string): value is LookId {
+  return [
+    "natural",
+    "soft-glam",
+    "evening",
+    "bold-lip",
+    "monochromatic",
+    "editorial",
+  ].includes(value);
 }

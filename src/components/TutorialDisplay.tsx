@@ -37,6 +37,7 @@ interface Props {
   facePhoto: FacePhoto;
   onRestart: () => void;
   onChooseAnotherLook: () => void;
+  feedbackSlot?: React.ReactNode;
 }
 
 export function TutorialDisplay({
@@ -44,6 +45,7 @@ export function TutorialDisplay({
   facePhoto,
   onRestart,
   onChooseAnotherLook,
+  feedbackSlot,
 }: Props) {
   const [activeStep, setActiveStep] = useState(0);
   const step = tutorial.steps[activeStep];
@@ -144,10 +146,13 @@ export function TutorialDisplay({
               </div>
 
               {isLast && (
-                <div className="rounded-[1.5rem] border border-white/8 bg-white/[0.03] p-4">
-                  <p className="text-[10px] uppercase tracking-[0.24em] text-white/32">Closing Note</p>
-                  <p className="mt-2 text-sm leading-relaxed text-white/68">{tutorial.closingNote}</p>
-                </div>
+                <>
+                  <div className="rounded-[1.5rem] border border-white/8 bg-white/[0.03] p-4">
+                    <p className="text-[10px] uppercase tracking-[0.24em] text-white/32">Closing Note</p>
+                    <p className="mt-2 text-sm leading-relaxed text-white/68">{tutorial.closingNote}</p>
+                  </div>
+                  {feedbackSlot}
+                </>
               )}
             </div>
 

@@ -49,6 +49,7 @@ export interface TutorialStep {
 export interface GenerateTutorialRequest {
   faceAnalysis: FaceAnalysis;
   analysisRunId?: string | null;
+  preferenceProfile?: PersonalizationProfile | null;
   selectedLook: LookId;
   selectedEditorialSubtype?: EditorialSubtype;
 }
@@ -59,6 +60,16 @@ export interface GenerateTutorialResult {
   lookDescription: string;
   steps: TutorialStep[];
   closingNote: string;
+}
+
+export interface PersonalizationProfile {
+  preferredLooks: LookId[];
+  discouragedLooks: LookId[];
+  recentLooks: LookId[];
+  intensityPreference: "soft" | "balanced" | "bold" | null;
+  featureFocus: "eyes" | "lips" | null;
+  positiveTags: string[];
+  dislikedTags: string[];
 }
 
 const EDITORIAL_SUBTYPE_DEFINITIONS: Record<EditorialSubtype, string> = {
@@ -232,6 +243,9 @@ full_face | under_eye | brows | eye_lid | lash_line | blush | contour | highligh
 ## Structural Rules
 - Personalize every step to this specific person's geometry. Nothing generic.
 - Use their makeupPriorities to decide what gets the most attention in the tutorial.
+- If saved preferences are provided, use them to steer intensity, emphasis, and finish as long as they do not break the selected look or face-fit guidance.
+- Respect negative memory. If they repeatedly dislike looks that feel too bold or too generic, avoid drifting there unless the selected look explicitly calls for it.
+- If they prefer eye focus, invest more detail and artistry in the eye architecture. If they prefer lip focus, make the lip choice especially intentional within the look.
 - **Brows + mascara = one combined step** (zoneKey: "brows"). Cover: brow shape/fill technique for their specific shape + lash curl recommendation + mascara formula choice.
 - **Highlighter = always its own step** (zoneKey: "highlighter") for looks 7+ steps.
 - **False lashes required** for evening/editorial (zoneKey: "lash_line").
@@ -240,7 +254,8 @@ full_face | under_eye | brows | eye_lid | lash_line | blush | contour | highligh
 export async function generateTutorial(
   faceAnalysis: FaceAnalysis,
   selectedLook: LookId,
-  selectedEditorialSubtype?: EditorialSubtype
+  selectedEditorialSubtype?: EditorialSubtype,
+  preferenceProfile?: PersonalizationProfile | null
 ): Promise<GenerateTutorialResult> {
   const lookDef = LOOK_DEFINITIONS[selectedLook];
   const startedAt = Date.now();
@@ -251,7 +266,7 @@ export async function generateTutorial(
 
   try {
     const initialResult = await runTutorialQuery(
-      buildTutorialPrompt(faceAnalysis, selectedLook, lookDef, selectedEditorialSubtype),
+      buildTutorialPrompt(faceAnalysis, selectedLook, lookDef, selectedEditorialSubtype, preferenceProfile),
       "generate-tutorial"
     );
 
@@ -261,7 +276,7 @@ export async function generateTutorial(
         executionStatus: "succeeded",
         outputStatus: "initial_pass",
         selectedLook,
-        requestSummary: summarizeTutorialInput(faceAnalysis, selectedLook, selectedEditorialSubtype),
+        requestSummary: summarizeTutorialInput(faceAnalysis, selectedLook, selectedEditorialSubtype, preferenceProfile),
         responseSummary: summarizeTutorialOutput(initialResult),
         automaticEvaluation: initialEvaluation,
         metrics: {
@@ -281,7 +296,8 @@ export async function generateTutorial(
         lookDef,
         initialResult,
         initialEvaluation.issues.map((issue) => issue.message),
-        selectedEditorialSubtype
+        selectedEditorialSubtype,
+        preferenceProfile
       ),
       "generate-tutorial-repair"
     );
@@ -298,7 +314,7 @@ export async function generateTutorial(
       executionStatus: "succeeded",
       outputStatus: repairedEvaluation.passed ? "repaired_pass" : "repaired_with_issues",
       selectedLook,
-      requestSummary: summarizeTutorialInput(faceAnalysis, selectedLook, selectedEditorialSubtype),
+      requestSummary: summarizeTutorialInput(faceAnalysis, selectedLook, selectedEditorialSubtype, preferenceProfile),
       responseSummary: {
         final: summarizeTutorialOutput(repairedResult),
         repair: {
@@ -322,7 +338,7 @@ export async function generateTutorial(
     await persistEval({
       executionStatus: "failed",
       selectedLook,
-      requestSummary: summarizeTutorialInput(faceAnalysis, selectedLook, selectedEditorialSubtype),
+      requestSummary: summarizeTutorialInput(faceAnalysis, selectedLook, selectedEditorialSubtype, preferenceProfile),
       metrics: {
         durationMs: Date.now() - startedAt,
         validatorVersion: VALIDATOR_VERSION,
@@ -351,7 +367,8 @@ function buildTutorialPrompt(
   analysis: FaceAnalysis,
   selectedLook: LookId,
   lookDef: string,
-  selectedEditorialSubtype?: EditorialSubtype
+  selectedEditorialSubtype?: EditorialSubtype,
+  preferenceProfile?: PersonalizationProfile | null
 ): string {
   const editorialSubtypeBlock =
     selectedLook === "editorial" && selectedEditorialSubtype
@@ -366,6 +383,19 @@ Subtype rules:
 - soft: prioritize blurred edges, airy wash, low harshness, and subtle editorial shape.
 `
       : "";
+
+  const preferenceBlock = preferenceProfile
+    ? `
+## Saved Preferences
+- Preferred looks: ${preferenceProfile.preferredLooks.length > 0 ? preferenceProfile.preferredLooks.join(" | ") : "none yet"}
+- Discouraged looks: ${preferenceProfile.discouragedLooks.length > 0 ? preferenceProfile.discouragedLooks.join(" | ") : "none yet"}
+- Recent looks: ${preferenceProfile.recentLooks.length > 0 ? preferenceProfile.recentLooks.join(" | ") : "none yet"}
+- Intensity preference: ${preferenceProfile.intensityPreference ?? "unknown"}
+- Feature focus: ${preferenceProfile.featureFocus ?? "none"}
+- Positive signals: ${preferenceProfile.positiveTags.length > 0 ? preferenceProfile.positiveTags.join(" | ") : "none yet"}
+- Negative signals: ${preferenceProfile.dislikedTags.length > 0 ? preferenceProfile.dislikedTags.join(" | ") : "none yet"}
+`
+    : "";
 
   return `
 ## Their Face
@@ -383,6 +413,7 @@ Subtype rules:
 ## Look to build
 ${lookDef}
 
+${preferenceBlock}
 ${editorialSubtypeBlock}
 
 Build the complete step-by-step tutorial. Keep writing style casual and short. Return JSON matching the schema.
@@ -395,7 +426,8 @@ function buildRepairPrompt(
   lookDef: string,
   previousResult: GenerateTutorialResult,
   issues: string[],
-  selectedEditorialSubtype?: EditorialSubtype
+  selectedEditorialSubtype?: EditorialSubtype,
+  preferenceProfile?: PersonalizationProfile | null
 ): string {
   const editorialSubtypeBlock =
     selectedLook === "editorial" && selectedEditorialSubtype
@@ -408,6 +440,18 @@ ${EDITORIAL_SUBTYPE_DEFINITIONS[selectedEditorialSubtype]}
 `
       : "";
 
+  const preferenceBlock = preferenceProfile
+    ? `
+Saved preferences:
+- Preferred looks: ${preferenceProfile.preferredLooks.length > 0 ? preferenceProfile.preferredLooks.join(" | ") : "none yet"}
+- Discouraged looks: ${preferenceProfile.discouragedLooks.length > 0 ? preferenceProfile.discouragedLooks.join(" | ") : "none yet"}
+- Intensity preference: ${preferenceProfile.intensityPreference ?? "unknown"}
+- Feature focus: ${preferenceProfile.featureFocus ?? "none"}
+- Positive signals: ${preferenceProfile.positiveTags.length > 0 ? preferenceProfile.positiveTags.join(" | ") : "none yet"}
+- Negative signals: ${preferenceProfile.dislikedTags.length > 0 ? preferenceProfile.dislikedTags.join(" | ") : "none yet"}
+`
+    : "";
+
   return `
 The previous tutorial did not match the selected look strongly enough.
 
@@ -418,6 +462,7 @@ Look definition:
 ${lookDef}
 
 ${editorialSubtypeBlock}
+${preferenceBlock}
 
 Validation failures:
 ${issues.map((issue, index) => `${index + 1}. ${issue}`).join("\n")}

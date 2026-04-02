@@ -16,6 +16,7 @@ export type {
   GenerateTutorialResult,
   EditorialSubtype,
   LookId,
+  PersonalizationProfile,
   TutorialStep,
   ZoneKey,
 } from "@/lib/medusa/generate-tutorial";
@@ -33,7 +34,8 @@ export async function POST(req: NextRequest) {
     const result = await generateTutorial(
       body.faceAnalysis,
       body.selectedLook,
-      body.selectedEditorialSubtype
+      body.selectedEditorialSubtype,
+      body.preferenceProfile
     );
 
     const persistedRun = await persistTutorialRun({

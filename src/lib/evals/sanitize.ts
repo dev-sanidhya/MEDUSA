@@ -7,6 +7,7 @@ import type {
   EditorialSubtype,
   GenerateTutorialResult,
   LookId,
+  PersonalizationProfile,
 } from "@/lib/medusa/generate-tutorial";
 
 export function summarizeAnalyzeFaceInput(photos: AnalyzeFacePhoto[]) {
@@ -28,11 +29,13 @@ export function summarizeAnalyzeFaceOutput(result: FaceAnalysisResult) {
 export function summarizeTutorialInput(
   faceAnalysis: FaceAnalysis,
   selectedLook: LookId,
-  selectedEditorialSubtype?: EditorialSubtype
+  selectedEditorialSubtype?: EditorialSubtype,
+  preferenceProfile?: PersonalizationProfile | null
 ) {
   return {
     selectedLook,
     selectedEditorialSubtype: selectedEditorialSubtype ?? null,
+    preferenceProfile: preferenceProfile ?? null,
     faceAnalysis,
   };
 }

@@ -20,6 +20,7 @@ import type {
   FeedbackEventRecord,
   ProfileAnalysisHistoryItem,
   ProfileHistoryResult,
+  ProfilePreferenceSummary,
   ProfileTutorialHistoryItem,
   RecordedFeedbackEvent,
 } from "@/lib/persistence/types";
@@ -225,7 +226,7 @@ export async function getProfileHistory(
   const boundedLimit = Math.max(1, Math.min(limit, 20));
 
   try {
-    const [analysesResult, tutorialsResult] = await Promise.all([
+    const [analysesResult, tutorialsResult, feedbackResult] = await Promise.all([
       db.query<{
         id: string;
         status: "needs_more_photos" | "analysis_complete";
@@ -286,6 +287,27 @@ export async function getProfileHistory(
         `,
         [profileId, boundedLimit]
       ),
+      db.query<{
+        rating: number | null;
+        tags: string[];
+        selected_look: string | null;
+        created_at: Date;
+      }>(
+        `
+          SELECT
+            fe.rating,
+            fe.tags,
+            tr.selected_look,
+            fe.created_at
+          FROM medusa_feedback_events fe
+          LEFT JOIN medusa_tutorial_runs tr
+            ON tr.id = fe.tutorial_run_id
+          WHERE fe.profile_id = $1::uuid
+          ORDER BY fe.created_at DESC
+          LIMIT 50
+        `,
+        [profileId]
+      ),
     ]);
 
     const analyses: ProfileAnalysisHistoryItem[] = analysesResult.rows.map((row) => ({
@@ -323,6 +345,7 @@ export async function getProfileHistory(
 
     return {
       profileId,
+      preferenceSummary: buildPreferenceSummary(tutorials, feedbackResult.rows),
       analyses,
       tutorials,
     };
@@ -401,3 +424,132 @@ function getPersistencePool() {
 
   return db;
 }
+
+function buildPreferenceSummary(
+  tutorials: ProfileTutorialHistoryItem[],
+  feedbackRows: Array<{
+    rating: number | null;
+    tags: string[];
+    selected_look: string | null;
+    created_at: Date;
+  }>
+): ProfilePreferenceSummary {
+  const preferredLooks = new Map<string, number>();
+  const discouragedLooks = new Map<string, number>();
+  const recentLooks = [...new Set(tutorials.map((tutorial) => tutorial.selectedLook))].slice(0, 3);
+  const positiveTags = new Map<string, number>();
+  const dislikedTags = new Map<string, number>();
+  const featureFocusCounts = { eyes: 0, lips: 0 };
+
+  for (const row of feedbackRows) {
+    const look = row.selected_look;
+    const tags = row.tags ?? [];
+    const positiveCount = tags.filter((tag) => POSITIVE_PREFERENCE_TAGS.has(tag)).length;
+    const negativeCount = tags.filter((tag) => NEGATIVE_PREFERENCE_TAGS.has(tag)).length;
+
+    for (const tag of tags) {
+      if (POSITIVE_PREFERENCE_TAGS.has(tag)) {
+        positiveTags.set(tag, (positiveTags.get(tag) ?? 0) + 1);
+      }
+
+      if (NEGATIVE_PREFERENCE_TAGS.has(tag)) {
+        dislikedTags.set(tag, (dislikedTags.get(tag) ?? 0) + 1);
+      }
+
+      if (tag === "eye_focus") {
+        featureFocusCounts.eyes += 1;
+      }
+
+      if (tag === "lip_focus") {
+        featureFocusCounts.lips += 1;
+      }
+    }
+
+    if (!look) {
+      continue;
+    }
+
+    const weightedScore = (row.rating ?? 0) + positiveCount - negativeCount;
+
+    if ((row.rating ?? 0) >= 4 || positiveCount > negativeCount) {
+      preferredLooks.set(look, (preferredLooks.get(look) ?? 0) + Math.max(weightedScore, 1));
+    }
+
+    if ((row.rating ?? 0) <= 2 || negativeCount > positiveCount) {
+      discouragedLooks.set(look, (discouragedLooks.get(look) ?? 0) + Math.max(negativeCount, 1));
+    }
+  }
+
+  if (preferredLooks.size === 0) {
+    for (const tutorial of tutorials.slice(0, 2)) {
+      preferredLooks.set(tutorial.selectedLook, (preferredLooks.get(tutorial.selectedLook) ?? 0) + 1);
+    }
+  }
+
+  const orderedPreferredLooks = [...preferredLooks.entries()]
+    .sort((a, b) => b[1] - a[1])
+    .map(([look]) => look)
+    .slice(0, 3);
+
+  const orderedDiscouragedLooks = [...discouragedLooks.entries()]
+    .sort((a, b) => b[1] - a[1])
+    .map(([look]) => look)
+    .filter((look) => !preferredLooks.has(look))
+    .slice(0, 3);
+
+  const softLookCount = orderedPreferredLooks.filter((look) => SOFT_LOOKS.has(look)).length;
+  const boldLookCount = orderedPreferredLooks.filter((look) => BOLD_LOOKS.has(look)).length;
+
+  const intensityPreference =
+    softLookCount === 0 && boldLookCount === 0
+      ? null
+      : softLookCount > boldLookCount
+        ? "soft"
+        : boldLookCount > softLookCount
+          ? "bold"
+          : "balanced";
+
+  const featureFocus =
+    featureFocusCounts.eyes === featureFocusCounts.lips
+      ? null
+      : featureFocusCounts.eyes > featureFocusCounts.lips
+        ? "eyes"
+        : "lips";
+
+  return {
+    preferredLooks: orderedPreferredLooks,
+    discouragedLooks: orderedDiscouragedLooks,
+    recentLooks,
+    intensityPreference,
+    featureFocus,
+    positiveTags: getTopTags(positiveTags),
+    dislikedTags: getTopTags(dislikedTags),
+  };
+}
+
+function getTopTags(tagCounts: Map<string, number>) {
+  return [...tagCounts.entries()]
+    .sort((a, b) => b[1] - a[1])
+    .map(([tag]) => tag)
+    .slice(0, 4);
+}
+
+const POSITIVE_PREFERENCE_TAGS = new Set([
+  "accurate",
+  "my_style",
+  "love_this",
+  "face_fit",
+  "eye_focus",
+  "lip_focus",
+]);
+
+const NEGATIVE_PREFERENCE_TAGS = new Set([
+  "too_generic",
+  "not_my_style",
+  "too_bold",
+  "too_soft",
+  "tone_off",
+]);
+
+const SOFT_LOOKS = new Set(["natural", "soft-glam", "monochromatic"]);
+const BOLD_LOOKS = new Set(["evening", "bold-lip", "editorial"]);

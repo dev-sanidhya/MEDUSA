@@ -3,6 +3,16 @@ export type FeedbackEventType =
   | "tutorial_rating"
   | "preference_signal";
 
+export interface ProfilePreferenceSummary {
+  preferredLooks: string[];
+  discouragedLooks: string[];
+  recentLooks: string[];
+  intensityPreference: "soft" | "balanced" | "bold" | null;
+  featureFocus: "eyes" | "lips" | null;
+  positiveTags: string[];
+  dislikedTags: string[];
+}
+
 export interface ProfileAnalysisHistoryItem {
   id: string;
   status: "needs_more_photos" | "analysis_complete";
@@ -36,6 +46,7 @@ export interface ProfileTutorialHistoryItem {
 
 export interface ProfileHistoryResult {
   profileId: string;
+  preferenceSummary: ProfilePreferenceSummary;
   analyses: ProfileAnalysisHistoryItem[];
   tutorials: ProfileTutorialHistoryItem[];
 }
