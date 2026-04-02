@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { motion } from "framer-motion";
 import Link from "next/link";
 import Image from "next/image";
 import { PhotoCapture, type CapturedPhoto } from "@/components/PhotoCapture";
@@ -15,10 +16,13 @@ import type {
   LookId,
 } from "../api/generate-tutorial/route";
 
+type ResolvedFaceAnalysis = NonNullable<FaceAnalysisResult["faceAnalysis"]>;
+
 type AppStage =
   | "welcome"
   | "capturing"
   | "analyzing"
+  | "tone_override"
   | "analysis_complete"
   | "look_selection"
   | "generating_tutorial"
@@ -28,6 +32,7 @@ const STAGES: AppStage[] = [
   "welcome",
   "capturing",
   "analyzing",
+  "tone_override",
   "analysis_complete",
   "look_selection",
   "generating_tutorial",
@@ -39,9 +44,9 @@ export default function MedusaApp() {
   const [capturedPhotos, setCapturedPhotos] = useState<CapturedPhoto[]>([]);
   const [agentMessage, setAgentMessage] = useState<string | null>(null);
   const [photoInstruction, setPhotoInstruction] = useState<string | undefined>(undefined);
-  const [analysisResult, setAnalysisResult] = useState<FaceAnalysisResult["faceAnalysis"] | null>(null);
-  const [selectedSkinTone, setSelectedSkinTone] = useState<FaceAnalysisResult["faceAnalysis"]["skinTone"] | null>(null);
-  const [selectedSkinUndertone, setSelectedSkinUndertone] = useState<FaceAnalysisResult["faceAnalysis"]["skinUndertone"] | null>(null);
+  const [analysisResult, setAnalysisResult] = useState<ResolvedFaceAnalysis | null>(null);
+  const [selectedSkinTone, setSelectedSkinTone] = useState<ResolvedFaceAnalysis["skinTone"] | null>(null);
+  const [selectedSkinUndertone, setSelectedSkinUndertone] = useState<ResolvedFaceAnalysis["skinUndertone"] | null>(null);
   const [tutorialResult, setTutorialResult] = useState<GenerateTutorialResult | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -149,6 +154,15 @@ export default function MedusaApp() {
     setTutorialResult(null);
     setError(null);
     setStage("look_selection");
+  };
+
+  const handleOpenToneOverride = () => {
+    setStage("tone_override");
+  };
+
+  const handleConfirmToneOverride = () => {
+    if (!selectedSkinTone || !selectedSkinUndertone) return;
+    setStage("analysis_complete");
   };
 
   if (stage === "welcome") {
@@ -363,6 +377,20 @@ export default function MedusaApp() {
     );
   }
 
+  if (stage === "tone_override" && analysisResult && selectedSkinTone && selectedSkinUndertone) {
+    return (
+      <ToneConfirmationScreen
+        analysis={analysisResult}
+        selectedSkinTone={selectedSkinTone}
+        selectedSkinUndertone={selectedSkinUndertone}
+        onSelectSkinTone={setSelectedSkinTone}
+        onSelectSkinUndertone={setSelectedSkinUndertone}
+        onConfirm={handleConfirmToneOverride}
+        onBack={() => setStage("analysis_complete")}
+      />
+    );
+  }
+
   if (stage === "analysis_complete" && analysisResult && selectedSkinTone && selectedSkinUndertone) {
     return (
       <AppFrame stage={stage}>
@@ -389,9 +417,8 @@ export default function MedusaApp() {
             analysis={analysisResult}
             selectedSkinTone={selectedSkinTone}
             selectedSkinUndertone={selectedSkinUndertone}
-            onSelectSkinTone={setSelectedSkinTone}
-            onSelectSkinUndertone={setSelectedSkinUndertone}
             onProceed={() => setStage("look_selection")}
+            onAdjustTone={handleOpenToneOverride}
           />
         </main>
       </AppFrame>
@@ -478,6 +505,7 @@ function AppBackdrop({ stage }: { stage: AppStage }) {
     welcome: "radial-gradient(circle at 18% 25%, rgba(244,63,94,0.16), transparent 34%), radial-gradient(circle at 82% 18%, rgba(255,255,255,0.05), transparent 26%)",
     capturing: "radial-gradient(circle at 20% 25%, rgba(244,63,94,0.14), transparent 32%), radial-gradient(circle at 85% 75%, rgba(109,40,217,0.08), transparent 30%)",
     analyzing: "radial-gradient(circle at 50% 28%, rgba(244,63,94,0.18), transparent 34%)",
+    tone_override: "radial-gradient(circle at 50% 20%, rgba(244,63,94,0.18), transparent 28%), radial-gradient(circle at 15% 80%, rgba(255,255,255,0.04), transparent 26%)",
     analysis_complete: "radial-gradient(circle at 80% 20%, rgba(244,63,94,0.14), transparent 30%), radial-gradient(circle at 10% 75%, rgba(255,255,255,0.04), transparent 28%)",
     look_selection: "radial-gradient(circle at 16% 18%, rgba(244,63,94,0.12), transparent 28%), radial-gradient(circle at 84% 82%, rgba(109,40,217,0.09), transparent 28%)",
     generating_tutorial: "radial-gradient(circle at 50% 28%, rgba(244,63,94,0.18), transparent 34%)",
@@ -600,6 +628,165 @@ function ErrorBanner({ message }: { message: string }) {
   return (
     <div className="rounded-2xl border border-rose-500/20 bg-rose-500/[0.08] px-5 py-3 text-sm text-rose-100/85 backdrop-blur-sm">
       {message}
+    </div>
+  );
+}
+
+function ToneConfirmationScreen({
+  analysis,
+  selectedSkinTone,
+  selectedSkinUndertone,
+  onSelectSkinTone,
+  onSelectSkinUndertone,
+  onConfirm,
+  onBack,
+}: {
+  analysis: ResolvedFaceAnalysis;
+  selectedSkinTone: ResolvedFaceAnalysis["skinTone"];
+  selectedSkinUndertone: ResolvedFaceAnalysis["skinUndertone"];
+  onSelectSkinTone: (value: ResolvedFaceAnalysis["skinTone"]) => void;
+  onSelectSkinUndertone: (value: ResolvedFaceAnalysis["skinUndertone"]) => void;
+  onConfirm: () => void;
+  onBack: () => void;
+}) {
+  return (
+    <AppFrame stage="tone_override">
+      <main className="mx-auto flex min-h-screen w-full max-w-5xl items-center px-6 py-16">
+        <motion.div
+          initial={{ opacity: 0, y: 24, scale: 0.98 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1] }}
+          className="glass-card w-full overflow-hidden rounded-[2.6rem] border border-white/8"
+        >
+          <div
+            className="border-b border-white/8 px-8 py-8 md:px-10"
+            style={{ background: "radial-gradient(circle at top, rgba(244,63,94,0.12), transparent 60%)" }}
+          >
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.15 }}
+              className="mb-4 inline-flex items-center gap-2 rounded-full border border-rose-500/20 bg-rose-500/8 px-4 py-2 text-[11px] uppercase tracking-[0.26em] text-rose-300"
+            >
+              <span className="h-2 w-2 rounded-full bg-rose-400 animate-pulse" />
+              Adjust If Needed
+            </motion.div>
+            <h1
+              className="max-w-3xl text-4xl font-semibold leading-tight text-white md:text-6xl"
+              style={{ fontFamily: "var(--font-cormorant), Georgia, serif" }}
+            >
+              Want to change
+              <br />
+              our tone match?
+            </h1>
+            <p className="mt-5 max-w-2xl text-base leading-relaxed text-white/55">
+              We already chose the closest skin tone and undertone from your photos. If it feels off, update it here.
+            </p>
+            <div className="mt-6 rounded-[1.4rem] border border-white/8 bg-white/[0.03] px-5 py-4">
+              <p className="text-[10px] uppercase tracking-[0.22em] text-white/30">What we noticed</p>
+              <p className="mt-2 text-sm leading-relaxed text-white/68">{analysis.skinToneExplanation}</p>
+            </div>
+          </div>
+
+          <div className="grid gap-6 px-8 py-8 md:px-10 lg:grid-cols-2">
+            <ToneChoiceCard
+              title="Skin Tone"
+              subtitle="Choose the closest overall depth."
+              options={analysis.skinToneOptions}
+              selected={selectedSkinTone}
+              onSelect={onSelectSkinTone}
+            />
+            <ToneChoiceCard
+              title="Undertone"
+              subtitle="Choose the warmth or coolness you match best."
+              options={analysis.skinUndertoneOptions}
+              selected={selectedSkinUndertone}
+              onSelect={onSelectSkinUndertone}
+              formatLabel={(value) => `${value} undertone`}
+            />
+          </div>
+
+          <div className="flex flex-col gap-4 border-t border-white/8 px-8 py-6 md:flex-row md:items-center md:justify-between md:px-10">
+            <p className="text-sm text-white/40">
+              Selected: <span className="text-white/72 capitalize">{selectedSkinTone}</span> ·{" "}
+              <span className="text-white/72 capitalize">{selectedSkinUndertone}</span> undertone
+            </p>
+            <div className="flex flex-col gap-3 sm:flex-row">
+              <button
+                onClick={onBack}
+                className="inline-flex items-center justify-center rounded-full border border-white/10 px-6 py-4 text-sm font-semibold text-white/72 transition-colors hover:border-white/18 hover:bg-white/[0.04]"
+              >
+                Keep Agent Match
+              </button>
+              <button
+                onClick={onConfirm}
+                className="inline-flex items-center justify-center rounded-full bg-rose-500 px-8 py-4 text-sm font-semibold text-white transition-all duration-200 hover:bg-rose-400 hover:shadow-[0_0_40px_rgba(244,63,94,0.25)]"
+              >
+                Save My Changes
+              </button>
+            </div>
+          </div>
+        </motion.div>
+      </main>
+    </AppFrame>
+  );
+}
+
+function ToneChoiceCard<T extends string>({
+  title,
+  subtitle,
+  options,
+  selected,
+  onSelect,
+  formatLabel,
+}: {
+  title: string;
+  subtitle: string;
+  options: T[];
+  selected: T;
+  onSelect: (value: T) => void;
+  formatLabel?: (value: T) => string;
+}) {
+  return (
+    <div className="rounded-[2rem] border border-white/8 bg-white/[0.03] p-5">
+      <p className="text-[11px] uppercase tracking-[0.26em] text-rose-300">{title}</p>
+      <p className="mt-3 text-sm leading-relaxed text-white/48">{subtitle}</p>
+      <div className="mt-5 grid gap-3">
+        {options.map((option, index) => {
+          const isSelected = selected === option;
+
+          return (
+            <motion.button
+              key={option}
+              type="button"
+              onClick={() => onSelect(option)}
+              whileHover={{ scale: 1.01 }}
+              whileTap={{ scale: 0.99 }}
+              className={`rounded-[1.4rem] border px-4 py-4 text-left transition-all ${
+                isSelected
+                  ? "border-rose-400/35 bg-rose-500/12 shadow-[0_0_24px_rgba(244,63,94,0.12)]"
+                  : "border-white/8 bg-white/[0.02] hover:border-white/16 hover:bg-white/[0.04]"
+              }`}
+            >
+              <div className="flex items-center justify-between gap-4">
+                <div>
+                  <p className="text-[10px] uppercase tracking-[0.2em] text-white/28">
+                    Option {index + 1}
+                  </p>
+                  <p className="mt-2 text-lg font-medium capitalize text-white/85">
+                    {formatLabel ? formatLabel(option) : option}
+                  </p>
+                </div>
+                <div
+                  className={`h-5 w-5 rounded-full border ${
+                    isSelected ? "border-rose-300 bg-rose-400/90" : "border-white/20"
+                  }`}
+                />
+              </div>
+            </motion.button>
+          );
+        })}
+      </div>
     </div>
   );
 }

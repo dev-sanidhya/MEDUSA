@@ -2,22 +2,22 @@
 
 import type { FaceAnalysisResult } from "@/app/api/analyze-face/route";
 
+type ResolvedFaceAnalysis = NonNullable<FaceAnalysisResult["faceAnalysis"]>;
+
 interface Props {
-  analysis: NonNullable<FaceAnalysisResult["faceAnalysis"]>;
-  selectedSkinTone: FaceAnalysisResult["faceAnalysis"]["skinTone"];
-  selectedSkinUndertone: FaceAnalysisResult["faceAnalysis"]["skinUndertone"];
-  onSelectSkinTone: (value: FaceAnalysisResult["faceAnalysis"]["skinTone"]) => void;
-  onSelectSkinUndertone: (value: FaceAnalysisResult["faceAnalysis"]["skinUndertone"]) => void;
+  analysis: ResolvedFaceAnalysis;
+  selectedSkinTone: ResolvedFaceAnalysis["skinTone"];
+  selectedSkinUndertone: ResolvedFaceAnalysis["skinUndertone"];
   onProceed: () => void;
+  onAdjustTone: () => void;
 }
 
 export function FaceAnalysisDisplay({
   analysis,
   selectedSkinTone,
   selectedSkinUndertone,
-  onSelectSkinTone,
-  onSelectSkinUndertone,
   onProceed,
+  onAdjustTone,
 }: Props) {
   return (
     <div className="mx-auto flex w-full max-w-5xl flex-col gap-5">
@@ -62,28 +62,22 @@ export function FaceAnalysisDisplay({
           <div className="mb-3 flex flex-wrap gap-2">
             <Tag label={analysis.faceShape} />
           </div>
-          <p className="text-sm leading-relaxed text-white/62">{analysis.faceShapeExplanation}</p>
+          <FeatureNote
+            title="What we noticed"
+            body={analysis.faceShapeExplanation}
+          />
           <MiniGuidance workWith={analysis.faceShapeWorkWith} avoid={analysis.faceShapeAvoid} />
         </Section>
 
         <Section title="Closest Tone Match" icon="◉">
-          <p className="text-sm leading-relaxed text-white/62">{analysis.skinToneExplanation}</p>
-          <OptionGroup
-            className="mt-3"
-            label="Pick the closest skin tone"
-            options={analysis.skinToneOptions}
-            selected={selectedSkinTone}
-            onSelect={onSelectSkinTone}
+          <FeatureNote
+            title="What we noticed"
+            body={analysis.skinToneExplanation}
           />
-          <OptionGroup
-            className="mt-3"
-            label="Pick the closest undertone"
-            options={analysis.skinUndertoneOptions}
-            selected={selectedSkinUndertone}
-            onSelect={onSelectSkinUndertone}
-            formatLabel={(value) => `${value} undertone`}
-            variant="soft"
-          />
+          <div className="mt-3 flex flex-wrap gap-2">
+            <Tag label={selectedSkinTone} />
+            <Tag label={`${selectedSkinUndertone} undertone`} variant="soft" />
+          </div>
           <MiniGuidance workWith={analysis.skinToneWorkWith} avoid={analysis.skinToneAvoid} />
         </Section>
 
@@ -92,12 +86,20 @@ export function FaceAnalysisDisplay({
             <Tag label={analysis.eyes.shape} />
             <Tag label={analysis.eyes.set} variant="soft" />
           </div>
-          <p className="text-sm leading-relaxed text-white/62">{analysis.eyes.makeupImplication}</p>
+          <FeatureNote
+            title="What we noticed"
+            body={analysis.eyes.specificCharacteristics}
+          />
+          <p className="mt-3 text-sm leading-relaxed text-white/68">{analysis.eyes.makeupImplication}</p>
           <MiniGuidance workWith={analysis.eyes.workWith} avoid={analysis.eyes.avoid} />
         </Section>
 
         <Section title="Lips" icon="◌">
-          <p className="text-sm leading-relaxed text-white/62">{analysis.lips.makeupImplication}</p>
+          <FeatureNote
+            title="What we noticed"
+            body={analysis.lips.specificCharacteristics}
+          />
+          <p className="mt-3 text-sm leading-relaxed text-white/68">{analysis.lips.makeupImplication}</p>
           <MiniGuidance workWith={analysis.lips.workWith} avoid={analysis.lips.avoid} />
         </Section>
 
@@ -126,13 +128,21 @@ export function FaceAnalysisDisplay({
         </Section>
       </div>
 
-      <button
-        onClick={onProceed}
-        className="group inline-flex w-full items-center justify-center gap-3 rounded-full bg-rose-500 px-8 py-4 text-[15px] font-semibold text-white transition-all duration-200 hover:bg-rose-400 hover:shadow-[0_0_40px_rgba(244,63,94,0.25)]"
-      >
-        Start My Personalized Tutorial
-        <span className="transition-transform group-hover:translate-x-1">→</span>
-      </button>
+      <div className="flex flex-col gap-3 sm:flex-row">
+        <button
+          onClick={onProceed}
+          className="group inline-flex w-full items-center justify-center gap-3 rounded-full bg-rose-500 px-8 py-4 text-[15px] font-semibold text-white transition-all duration-200 hover:bg-rose-400 hover:shadow-[0_0_40px_rgba(244,63,94,0.25)]"
+        >
+          Continue With This Match
+          <span className="transition-transform group-hover:translate-x-1">→</span>
+        </button>
+        <button
+          onClick={onAdjustTone}
+          className="inline-flex w-full items-center justify-center rounded-full border border-white/10 px-8 py-4 text-[15px] font-semibold text-white/72 transition-colors hover:border-white/18 hover:bg-white/[0.04]"
+        >
+          Choose My Own Tone
+        </button>
+      </div>
     </div>
   );
 }
@@ -160,7 +170,7 @@ function Section({
 function Tag({ label, variant = "primary" }: { label: string; variant?: "primary" | "soft" }) {
   return (
     <span
-      className={`inline-flex rounded-full px-3 py-1 text-[11px] font-semibold capitalize ${
+      className={`inline-flex rounded-full px-3 py-1 text-[11px] font-semibold capitalize transition-colors ${
         variant === "primary"
           ? "border border-rose-500/25 bg-rose-500/10 text-rose-200"
           : "border border-white/10 bg-white/[0.04] text-white/62"
@@ -171,58 +181,25 @@ function Tag({ label, variant = "primary" }: { label: string; variant?: "primary
   );
 }
 
-function MiniGuidance({ workWith, avoid }: { workWith: string; avoid: string }) {
+function FeatureNote({ title, body }: { title: string; body: string }) {
   return (
-    <div className="mt-3 space-y-2">
-      <div className="rounded-2xl border border-emerald-500/12 bg-emerald-500/[0.05] px-3 py-2 text-xs text-emerald-100/80">
-        <span className="mr-2 uppercase tracking-[0.18em] text-emerald-300/80">Do</span>
-        {workWith}
-      </div>
-      <div className="rounded-2xl border border-rose-500/12 bg-rose-500/[0.05] px-3 py-2 text-xs text-rose-100/80">
-        <span className="mr-2 uppercase tracking-[0.18em] text-rose-300/80">Don&apos;t</span>
-        {avoid}
-      </div>
+    <div className="rounded-[1.2rem] border border-white/8 bg-white/[0.03] px-4 py-3">
+      <p className="text-[10px] uppercase tracking-[0.22em] text-white/30">{title}</p>
+      <p className="mt-2 text-sm leading-relaxed text-white/62">{body}</p>
     </div>
   );
 }
 
-function OptionGroup<T extends string>({
-  label,
-  options,
-  selected,
-  onSelect,
-  formatLabel,
-  variant = "primary",
-  className = "",
-}: {
-  label: string;
-  options: T[];
-  selected: T;
-  onSelect: (value: T) => void;
-  formatLabel?: (value: T) => string;
-  variant?: "primary" | "soft";
-  className?: string;
-}) {
+function MiniGuidance({ workWith, avoid }: { workWith: string; avoid: string }) {
   return (
-    <div className={className}>
-      <p className="mb-2 text-[11px] uppercase tracking-[0.18em] text-white/32">{label}</p>
-      <div className="flex flex-wrap gap-2">
-        {options.map((option) => {
-          const isSelected = option === selected;
-
-          return (
-            <button
-              key={option}
-              type="button"
-              onClick={() => onSelect(option)}
-              className={`rounded-full transition-colors ${
-                isSelected ? "ring-1 ring-rose-300/60" : ""
-              }`}
-            >
-              <Tag label={formatLabel ? formatLabel(option) : option} variant={variant} />
-            </button>
-          );
-        })}
+    <div className="mt-4 grid gap-2">
+      <div className="rounded-[1.2rem] border border-emerald-500/18 bg-emerald-500/[0.06] px-4 py-3">
+        <p className="text-[10px] uppercase tracking-[0.22em] text-emerald-300/85">Do</p>
+        <p className="mt-2 text-sm leading-relaxed text-emerald-100/85">{workWith}</p>
+      </div>
+      <div className="rounded-[1.2rem] border border-rose-500/18 bg-rose-500/[0.06] px-4 py-3">
+        <p className="text-[10px] uppercase tracking-[0.22em] text-rose-300/85">Don&apos;t</p>
+        <p className="mt-2 text-sm leading-relaxed text-rose-100/85">{avoid}</p>
       </div>
     </div>
   );
