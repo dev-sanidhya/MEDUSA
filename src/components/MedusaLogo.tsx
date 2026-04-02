@@ -166,7 +166,7 @@ export function MedusaLogo({
         </span>
         {showTagline && (
           <span className={`${subtitleClass} mt-1.5 uppercase tracking-[0.42em] text-white/38`}>
-            Precision Makeup Intelligence
+            Face-Mapped Makeup
           </span>
         )}
       </div>
@@ -186,7 +186,7 @@ export function MedusaLogoCentered({ className = "" }: { className?: string }) {
           MEDUSA
         </div>
         <div className="text-[10px] uppercase tracking-[0.45em] text-white/35">
-          Precision Makeup Intelligence
+          Face-Mapped Makeup
         </div>
       </div>
     </div>

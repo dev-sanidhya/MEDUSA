@@ -35,11 +35,11 @@ export function LookSelector({ onSelect }: Props) {
           >
             Choose the look.
             <br />
-            <span style={{ fontStyle: "italic" }}>Keep it yours.</span>
+            <span style={{ fontStyle: "italic" }}>Keep the fit.</span>
           </h1>
           <p className="mt-6 max-w-xl text-base leading-relaxed text-white/48">
-            Your analysis is already complete. This step only decides the mood, intensity,
-            and finish that MEDUSA will build around your face geometry.
+            Your face read is done. This step only changes the mood, intensity,
+            and finish MEDUSA builds around it.
           </p>
         </div>
 
@@ -63,7 +63,7 @@ export function LookSelector({ onSelect }: Props) {
                     </p>
                   </div>
                   <span className="rounded-full border border-white/10 px-3 py-1 text-[10px] uppercase tracking-[0.2em] text-white/35">
-                    Personalized
+                    Face-fit
                   </span>
                 </div>
 
@@ -78,7 +78,7 @@ export function LookSelector({ onSelect }: Props) {
                 </p>
 
                 <div className="mt-8 flex items-center gap-2 text-sm font-medium text-rose-300">
-                  Build this tutorial
+                  Choose this look
                   <span className="transition-transform group-hover:translate-x-1">→</span>
                 </div>
               </div>
@@ -87,7 +87,7 @@ export function LookSelector({ onSelect }: Props) {
         </div>
 
         <p className="mt-8 text-center text-xs uppercase tracking-[0.22em] text-white/22">
-          The placement and warnings stay specific to your face. Only the look direction changes.
+          Placement and cautions stay specific to your face. Only the look direction changes.
         </p>
       </div>
     </main>

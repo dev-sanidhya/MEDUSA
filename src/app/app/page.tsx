@@ -171,27 +171,27 @@ export default function MedusaApp() {
         <main className="mx-auto flex min-h-screen w-full max-w-6xl items-center px-6 py-20">
           <div className="grid w-full gap-12 lg:grid-cols-[1.05fr_0.95fr] lg:items-center">
             <div>
-              <p className="mb-5 text-xs uppercase tracking-[0.32em] text-rose-400">Personal Analysis</p>
+              <p className="mb-5 text-xs uppercase tracking-[0.32em] text-rose-400">Face Analysis</p>
               <h1
                 className="text-[clamp(3.5rem,9vw,6.8rem)] font-semibold leading-none text-white"
                 style={{ fontFamily: "var(--font-cormorant), Georgia, serif" }}
               >
-                Build the
+                Get a routine
                 <br />
-                tutorial your
+                shaped to
                 <br />
-                face deserves.
+                your face.
               </h1>
               <p className="mt-6 max-w-xl text-base leading-relaxed text-white/48 md:text-lg">
-                Upload a selfie, let MEDUSA map your geometry, then receive a step-by-step routine
-                written for your exact eyes, lips, structure, and tone.
+                Upload a photo, let MEDUSA read your features, then get step-by-step
+                placement and technique built around your eyes, lips, structure, and tone.
               </p>
 
               <div className="mt-8 flex flex-wrap gap-3">
                 {[
                   "478 facial landmarks",
                   "Client-side processing",
-                  "No generic advice",
+                  "Specific placement notes",
                 ].map((pill) => (
                   <span
                     key={pill}
@@ -230,14 +230,14 @@ export default function MedusaApp() {
 
                 <div className="space-y-4">
                   {[
-                    ["01", "Capture", "One clean photo, or up to three if the model needs more precision."],
-                    ["02", "Read", "MEDUSA maps structure, eye set, lip proportions, and tone locally."],
-                    ["03", "Compose", "Your tutorial is generated with geometry-backed placements and warnings."],
+                    ["01", "Capture", "One clean photo, or up to three if the model needs a better read."],
+                    ["02", "Analyze", "MEDUSA reads structure, eye set, lip proportions, and tone cues locally."],
+                    ["03", "Write", "MEDUSA turns the read into placement notes, technique, and what to avoid."],
                   ].map(([num, title, body]) => (
                     <div key={num} className="rounded-[1.6rem] border border-white/8 bg-white/[0.03] p-4">
                       <div className="flex items-center justify-between">
                         <span className="text-[10px] uppercase tracking-[0.24em] text-rose-300">Step {num}</span>
-                        <span className="text-[10px] uppercase tracking-[0.2em] text-white/22">Live</span>
+                        <span className="text-[10px] uppercase tracking-[0.2em] text-white/22">{title}</span>
                       </div>
                       <p
                         className="mt-3 text-2xl font-semibold text-white"
@@ -251,7 +251,7 @@ export default function MedusaApp() {
                 </div>
 
                 <p className="mt-6 text-center text-xs uppercase tracking-[0.22em] text-white/24">
-                  Analysis starts with your facial geometry.
+                  Every routine starts with your actual features.
                 </p>
               </div>
             </div>
@@ -269,8 +269,8 @@ export default function MedusaApp() {
             <div className="space-y-6">
               <HeroPanel
                 eyebrow={`Step ${String(Math.min(currentPhotoNumber, 3)).padStart(2, "0")} · Capture`}
-                title="Get the cleanest read possible."
-                body="Natural light, straight-on framing, and a full view of the face give MEDUSA the geometry it needs."
+                title="Start with a clean photo."
+                body="Natural light, a straight angle, and a clear view of your face give MEDUSA the best read."
               >
                 <div className="grid gap-3 sm:grid-cols-2">
                   {[
@@ -364,8 +364,8 @@ export default function MedusaApp() {
       <ProcessingScreen
         stage={stage}
         eyebrow="Step 02 · Reading"
-        title="Reading your face."
-        body="Processing your photos, reading your features, and finding the closest tone and undertone match."
+        title="Reading your features."
+        body="Processing your photos, checking the read, and finding the closest tone and undertone match."
         items={[
           "Checking photo quality",
           "Reading face shape",
@@ -443,8 +443,8 @@ export default function MedusaApp() {
       <ProcessingScreen
         stage={stage}
         eyebrow="Step 03 · Writing"
-        title="Building your tutorial."
-        body="Turning your analysis into placements, angles, and cautions written for your exact proportions."
+        title="Writing your routine."
+        body="Turning your analysis into placement notes, technique, and cautions built for your proportions."
         items={[
           "Reviewing your face analysis",
           "Personalizing each step",
@@ -675,9 +675,9 @@ function ToneConfirmationScreen({
               className="max-w-3xl text-4xl font-semibold leading-tight text-white md:text-6xl"
               style={{ fontFamily: "var(--font-cormorant), Georgia, serif" }}
             >
-              Want to change
+              Want to adjust
               <br />
-              our tone match?
+              the tone match?
             </h1>
             <p className="mt-5 max-w-2xl text-base leading-relaxed text-white/55">
               We already chose the closest skin tone and undertone from your photos. If it feels off, update it here.
