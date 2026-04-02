@@ -10,7 +10,11 @@
 import { query } from "@anthropic-ai/claude-agent-sdk";
 import type { SDKUserMessage } from "@anthropic-ai/claude-agent-sdk";
 import { NextRequest, NextResponse } from "next/server";
-import type { FaceProfile } from "@/lib/geometry-calculator";
+import type {
+  FaceProfile,
+  SkinTone,
+  SkinUndertone,
+} from "@/lib/geometry-calculator";
 import type { PrecisionReport } from "@/lib/precision-scorer";
 
 // ─── Request / Response types ─────────────────────────────────────────────────
@@ -37,19 +41,29 @@ export interface FaceAnalysisResult {
     personalReading: string;
     faceShape: string;
     faceShapeExplanation: string;
-    skinTone: string;
-    skinUndertone: string;
+    faceShapeWorkWith: string;
+    faceShapeAvoid: string;
+    skinTone: SkinTone;
+    skinToneOptions: SkinTone[];
+    skinUndertone: SkinUndertone;
+    skinUndertoneOptions: SkinUndertone[];
     skinToneExplanation: string;
+    skinToneWorkWith: string;
+    skinToneAvoid: string;
     eyes: {
       shape: string;
       set: string;
       specificCharacteristics: string;
       makeupImplication: string;
+      workWith: string;
+      avoid: string;
     };
     lips: {
       description: string;
       specificCharacteristics: string;
       makeupImplication: string;
+      workWith: string;
+      avoid: string;
     };
     nose: {
       description: string;
@@ -97,9 +111,25 @@ const FACE_ANALYSIS_SCHEMA = {
         personalReading: { type: "string" },
         faceShape: { type: "string" },
         faceShapeExplanation: { type: "string" },
-        skinTone: { type: "string" },
-        skinUndertone: { type: "string" },
+        faceShapeWorkWith: { type: "string" },
+        faceShapeAvoid: { type: "string" },
+        skinTone: { type: "string", enum: ["fair", "light", "wheatish", "medium", "tan", "deep"] },
+        skinToneOptions: {
+          type: "array",
+          minItems: 3,
+          maxItems: 3,
+          items: { type: "string", enum: ["fair", "light", "wheatish", "medium", "tan", "deep"] },
+        },
+        skinUndertone: { type: "string", enum: ["warm", "cool", "neutral"] },
+        skinUndertoneOptions: {
+          type: "array",
+          minItems: 3,
+          maxItems: 3,
+          items: { type: "string", enum: ["warm", "cool", "neutral"] },
+        },
         skinToneExplanation: { type: "string" },
+        skinToneWorkWith: { type: "string" },
+        skinToneAvoid: { type: "string" },
         eyes: {
           type: "object",
           properties: {
@@ -107,8 +137,10 @@ const FACE_ANALYSIS_SCHEMA = {
             set: { type: "string" },
             specificCharacteristics: { type: "string" },
             makeupImplication: { type: "string" },
+            workWith: { type: "string" },
+            avoid: { type: "string" },
           },
-          required: ["shape", "set", "specificCharacteristics", "makeupImplication"],
+          required: ["shape", "set", "specificCharacteristics", "makeupImplication", "workWith", "avoid"],
         },
         lips: {
           type: "object",
@@ -116,8 +148,10 @@ const FACE_ANALYSIS_SCHEMA = {
             description: { type: "string" },
             specificCharacteristics: { type: "string" },
             makeupImplication: { type: "string" },
+            workWith: { type: "string" },
+            avoid: { type: "string" },
           },
-          required: ["description", "specificCharacteristics", "makeupImplication"],
+          required: ["description", "specificCharacteristics", "makeupImplication", "workWith", "avoid"],
         },
         nose: {
           type: "object",
@@ -151,8 +185,9 @@ const FACE_ANALYSIS_SCHEMA = {
         precisionNote: { type: "string" },
       },
       required: [
-        "personalReading", "faceShape", "faceShapeExplanation",
-        "skinTone", "skinUndertone", "skinToneExplanation",
+        "personalReading", "faceShape", "faceShapeExplanation", "faceShapeWorkWith", "faceShapeAvoid",
+        "skinTone", "skinToneOptions", "skinUndertone", "skinUndertoneOptions",
+        "skinToneExplanation", "skinToneWorkWith", "skinToneAvoid",
         "eyes", "lips", "nose", "brows", "cheekbones",
         "beautyHighlights", "makeupPriorities", "avoidTechniques",
         "precisionLevel", "precisionNote",
@@ -163,16 +198,18 @@ const FACE_ANALYSIS_SCHEMA = {
 
 // ─── System prompt ────────────────────────────────────────────────────────────
 
-const SYSTEM_PROMPT = `You are MEDUSA's core face analysis agent — a highly trained professional makeup artist and beauty consultant with deep expertise in facial geometry, color theory, and personalized makeup technique.
+const SYSTEM_PROMPT = `You are MEDUSA's core face analysis agent. You analyze face photos and turn them into simple, beginner-friendly makeup guidance.
 
 ## Your Role
-You analyze human faces with the precision of a professional. You receive photographs of the user's face plus precise geometric measurements extracted by MediaPipe (478 landmark points), including face shape ratios, eye measurements, lip measurements, nose dimensions, brow data, and cheekbone geometry.
+You receive face photos plus precise geometric measurements extracted by MediaPipe (478 landmark points), including face shape ratios, eye measurements, lip measurements, nose dimensions, brow data, and cheekbone geometry.
+Use that data to produce a short, practical summary for a user who is new to makeup and does not want a technical face-analysis report.
 
-## Artistry Standard
-Your taste level is high. You think like an artist who understands both polished complexion architecture and bold creative placement.
-- Read the face in terms of structure, light, balance, contrast, and where the eye naturally lands first.
-- Separate enhancement from correction. Not everything should be "fixed." Some features should be intentionally spotlighted.
-- Think about what would read best in real life AND in photos.
+## Output Style
+- Keep everything crisp, simple, and easy to scan.
+- Avoid technical beauty jargon unless it is very common and easy to understand.
+- Do not sound clinical, academic, or overly professional.
+- Write for someone who may not know their face shape or undertone already.
+- Prefer short phrases and short sentences over paragraphs.
 
 ## Precision First — Always
 
@@ -194,6 +231,16 @@ Proceed (status: "analysis_complete") if:
 
 Maximum 3 photo requests total. After 3 photos, always proceed with status: "analysis_complete".
 
+## Skin Tone And Undertone Rules
+- You must determine skin tone and undertone from the uploaded photos yourself.
+- Look across ALL uploaded photos before deciding. If lighting varies, choose the most consistent match across the set.
+- Return exactly one closest skin tone from this list only: fair, light, wheatish, medium, tan, deep.
+- Also return exactly 3 skinToneOptions from the same list, ordered closest first, with skinTone as the first option.
+- Return exactly one closest undertone from this list only: warm, cool, neutral.
+- Also return exactly 3 skinUndertoneOptions from the same list, ordered closest first, with skinUndertone as the first option.
+- Do not repeat options inside either list.
+- skinToneExplanation must be a very short confirmation that this is the closest match seen in the photos.
+
 ## When Asking for Another Photo
 Be warm and personal. Always:
 - Acknowledge what you CAN see (don't make the user feel bad)
@@ -202,21 +249,27 @@ Be warm and personal. Always:
 - Be encouraging
 
 ## When Giving the Full Analysis
-Speak directly to this specific person. Use "you" and "your" throughout. Every sentence must be something that could ONLY be said about this specific face — never generic.
+Speak directly to this specific person. Use "you" and "your" throughout.
+Keep the result short and digestible.
 
-Your analysis must cover:
-- Their exact face shape with makeup implications
-- Eye shape, set type, specific characteristics, and what this means for eyeshadow/liner placement
-- Lip structure — upper vs lower volume, cupid bow, corner direction
-- Natural brow shape and any asymmetry
-- Skin tone AND undertone read directly from the photo
-- 3 specific beautiful features to enhance
-- The visual hierarchy of their face: which features should lead first, which should stay softer, and where makeup placement will create the most impact
-- 3 makeupPriorities that are ranked and strategic, not generic. These should read like a pro plan: for example "lift the outer eye", "keep center face bright", "build mouth shape with liner rather than overfilling the whole lip."
-- What makeup techniques to AVOID — this is critical. For each item in avoidTechniques, format it as: "[Technique] — because [specific geometric measurement/ratio from their data] means this will [specific visual distortion it causes on their face]". Be honest and precise. Example: "Heavy lower lash-line liner — your eye tilt of +3° gives you a naturally upturned eye; liner on the waterline pulls the visual weight downward and kills that lift, making your eyes look smaller and drooping."
+Your analysis must still cover the same structure in the schema, but keep each field brief:
+- personalReading: one warm sentence, max 18 words
+- faceShapeExplanation: one short sentence, max 12 words
+- faceShapeWorkWith and faceShapeAvoid: very short action lines, max 8 words each
+- skinToneExplanation: one short sentence, max 12 words
+- skinToneOptions and skinUndertoneOptions: exactly 3 options each, closest first
+- skinToneWorkWith and skinToneAvoid: very short color guidance, max 8 words each
+- eyes/lips/brows/nose/cheekbones descriptions: short and plain
+- eyes.workWith, eyes.avoid, lips.workWith, lips.avoid: very short action lines, max 8 words each
+- beautyHighlights: exactly 3 items, each 2-5 words
+- makeupPriorities: exactly 3 items, each 3-7 words
+- avoidTechniques: 2 items max, short and specific
+- precisionNote: one short sentence
+
+The result should feel like a quick read, not a full consultation.
 
 ## Tone
-Warm, direct, and plain-spoken. Talk like a friend who happens to be a makeup artist — not a textbook. Short sentences. No jargon. If you can say it simply, say it simply.`;
+Warm, direct, and plain-spoken. Talk like a friend who knows makeup well. Short sentences. No textbook voice.`;
 
 // ─── Route handler ────────────────────────────────────────────────────────────
 

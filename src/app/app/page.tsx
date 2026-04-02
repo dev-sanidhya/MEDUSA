@@ -40,6 +40,8 @@ export default function MedusaApp() {
   const [agentMessage, setAgentMessage] = useState<string | null>(null);
   const [photoInstruction, setPhotoInstruction] = useState<string | undefined>(undefined);
   const [analysisResult, setAnalysisResult] = useState<FaceAnalysisResult["faceAnalysis"] | null>(null);
+  const [selectedSkinTone, setSelectedSkinTone] = useState<FaceAnalysisResult["faceAnalysis"]["skinTone"] | null>(null);
+  const [selectedSkinUndertone, setSelectedSkinUndertone] = useState<FaceAnalysisResult["faceAnalysis"]["skinUndertone"] | null>(null);
   const [tutorialResult, setTutorialResult] = useState<GenerateTutorialResult | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -80,6 +82,8 @@ export default function MedusaApp() {
         setStage("capturing");
       } else if (result.status === "analysis_complete" && result.faceAnalysis) {
         setAnalysisResult(result.faceAnalysis);
+        setSelectedSkinTone(result.faceAnalysis.skinToneOptions[0] ?? result.faceAnalysis.skinTone);
+        setSelectedSkinUndertone(result.faceAnalysis.skinUndertoneOptions[0] ?? result.faceAnalysis.skinUndertone);
         setStage("analysis_complete");
       } else {
         throw new Error("Unexpected agent response");
@@ -93,13 +97,17 @@ export default function MedusaApp() {
   };
 
   const handleLookSelected = async (look: LookId) => {
-    if (!analysisResult) return;
+    if (!analysisResult || !selectedSkinTone || !selectedSkinUndertone) return;
     setStage("generating_tutorial");
     setError(null);
 
     try {
       const requestBody: GenerateTutorialRequest = {
-        faceAnalysis: analysisResult,
+        faceAnalysis: {
+          ...analysisResult,
+          skinTone: selectedSkinTone,
+          skinUndertone: selectedSkinUndertone,
+        },
         selectedLook: look,
       };
 
@@ -131,6 +139,8 @@ export default function MedusaApp() {
     setAgentMessage(null);
     setPhotoInstruction(undefined);
     setAnalysisResult(null);
+    setSelectedSkinTone(null);
+    setSelectedSkinUndertone(null);
     setTutorialResult(null);
     setError(null);
   };
@@ -341,31 +351,31 @@ export default function MedusaApp() {
         stage={stage}
         eyebrow="Step 02 · Reading"
         title="Reading your face."
-        body="Mapping landmarks, checking proportion, and measuring the structure that will shape your tutorial."
+        body="Processing your photos, reading your features, and finding the closest tone and undertone match."
         items={[
-          "Mapping face structure",
-          "Calculating eye geometry",
-          "Measuring lip proportions",
-          "Classifying face shape",
-          "Reading skin tone",
+          "Checking photo quality",
+          "Reading face shape",
+          "Reading eyes and lips",
+          "Matching skin tone",
+          "Matching undertone",
         ]}
       />
     );
   }
 
-  if (stage === "analysis_complete" && analysisResult) {
+  if (stage === "analysis_complete" && analysisResult && selectedSkinTone && selectedSkinUndertone) {
     return (
       <AppFrame stage={stage}>
         <main className="mx-auto min-h-screen w-full max-w-6xl px-6 py-10">
           <div className="mb-8 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
             <HeroHeader
               eyebrow="Step 02 · Complete"
-              title="Your face analysis."
+              title="Your quick read."
               body={`${
                 capturedPhotos.length
               } photo${capturedPhotos.length > 1 ? "s" : ""} analyzed with ${
                 capturedPhotos[capturedPhotos.length - 1]?.precisionReport.overallScore ?? 0
-              }/100 precision.`}
+              }/100 photo quality.`}
             />
             <button
               onClick={handleRestart}
@@ -375,7 +385,14 @@ export default function MedusaApp() {
             </button>
           </div>
 
-          <FaceAnalysisDisplay analysis={analysisResult} onProceed={() => setStage("look_selection")} />
+          <FaceAnalysisDisplay
+            analysis={analysisResult}
+            selectedSkinTone={selectedSkinTone}
+            selectedSkinUndertone={selectedSkinUndertone}
+            onSelectSkinTone={setSelectedSkinTone}
+            onSelectSkinUndertone={setSelectedSkinUndertone}
+            onProceed={() => setStage("look_selection")}
+          />
         </main>
       </AppFrame>
     );
