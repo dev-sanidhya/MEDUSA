@@ -24,9 +24,7 @@ export function FaceAnalysisDisplay({
       <div className="grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
         <div className="glass-card rounded-[2.25rem] border border-rose-500/15 p-7 md:p-8">
           <div className="mb-4 flex items-center gap-3">
-            <span className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-rose-500/20 bg-rose-500/10 text-rose-300">
-              âœ¦
-            </span>
+            <span className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-rose-500/20 bg-rose-500/10 text-[10px] font-semibold uppercase tracking-[0.18em] text-rose-300">Read</span>
             <div>
               <p className="text-[11px] uppercase tracking-[0.3em] text-rose-300">Your Quick Read</p>
               <p className="mt-1 text-sm text-white/35">Short, simple, and based on your photos.</p>
@@ -58,7 +56,7 @@ export function FaceAnalysisDisplay({
       </div>
 
       <div className="grid gap-6 xl:grid-cols-3">
-        <Section title="Face Shape" icon="â—ˆ" accent="rose">
+        <Section title="Face Shape" icon="01" accent="rose">
           <div className="mb-3 flex flex-wrap gap-2">
             <Tag label={analysis.faceShape} />
           </div>
@@ -69,7 +67,7 @@ export function FaceAnalysisDisplay({
           <MiniGuidance workWith={analysis.faceShapeWorkWith} avoid={analysis.faceShapeAvoid} />
         </Section>
 
-        <Section title="Closest Tone Match" icon="â—‰" accent="amber">
+        <Section title="Closest Tone Match" icon="02" accent="amber">
           <FeatureNote
             title="What we noticed"
             body={analysis.skinToneExplanation}
@@ -81,7 +79,7 @@ export function FaceAnalysisDisplay({
           <MiniGuidance workWith={analysis.skinToneWorkWith} avoid={analysis.skinToneAvoid} />
         </Section>
 
-        <Section title="Eyes" icon="â—Ž" accent="violet">
+        <Section title="Eyes" icon="03" accent="violet">
           <div className="mb-2 flex flex-wrap gap-2">
             <Tag label={analysis.eyes.shape} />
             <Tag label={analysis.eyes.set} variant="soft" />
@@ -94,7 +92,7 @@ export function FaceAnalysisDisplay({
           <MiniGuidance workWith={analysis.eyes.workWith} avoid={analysis.eyes.avoid} />
         </Section>
 
-        <Section title="Lips" icon="â—Œ" accent="rose">
+        <Section title="Lips" icon="04" accent="rose">
           <FeatureNote
             title="What we noticed"
             body={analysis.lips.specificCharacteristics}
@@ -113,7 +111,7 @@ export function FaceAnalysisDisplay({
           />
           <div className="relative">
             <div className="mb-5 flex items-center gap-2.5">
-              <span className="text-sm text-rose-300">âŒ’</span>
+              <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-rose-300">Do</span>
               <span className="text-[11px] uppercase tracking-[0.28em] text-white/35">Keep It Simple</span>
             </div>
 
@@ -140,7 +138,7 @@ export function FaceAnalysisDisplay({
           />
           <div className="relative">
             <div className="mb-5 flex items-center gap-2.5">
-              <span className="text-sm text-rose-300">âœ•</span>
+              <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-rose-300">No</span>
               <span className="text-[11px] uppercase tracking-[0.28em] text-white/35">Skip These</span>
             </div>
 
@@ -164,7 +162,7 @@ export function FaceAnalysisDisplay({
           className="group inline-flex w-full items-center justify-center gap-3 rounded-full bg-rose-500 px-8 py-4 text-[15px] font-semibold text-white transition-all duration-200 hover:bg-rose-400 hover:shadow-[0_0_40px_rgba(244,63,94,0.25)]"
         >
           Continue With This Match
-          <span className="transition-transform group-hover:translate-x-1">→</span>
+          <span className="transition-transform group-hover:translate-x-1">-&gt;</span>
         </button>
         <button
           onClick={onAdjustTone}
