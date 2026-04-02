@@ -18,7 +18,6 @@ import type {
   GenerateTutorialRequest,
   GenerateTutorialResult,
   LookId,
-  PersonalizationProfile,
 } from "../api/generate-tutorial/route";
 import type { ProfileHistoryResult } from "../api/profile/history/route";
 
@@ -180,7 +179,6 @@ export default function MedusaApp() {
           skinTone: selectedSkinTone,
           skinUndertone: selectedSkinUndertone,
         },
-        preferenceProfile: history ? buildPersonalizationProfile(history.preferenceSummary) : null,
         selectedLook: look,
         selectedEditorialSubtype: editorialSubtype,
       };
@@ -1075,29 +1073,4 @@ function EditorialStyleSelector({
 function getStageLabel(stage: AppStage) {
   const index = STAGES.indexOf(stage);
   return index >= 0 ? `${String(index + 1).padStart(2, "0")} / ${String(STAGES.length).padStart(2, "0")}` : "MEDUSA";
-}
-
-function buildPersonalizationProfile(
-  summary: ProfileHistoryResult["preferenceSummary"]
-): PersonalizationProfile {
-  return {
-    preferredLooks: summary.preferredLooks.filter(isLookId),
-    discouragedLooks: summary.discouragedLooks.filter(isLookId),
-    recentLooks: summary.recentLooks.filter(isLookId),
-    intensityPreference: summary.intensityPreference,
-    featureFocus: summary.featureFocus,
-    positiveTags: summary.positiveTags,
-    dislikedTags: summary.dislikedTags,
-  };
-}
-
-function isLookId(value: string): value is LookId {
-  return [
-    "natural",
-    "soft-glam",
-    "evening",
-    "bold-lip",
-    "monochromatic",
-    "editorial",
-  ].includes(value);
 }

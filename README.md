@@ -19,16 +19,19 @@ npm run dev
 Runtime env:
 
 - `CLAUDE_CODE_OAUTH_TOKEN`
-- `DATABASE_URL` for production eval persistence
+- `DATABASE_URL` for eval persistence and product persistence
 
-## Evals
+## Database
 
-Production eval persistence is backed by Postgres.
+MEDUSA uses one Postgres database for both:
 
-Apply:
+- production eval persistence
+- anonymous profile persistence, run history, and feedback memory
+
+Apply all migrations:
 
 ```bash
-db/migrations/001_inference_evals.sql
+npm run db:migrate
 ```
 
 Then set:
@@ -37,6 +40,15 @@ Then set:
 DATABASE_URL=postgres://...
 ```
 
-When `DATABASE_URL` is not set, the product still runs, but eval rows are not persisted.
+When `DATABASE_URL` is not set, the product still runs, but eval rows, profiles, runs, and feedback are not persisted.
+
+Migrations included:
+
+- `db/migrations/001_inference_evals.sql`
+- `db/migrations/002_product_persistence.sql`
+
+Setup and deployment notes live in `docs/database.md`.
+
+## Evals
 
 Detailed notes live in `docs/evals.md`.

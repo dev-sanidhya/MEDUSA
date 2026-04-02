@@ -49,7 +49,6 @@ export interface TutorialStep {
 export interface GenerateTutorialRequest {
   faceAnalysis: FaceAnalysis;
   analysisRunId?: string | null;
-  preferenceProfile?: PersonalizationProfile | null;
   selectedLook: LookId;
   selectedEditorialSubtype?: EditorialSubtype;
 }

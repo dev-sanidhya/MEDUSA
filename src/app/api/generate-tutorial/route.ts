@@ -6,6 +6,7 @@ import {
 import { attachProfileCookie, resolveProfileId } from "@/lib/persistence/profile-cookie";
 import {
   ensureAnonymousProfile,
+  getPersonalizationProfile,
   persistTutorialRun,
 } from "@/lib/persistence/store";
 
@@ -31,11 +32,12 @@ export async function POST(req: NextRequest) {
 
     const { profileId, shouldSetCookie } = resolveProfileId(req);
     await ensureAnonymousProfile(profileId);
+    const preferenceProfile = await getPersonalizationProfile(profileId);
     const result = await generateTutorial(
       body.faceAnalysis,
       body.selectedLook,
       body.selectedEditorialSubtype,
-      body.preferenceProfile
+      preferenceProfile
     );
 
     const persistedRun = await persistTutorialRun({

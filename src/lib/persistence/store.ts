@@ -15,6 +15,7 @@ import type {
   EditorialSubtype,
   GenerateTutorialResult,
   LookId,
+  PersonalizationProfile,
 } from "@/lib/medusa/generate-tutorial";
 import type {
   FeedbackEventRecord,
@@ -355,6 +356,18 @@ export async function getProfileHistory(
   }
 }
 
+export async function getPersonalizationProfile(
+  profileId: string
+): Promise<PersonalizationProfile | null> {
+  const history = await getProfileHistory(profileId, { limit: 6 });
+
+  if (!history) {
+    return null;
+  }
+
+  return buildPersonalizationProfile(history.preferenceSummary);
+}
+
 export async function recordFeedbackEvent(
   record: FeedbackEventRecord
 ): Promise<RecordedFeedbackEvent | null> {
@@ -527,6 +540,20 @@ function buildPreferenceSummary(
   };
 }
 
+function buildPersonalizationProfile(
+  summary: ProfilePreferenceSummary
+): PersonalizationProfile {
+  return {
+    preferredLooks: summary.preferredLooks.filter(isLookId),
+    discouragedLooks: summary.discouragedLooks.filter(isLookId),
+    recentLooks: summary.recentLooks.filter(isLookId),
+    intensityPreference: summary.intensityPreference,
+    featureFocus: summary.featureFocus,
+    positiveTags: summary.positiveTags,
+    dislikedTags: summary.dislikedTags,
+  };
+}
+
 function getTopTags(tagCounts: Map<string, number>) {
   return [...tagCounts.entries()]
     .sort((a, b) => b[1] - a[1])
@@ -553,3 +580,14 @@ const NEGATIVE_PREFERENCE_TAGS = new Set([
 
 const SOFT_LOOKS = new Set(["natural", "soft-glam", "monochromatic"]);
 const BOLD_LOOKS = new Set(["evening", "bold-lip", "editorial"]);
+
+function isLookId(value: string): value is LookId {
+  return [
+    "natural",
+    "soft-glam",
+    "evening",
+    "bold-lip",
+    "monochromatic",
+    "editorial",
+  ].includes(value);
+}
