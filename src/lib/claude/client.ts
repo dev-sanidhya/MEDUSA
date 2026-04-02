@@ -102,14 +102,6 @@ function assertClaudeRuntime() {
   const hasOauthToken = Boolean(process.env.CLAUDE_CODE_OAUTH_TOKEN?.trim());
 
   if (!hasApiKey && !hasOauthToken) {
-    throw new Error(
-      "Missing Claude credentials. Set ANTHROPIC_API_KEY for deployments or CLAUDE_CODE_OAUTH_TOKEN for local development."
-    );
-  }
-
-  if (process.env.VERCEL && !hasApiKey) {
-    throw new Error(
-      "Missing ANTHROPIC_API_KEY in Vercel. CLAUDE_CODE_OAUTH_TOKEN may work locally but should not be the only credential in deployment."
-    );
+    throw new Error("Missing Claude credentials. Set ANTHROPIC_API_KEY or CLAUDE_CODE_OAUTH_TOKEN.");
   }
 }
