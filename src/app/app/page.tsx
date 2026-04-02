@@ -8,6 +8,7 @@ import { FeedbackPanel } from "@/components/FeedbackPanel";
 import { PhotoCapture, type CapturedPhoto } from "@/components/PhotoCapture";
 import { FaceAnalysisDisplay } from "@/components/FaceAnalysisDisplay";
 import { LookSelector } from "@/components/LookSelector";
+import { PreferenceOnboardingPanel } from "@/components/PreferenceOnboardingPanel";
 import { ProfileHistoryPanel } from "@/components/ProfileHistoryPanel";
 import { TutorialDisplay } from "@/components/TutorialDisplay";
 import { MedusaLogo } from "@/components/MedusaLogo";
@@ -20,6 +21,10 @@ import type {
   LookId,
 } from "../api/generate-tutorial/route";
 import type { ProfileHistoryResult } from "../api/profile/history/route";
+import type { ProfileExplicitPreferences } from "@/lib/persistence/types";
+import {
+  EDITORIAL_SUBTYPE_PRESENTATIONS,
+} from "@/lib/medusa/look-config";
 
 type ResolvedFaceAnalysis = NonNullable<FaceAnalysisResult["faceAnalysis"]>;
 
@@ -84,6 +89,21 @@ export default function MedusaApp() {
 
   const submitFeedback = async (payload: FeedbackRequest) => {
     const res = await fetch("/api/feedback", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+
+    if (!res.ok) {
+      const errBody = await res.json().catch(() => ({}));
+      throw new Error(errBody.error ?? `API error: ${res.status}`);
+    }
+
+    await loadProfileHistory();
+  };
+
+  const saveProfilePreferences = async (payload: ProfileExplicitPreferences) => {
+    const res = await fetch("/api/profile/preferences", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
@@ -295,6 +315,18 @@ export default function MedusaApp() {
                   <ProfileHistoryPanel history={history} />
                 </div>
               )}
+
+              {history && !history.explicitPreferences.completedOnboarding && (
+                <div className="mt-6">
+                  <PreferenceOnboardingPanel
+                    initialPreferences={history.explicitPreferences}
+                    title="Shape Your Profile"
+                    body="Tell MEDUSA what kind of looks you actually want so recommendations stop feeling generic."
+                    submitLabel="Save Profile"
+                    onSubmit={saveProfilePreferences}
+                  />
+                </div>
+              )}
             </div>
 
             <div className="glass-card noise relative overflow-hidden rounded-[2.4rem] border border-white/8 p-7">
@@ -347,7 +379,7 @@ export default function MedusaApp() {
           <div className="grid gap-6 lg:grid-cols-[0.92fr_1.08fr]">
             <div className="space-y-6">
               <HeroPanel
-                eyebrow={`Step ${String(Math.min(currentPhotoNumber, 3)).padStart(2, "0")} · Capture`}
+                eyebrow={`Step ${String(Math.min(currentPhotoNumber, 3)).padStart(2, "0")} / Capture`}
                 title="Start with a clean photo."
                 body="Natural light, a straight angle, and a clear view of your face give MEDUSA the best read."
               >
@@ -442,7 +474,7 @@ export default function MedusaApp() {
     return (
       <ProcessingScreen
         stage={stage}
-        eyebrow="Step 02 · Reading"
+        eyebrow="Step 02 / Reading"
         title="Reading your features."
         body="Processing your photos, checking the read, and finding the closest tone and undertone match."
         items={[
@@ -476,7 +508,7 @@ export default function MedusaApp() {
         <main className="mx-auto min-h-screen w-full max-w-6xl px-6 py-10">
           <div className="mb-8 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
             <HeroHeader
-              eyebrow="Step 02 · Complete"
+              eyebrow="Step 02 / Complete"
               title="Your quick read."
               body={`${
                 capturedPhotos.length
@@ -565,14 +597,14 @@ export default function MedusaApp() {
     return (
       <ProcessingScreen
         stage={stage}
-        eyebrow="Step 03 · Writing"
+        eyebrow="Step 03 / Writing"
         title="Writing your routine."
-        body="Turning your analysis into placement notes, technique, and cautions built for your proportions."
+        body="Turning your analysis into placement notes, technique, and what to avoid on your features."
         items={[
           "Reviewing your face analysis",
           "Personalizing each step",
           "Calculating placements",
-          "Writing geometry-backed warnings",
+          "Writing what to avoid",
           "Finalizing your routine",
         ]}
       />
@@ -594,32 +626,43 @@ export default function MedusaApp() {
         onChooseAnotherLook={handleChooseAnotherLook}
         onRestart={handleRestart}
         feedbackSlot={
-          tutorialRunId ? (
-            <FeedbackPanel
-              title="Rate This Routine"
-              body="Tell MEDUSA what landed and what did not. This feedback will start shaping both recommendations and tutorial tone."
-              tagOptions={[
-                { id: "accurate", label: "Accurate" },
-                { id: "my_style", label: "My Style" },
-                { id: "eye_focus", label: "Eye Focus" },
-                { id: "lip_focus", label: "Lip Focus" },
-                { id: "too_generic", label: "Too Generic" },
-                { id: "not_my_style", label: "Not My Style" },
-                { id: "too_bold", label: "Too Bold" },
-                { id: "too_soft", label: "Too Soft" },
-              ]}
-              submitLabel="Save Routine Feedback"
-              onSubmit={({ rating, tags }) =>
-                submitFeedback({
-                  eventType: "tutorial_rating",
-                  analysisRunId,
-                  tutorialRunId,
-                  rating,
-                  tags,
-                })
-              }
-            />
-          ) : null
+          <>
+            {tutorialRunId ? (
+              <FeedbackPanel
+                title="Rate This Routine"
+                body="Tell MEDUSA what landed and what did not. This feedback will start shaping both recommendations and tutorial tone."
+                tagOptions={[
+                  { id: "accurate", label: "Accurate" },
+                  { id: "my_style", label: "My Style" },
+                  { id: "eye_focus", label: "Eye Focus" },
+                  { id: "lip_focus", label: "Lip Focus" },
+                  { id: "too_generic", label: "Too Generic" },
+                  { id: "not_my_style", label: "Not My Style" },
+                  { id: "too_bold", label: "Too Bold" },
+                  { id: "too_soft", label: "Too Soft" },
+                ]}
+                submitLabel="Save Routine Feedback"
+                onSubmit={({ rating, tags }) =>
+                  submitFeedback({
+                    eventType: "tutorial_rating",
+                    analysisRunId,
+                    tutorialRunId,
+                    rating,
+                    tags,
+                  })
+                }
+              />
+            ) : null}
+            {history && !history.explicitPreferences.completedOnboarding ? (
+              <PreferenceOnboardingPanel
+                initialPreferences={history.explicitPreferences}
+                title="Lock In Your Style Profile"
+                body="Before MEDUSA writes your next routine, give it a few direct taste signals."
+                submitLabel="Save Style Profile"
+                onSubmit={saveProfilePreferences}
+              />
+            ) : null}
+          </>
         }
       />
     );
@@ -860,7 +903,7 @@ function ToneConfirmationScreen({
 
           <div className="flex flex-col gap-4 border-t border-white/8 px-8 py-6 md:flex-row md:items-center md:justify-between md:px-10">
             <p className="text-sm text-white/40">
-              Selected: <span className="text-white/72 capitalize">{selectedSkinTone}</span> ·{" "}
+              Selected: <span className="text-white/72 capitalize">{selectedSkinTone}</span> /{" "}
               <span className="text-white/72 capitalize">{selectedSkinUndertone}</span> undertone
             </p>
             <div className="flex flex-col gap-3 sm:flex-row">
@@ -868,7 +911,7 @@ function ToneConfirmationScreen({
                 onClick={onBack}
                 className="inline-flex items-center justify-center rounded-full border border-white/10 px-6 py-4 text-sm font-semibold text-white/72 transition-colors hover:border-white/18 hover:bg-white/[0.04]"
               >
-                Keep Agent Match
+                Keep This Match
               </button>
               <button
                 onClick={onConfirm}
@@ -943,43 +986,6 @@ function ToneChoiceCard<T extends string>({
   );
 }
 
-const EDITORIAL_STYLES: Array<{
-  id: EditorialSubtype;
-  label: string;
-  subtitle: string;
-  body: string;
-  accent: string;
-}> = [
-  {
-    id: "sharp",
-    label: "Sharp",
-    subtitle: "Graphic and precise",
-    body: "Clean lines, strong shape, crisp edges, and a high-fashion finish.",
-    accent: "rgba(244,63,94,0.16)",
-  },
-  {
-    id: "glossy",
-    label: "Glossy",
-    subtitle: "Wet-look shine",
-    body: "Reflective lids or skin, fresh texture, and controlled shine that catches light.",
-    accent: "rgba(96,165,250,0.16)",
-  },
-  {
-    id: "messy",
-    label: "Messy",
-    subtitle: "Lived-in and smudged",
-    body: "Deliberately blurred, grungy, and undone, but still designed with intent.",
-    accent: "rgba(168,85,247,0.16)",
-  },
-  {
-    id: "soft",
-    label: "Soft",
-    subtitle: "Diffused and airy",
-    body: "Washed color, blurred edges, and a gentler editorial look with less harsh contrast.",
-    accent: "rgba(251,191,36,0.12)",
-  },
-];
-
 function EditorialStyleSelector({
   selected,
   onSelect,
@@ -1016,7 +1022,7 @@ function EditorialStyleSelector({
         </div>
 
         <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-4">
-          {EDITORIAL_STYLES.map((style) => {
+          {EDITORIAL_SUBTYPE_PRESENTATIONS.map((style) => {
             const isSelected = selected === style.id;
 
             return (
@@ -1058,7 +1064,7 @@ function EditorialStyleSelector({
 
                   <div className="mt-8 flex items-center gap-2 text-sm font-medium text-violet-300">
                     Build this editorial tutorial
-                    <span className="transition-transform group-hover:translate-x-1">→</span>
+                    <span className="transition-transform group-hover:translate-x-1">-&gt;</span>
                   </div>
                 </div>
               </button>

@@ -20,11 +20,13 @@ import type {
 import type {
   FeedbackEventRecord,
   ProfileAnalysisHistoryItem,
+  ProfileExplicitPreferences,
   ProfileHistoryResult,
   ProfilePreferenceSummary,
   ProfileTutorialHistoryItem,
   RecordedFeedbackEvent,
 } from "@/lib/persistence/types";
+import { mergeReports } from "@/lib/precision-scorer";
 
 let hasWarnedMissingDatabaseUrl = false;
 
@@ -73,7 +75,10 @@ export async function persistAnalysisRun({
   }
 
   const boundedPhotos = photos.slice(0, 3);
-  const latestPhoto = boundedPhotos[boundedPhotos.length - 1];
+  const representativePhoto = boundedPhotos.reduce((best, candidate) =>
+    candidate.precisionReport.overallScore > best.precisionReport.overallScore ? candidate : best
+  );
+  const mergedPrecision = mergeReports(boundedPhotos.map((photo) => photo.precisionReport));
   const runId = crypto.randomUUID();
 
   try {
@@ -123,8 +128,8 @@ export async function persistAnalysisRun({
             precisionReport: photo.precisionReport,
           }))
         ),
-        JSON.stringify(latestPhoto.geometryProfile),
-        JSON.stringify(latestPhoto.precisionReport),
+        JSON.stringify(representativePhoto.geometryProfile),
+        JSON.stringify(mergedPrecision),
         JSON.stringify(result.photoRequest ?? null),
         JSON.stringify(result.faceAnalysis ?? null),
         MEDUSA_CLAUDE_MODEL,
@@ -214,6 +219,36 @@ export async function persistTutorialRun({
   return { id: runId };
 }
 
+export async function getAnalysisRunFaceAnalysis(
+  profileId: string,
+  analysisRunId: string
+): Promise<FaceAnalysis | null> {
+  const db = getPersistencePool();
+
+  if (!db) {
+    return null;
+  }
+
+  try {
+    const result = await db.query<{ face_analysis: FaceAnalysis | null }>(
+      `
+        SELECT face_analysis
+        FROM medusa_analysis_runs
+        WHERE id = $1::uuid
+          AND profile_id = $2::uuid
+          AND status = 'analysis_complete'
+        LIMIT 1
+      `,
+      [analysisRunId, profileId]
+    );
+
+    return result.rows[0]?.face_analysis ?? null;
+  } catch (error) {
+    console.error("[persistence] Failed to load analysis run face analysis", error);
+    return null;
+  }
+}
+
 export async function getProfileHistory(
   profileId: string,
   { limit = 6 }: { limit?: number } = {}
@@ -227,7 +262,17 @@ export async function getProfileHistory(
   const boundedLimit = Math.max(1, Math.min(limit, 20));
 
   try {
-    const [analysesResult, tutorialsResult, feedbackResult] = await Promise.all([
+    const [profileResult, analysesResult, tutorialsResult, feedbackResult] = await Promise.all([
+      db.query<{
+        preferences: Record<string, unknown> | null;
+      }>(
+        `
+          SELECT preferences
+          FROM medusa_profiles
+          WHERE id = $1::uuid
+        `,
+        [profileId]
+      ),
       db.query<{
         id: string;
         status: "needs_more_photos" | "analysis_complete";
@@ -344,9 +389,18 @@ export async function getProfileHistory(
       },
     }));
 
+    const explicitPreferences = normalizeExplicitPreferences(
+      profileResult.rows[0]?.preferences ?? null
+    );
+
     return {
       profileId,
-      preferenceSummary: buildPreferenceSummary(tutorials, feedbackResult.rows),
+      explicitPreferences,
+      preferenceSummary: buildPreferenceSummary(
+        tutorials,
+        feedbackResult.rows,
+        explicitPreferences
+      ),
       analyses,
       tutorials,
     };
@@ -427,6 +481,40 @@ export async function recordFeedbackEvent(
   return { id: eventId };
 }
 
+export async function updateProfilePreferences(
+  profileId: string,
+  preferences: Partial<ProfileExplicitPreferences>
+): Promise<ProfileExplicitPreferences | null> {
+  const db = getPersistencePool();
+
+  if (!db) {
+    return null;
+  }
+
+  const normalized = normalizeExplicitPreferences(preferences);
+
+  try {
+    const result = await db.query<{
+      preferences: Record<string, unknown>;
+    }>(
+      `
+        UPDATE medusa_profiles
+        SET preferences = $2::jsonb,
+            updated_at = NOW(),
+            last_seen_at = NOW()
+        WHERE id = $1::uuid
+        RETURNING preferences
+      `,
+      [profileId, JSON.stringify(normalized)]
+    );
+
+    return normalizeExplicitPreferences(result.rows[0]?.preferences ?? normalized);
+  } catch (error) {
+    console.error("[persistence] Failed to update profile preferences", error);
+    return null;
+  }
+}
+
 function getPersistencePool() {
   const db = getPostgresPool();
 
@@ -445,7 +533,8 @@ function buildPreferenceSummary(
     tags: string[];
     selected_look: string | null;
     created_at: Date;
-  }>
+  }>,
+  explicitPreferences: ProfileExplicitPreferences
 ): ProfilePreferenceSummary {
   const preferredLooks = new Map<string, number>();
   const discouragedLooks = new Map<string, number>();
@@ -493,6 +582,14 @@ function buildPreferenceSummary(
     }
   }
 
+  for (const look of explicitPreferences.preferredLooks) {
+    preferredLooks.set(look, (preferredLooks.get(look) ?? 0) + 6);
+  }
+
+  for (const look of explicitPreferences.dislikedLooks) {
+    discouragedLooks.set(look, (discouragedLooks.get(look) ?? 0) + 6);
+  }
+
   if (preferredLooks.size === 0) {
     for (const tutorial of tutorials.slice(0, 2)) {
       preferredLooks.set(tutorial.selectedLook, (preferredLooks.get(tutorial.selectedLook) ?? 0) + 1);
@@ -513,7 +610,7 @@ function buildPreferenceSummary(
   const softLookCount = orderedPreferredLooks.filter((look) => SOFT_LOOKS.has(look)).length;
   const boldLookCount = orderedPreferredLooks.filter((look) => BOLD_LOOKS.has(look)).length;
 
-  const intensityPreference =
+  const inferredIntensityPreference =
     softLookCount === 0 && boldLookCount === 0
       ? null
       : softLookCount > boldLookCount
@@ -522,7 +619,7 @@ function buildPreferenceSummary(
           ? "bold"
           : "balanced";
 
-  const featureFocus =
+  const inferredFeatureFocus =
     featureFocusCounts.eyes === featureFocusCounts.lips
       ? null
       : featureFocusCounts.eyes > featureFocusCounts.lips
@@ -533,8 +630,9 @@ function buildPreferenceSummary(
     preferredLooks: orderedPreferredLooks,
     discouragedLooks: orderedDiscouragedLooks,
     recentLooks,
-    intensityPreference,
-    featureFocus,
+    intensityPreference:
+      explicitPreferences.intensityPreference ?? inferredIntensityPreference,
+    featureFocus: explicitPreferences.featureFocus ?? inferredFeatureFocus,
     positiveTags: getTopTags(positiveTags),
     dislikedTags: getTopTags(dislikedTags),
   };
@@ -551,6 +649,25 @@ function buildPersonalizationProfile(
     featureFocus: summary.featureFocus,
     positiveTags: summary.positiveTags,
     dislikedTags: summary.dislikedTags,
+  };
+}
+
+function normalizeExplicitPreferences(
+  raw: Record<string, unknown> | Partial<ProfileExplicitPreferences> | null
+): ProfileExplicitPreferences {
+  return {
+    completedOnboarding: raw?.completedOnboarding === true,
+    skillLevel: isSkillLevel(raw?.skillLevel) ? raw.skillLevel : null,
+    intensityPreference: isIntensityPreference(raw?.intensityPreference)
+      ? raw.intensityPreference
+      : null,
+    featureFocus: isFeatureFocus(raw?.featureFocus) ? raw.featureFocus : null,
+    preferredLooks: Array.isArray(raw?.preferredLooks)
+      ? raw.preferredLooks.filter((value): value is string => typeof value === "string")
+      : [],
+    dislikedLooks: Array.isArray(raw?.dislikedLooks)
+      ? raw.dislikedLooks.filter((value): value is string => typeof value === "string")
+      : [],
   };
 }
 
@@ -590,4 +707,20 @@ function isLookId(value: string): value is LookId {
     "monochromatic",
     "editorial",
   ].includes(value);
+}
+
+function isSkillLevel(value: unknown): value is ProfileExplicitPreferences["skillLevel"] {
+  return value === "beginner" || value === "intermediate" || value === "advanced";
+}
+
+function isIntensityPreference(
+  value: unknown
+): value is ProfileExplicitPreferences["intensityPreference"] {
+  return value === "soft" || value === "balanced" || value === "bold";
+}
+
+function isFeatureFocus(
+  value: unknown
+): value is ProfileExplicitPreferences["featureFocus"] {
+  return value === "eyes" || value === "lips";
 }

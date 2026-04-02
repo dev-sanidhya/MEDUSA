@@ -24,6 +24,14 @@ export async function GET(req: NextRequest) {
     const response = NextResponse.json(
       history ?? {
         profileId,
+        explicitPreferences: {
+          completedOnboarding: false,
+          skillLevel: null,
+          intensityPreference: null,
+          featureFocus: null,
+          preferredLooks: [],
+          dislikedLooks: [],
+        },
         preferenceSummary: {
           preferredLooks: [],
           discouragedLooks: [],

@@ -50,6 +50,12 @@ export function ProfileHistoryPanel({ history }: Props) {
               {history.preferenceSummary.intensityPreference && (
                 <p>Preferred intensity: {history.preferenceSummary.intensityPreference}</p>
               )}
+              {history.explicitPreferences.skillLevel && (
+                <p>Skill level: {history.explicitPreferences.skillLevel}</p>
+              )}
+              {history.explicitPreferences.featureFocus && (
+                <p>Feature focus: {history.explicitPreferences.featureFocus}</p>
+              )}
             </div>
           )}
         </div>

@@ -13,6 +13,15 @@ export interface ProfilePreferenceSummary {
   dislikedTags: string[];
 }
 
+export interface ProfileExplicitPreferences {
+  completedOnboarding: boolean;
+  skillLevel: "beginner" | "intermediate" | "advanced" | null;
+  intensityPreference: "soft" | "balanced" | "bold" | null;
+  featureFocus: "eyes" | "lips" | null;
+  preferredLooks: string[];
+  dislikedLooks: string[];
+}
+
 export interface ProfileAnalysisHistoryItem {
   id: string;
   status: "needs_more_photos" | "analysis_complete";
@@ -46,6 +55,7 @@ export interface ProfileTutorialHistoryItem {
 
 export interface ProfileHistoryResult {
   profileId: string;
+  explicitPreferences: ProfileExplicitPreferences;
   preferenceSummary: ProfilePreferenceSummary;
   analyses: ProfileAnalysisHistoryItem[];
   tutorials: ProfileTutorialHistoryItem[];
