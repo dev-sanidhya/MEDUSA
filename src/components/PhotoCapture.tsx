@@ -144,7 +144,7 @@ export function PhotoCapture({
       {instruction && (
         <div className="mb-5 rounded-[1.4rem] border border-rose-500/20 bg-rose-500/8 px-5 py-4 text-sm text-white/72 leading-relaxed backdrop-blur-sm">
           <span className="mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.22em] text-rose-300">
-            {photoNumber === 1 ? "For your first photo:" : `Photo ${photoNumber} - what I need:`}
+            {photoNumber === 1 ? "For your first photo:" : `Photo ${photoNumber} - what to change:`}
           </span>
           {instruction}
         </div>
@@ -178,8 +178,8 @@ export function PhotoCapture({
             {isProcessing ? (
               <>
                 <div className="mb-5 h-14 w-14 rounded-full border border-rose-400/25 border-t-rose-400 animate-spin" />
-                <p className="font-medium text-white">Analyzing your face...</p>
-                <p className="mt-1 text-sm text-white/45">Running 478-point facial mapping</p>
+                <p className="font-medium text-white">Reading your photo...</p>
+                <p className="mt-1 text-sm text-white/45">Mapping your features</p>
               </>
             ) : (
               <>
@@ -190,14 +190,14 @@ export function PhotoCapture({
                   </svg>
                 </div>
                 <p className="text-lg font-semibold text-white">
-                  {photoNumber === 1 ? "Upload your selfie" : `Upload photo ${photoNumber}`}
+                  {photoNumber === 1 ? "Upload your photo" : `Upload photo ${photoNumber}`}
                 </p>
                 <p className="mt-1 text-sm text-white/45">
                   JPG, PNG, or WebP - Drop here or click to browse
                 </p>
                 <div className="mt-5 inline-flex items-center gap-2 rounded-full border border-white/10 px-3 py-1.5 text-[11px] uppercase tracking-[0.2em] text-white/35">
                   <span className="h-1.5 w-1.5 rounded-full bg-rose-400" />
-                  Geometry-first analysis
+                  Best with a clear, straight-on photo
                 </div>
               </>
             )}

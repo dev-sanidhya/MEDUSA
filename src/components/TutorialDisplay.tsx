@@ -60,12 +60,12 @@ export function TutorialDisplay({
               className="text-4xl font-semibold leading-none md:text-6xl"
               style={{ fontFamily: "var(--font-cormorant), Georgia, serif" }}
             >
-              Your tutorial.
+              Your routine.
               <br />
               <span style={{ fontStyle: "italic" }}>Step by step.</span>
             </h1>
             <p className="mt-4 text-sm leading-relaxed text-white/45 md:text-base">
-              Every move below is tuned to your face map, your proportions, and the look you selected.
+              Every step below is based on your face map, your proportions, and the look you picked.
             </p>
           </div>
 

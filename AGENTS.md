@@ -17,6 +17,7 @@ This file is a routing index. Keep it short and treat the codebase as source of 
 - The two agent-backed APIs return structured JSON. Keep schemas, prompt rules, and UI expectations aligned.
 - Do not weaken the precision gate. If face analysis quality checks change, review both the client capture flow and `/api/analyze-face`.
 - Push meaningful completed increments regularly instead of batching large local-only changes.
+- This repo is mirrored to two GitHub remotes. After a verified increment, push it to both configured repos, not just one.
 
 ## Project Routing
 
@@ -70,6 +71,7 @@ Do not mark work complete until the relevant checks pass.
   - verify the affected route in browser at minimum on desktop layout
 - After a coherent, verified unit of work is complete:
   - commit and push promptly unless the user explicitly wants changes held locally
+  - make sure the push reaches both configured GitHub repos/remotes
 
 ## Working Style
 

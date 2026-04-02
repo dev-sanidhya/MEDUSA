@@ -78,6 +78,7 @@ export interface FaceAnalysis {
 
 export interface FaceAnalysisResult {
   status: "needs_more_photos" | "analysis_complete";
+  analysisRunId?: string | null;
   photoRequest?: {
     message: string;
     specificInstruction: string;

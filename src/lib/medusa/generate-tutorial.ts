@@ -48,11 +48,13 @@ export interface TutorialStep {
 
 export interface GenerateTutorialRequest {
   faceAnalysis: FaceAnalysis;
+  analysisRunId?: string | null;
   selectedLook: LookId;
   selectedEditorialSubtype?: EditorialSubtype;
 }
 
 export interface GenerateTutorialResult {
+  tutorialRunId?: string | null;
   lookName: string;
   lookDescription: string;
   steps: TutorialStep[];
