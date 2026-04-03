@@ -751,7 +751,7 @@ function inferStyleMood(
     ["graphic", graphicScore],
     ["experimental", experimentalScore],
   ] as const;
-  const winner = candidates.sort((a, b) => b[1] - a[1])[0];
+  const winner = [...candidates].sort((a, b) => b[1] - a[1])[0];
 
   return winner[1] > 0 ? winner[0] : null;
 }
