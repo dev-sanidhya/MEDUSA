@@ -526,6 +526,12 @@ export default function MedusaApp() {
 
           <FaceAnalysisDisplay
             analysis={analysisResult}
+            facePhoto={{
+              photoUrl: capturedPhotos[capturedPhotos.length - 1].cleanPhotoUrl,
+              landmarks: capturedPhotos[capturedPhotos.length - 1].landmarks,
+              imageWidth: capturedPhotos[capturedPhotos.length - 1].imageWidth,
+              imageHeight: capturedPhotos[capturedPhotos.length - 1].imageHeight,
+            }}
             selectedSkinTone={selectedSkinTone}
             selectedSkinUndertone={selectedSkinUndertone}
             onProceed={() => setStage("look_selection")}

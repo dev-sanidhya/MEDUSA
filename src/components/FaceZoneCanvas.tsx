@@ -11,12 +11,22 @@ interface Props {
   imageWidth: number;
   imageHeight: number;
   zone: ZoneKey;
+  showMotionGuides?: boolean;
+  showBadge?: boolean;
 }
 
 const CW = 600;
 const CH = 800;
 
-export function FaceZoneCanvas({ photoUrl, landmarks, imageWidth, imageHeight, zone }: Props) {
+export function FaceZoneCanvas({
+  photoUrl,
+  landmarks,
+  imageWidth,
+  imageHeight,
+  zone,
+  showMotionGuides = true,
+  showBadge = true,
+}: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [motionGuides, setMotionGuides] = useState<MotionArrow[]>([]);
   const meta = ZONE_META[zone];
@@ -88,7 +98,7 @@ export function FaceZoneCanvas({ photoUrl, landmarks, imageWidth, imageHeight, z
       <canvas ref={canvasRef} style={{ display: "block", width: "100%", height: "100%", objectFit: "cover" }} />
 
       {/* ── Animated motion guide SVG ──────────────────────────── */}
-      {motionGuides.length > 0 && (
+      {showMotionGuides && motionGuides.length > 0 && (
         <svg
           className="absolute inset-0 w-full h-full pointer-events-none"
           viewBox="0 0 100 100"
@@ -169,13 +179,15 @@ export function FaceZoneCanvas({ photoUrl, landmarks, imageWidth, imageHeight, z
       )}
 
       {/* Zone badge */}
-      <div
-        className="absolute top-2.5 left-2.5 px-2.5 py-1 rounded-full text-xs font-semibold backdrop-blur-sm text-white"
-        style={{ background: "rgba(0,0,0,0.6)", border: `1px solid ${meta.accent}70`, fontSize: "11px" }}
-      >
-        <span style={{ color: meta.accent }}>●</span>
-        <span className="ml-1">{meta.label}</span>
-      </div>
+      {showBadge && (
+        <div
+          className="absolute top-2.5 left-2.5 px-2.5 py-1 rounded-full text-xs font-semibold backdrop-blur-sm text-white"
+          style={{ background: "rgba(0,0,0,0.6)", border: `1px solid ${meta.accent}70`, fontSize: "11px" }}
+        >
+          <span style={{ color: meta.accent }}>●</span>
+          <span className="ml-1">{meta.label}</span>
+        </div>
+      )}
     </div>
   );
 }
