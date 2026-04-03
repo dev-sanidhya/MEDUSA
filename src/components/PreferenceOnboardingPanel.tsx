@@ -10,6 +10,7 @@ interface Props {
   title?: string;
   body?: string;
   submitLabel?: string;
+  compact?: boolean;
 }
 
 export function PreferenceOnboardingPanel({
@@ -18,6 +19,7 @@ export function PreferenceOnboardingPanel({
   title = "Set Your Taste Profile",
   body = "Give MEDUSA a few direct signals so your next recommendations start closer to your actual style.",
   submitLabel = "Save Preferences",
+  compact = false,
 }: Props) {
   const [skillLevel, setSkillLevel] = useState<ProfileExplicitPreferences["skillLevel"]>(
     initialPreferences?.skillLevel ?? null
@@ -134,30 +136,34 @@ export function PreferenceOnboardingPanel({
             }
           />
 
-          <PreferenceGroup
-            label="Style Mood"
-            options={[
-              { id: "classic", label: "Classic" },
-              { id: "soft", label: "Soft" },
-              { id: "graphic", label: "Graphic" },
-              { id: "experimental", label: "Experimental" },
-            ]}
-            selected={styleMood}
-            onSelect={(value) => setStyleMood(value as ProfileExplicitPreferences["styleMood"])}
-          />
+          {!compact && (
+            <PreferenceGroup
+              label="Style Mood"
+              options={[
+                { id: "classic", label: "Classic" },
+                { id: "soft", label: "Soft" },
+                { id: "graphic", label: "Graphic" },
+                { id: "experimental", label: "Experimental" },
+              ]}
+              selected={styleMood}
+              onSelect={(value) => setStyleMood(value as ProfileExplicitPreferences["styleMood"])}
+            />
+          )}
 
-          <PreferenceGroup
-            label="Edge Preference"
-            options={[
-              { id: "diffused", label: "Diffused" },
-              { id: "balanced", label: "Balanced" },
-              { id: "sharp", label: "Sharp" },
-            ]}
-            selected={definitionPreference}
-            onSelect={(value) =>
-              setDefinitionPreference(value as ProfileExplicitPreferences["definitionPreference"])
-            }
-          />
+          {!compact && (
+            <PreferenceGroup
+              label="Edge Preference"
+              options={[
+                { id: "diffused", label: "Diffused" },
+                { id: "balanced", label: "Balanced" },
+                { id: "sharp", label: "Sharp" },
+              ]}
+              selected={definitionPreference}
+              onSelect={(value) =>
+                setDefinitionPreference(value as ProfileExplicitPreferences["definitionPreference"])
+              }
+            />
+          )}
 
           <PreferenceGroup
             label="Feature Focus"

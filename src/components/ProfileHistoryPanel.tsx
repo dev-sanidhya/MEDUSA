@@ -15,9 +15,9 @@ export function ProfileHistoryPanel({ history }: Props) {
     <div className="glass-card rounded-[2rem] border border-white/8 p-6">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <p className="text-[11px] uppercase tracking-[0.3em] text-rose-300">Saved History</p>
+          <p className="text-[11px] uppercase tracking-[0.3em] text-rose-300">Your Memory</p>
           <p className="mt-2 text-sm leading-relaxed text-white/48">
-            MEDUSA is now saving your recent reads and routines to build taste memory over time.
+            Recent reads and routines now stay attached to your profile, so the app can start keeping continuity.
           </p>
         </div>
         <div className="text-xs uppercase tracking-[0.2em] text-white/30">
@@ -27,7 +27,7 @@ export function ProfileHistoryPanel({ history }: Props) {
 
       <div className="mt-5 grid gap-4 lg:grid-cols-[0.95fr_1.05fr]">
         <div className="rounded-[1.5rem] border border-white/8 bg-white/[0.03] p-4">
-          <p className="text-[10px] uppercase tracking-[0.24em] text-white/30">Recent Looks</p>
+          <p className="text-[10px] uppercase tracking-[0.24em] text-white/30">Taste Signals</p>
           <div className="mt-3 flex flex-wrap gap-2">
             {history.preferenceSummary.recentLooks.map((look) => (
               <span

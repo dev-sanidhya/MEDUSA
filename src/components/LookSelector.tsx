@@ -10,10 +10,18 @@ type ResolvedFaceAnalysis = NonNullable<FaceAnalysisResult["faceAnalysis"]>;
 interface Props {
   onSelect: (look: LookId) => void;
   analysis?: ResolvedFaceAnalysis | null;
+  explicitPreferences?: ProfileHistoryResult["explicitPreferences"] | null;
   preferenceSummary?: ProfileHistoryResult["preferenceSummary"] | null;
+  onRefineProfile?: () => void;
 }
 
-export function LookSelector({ onSelect, analysis, preferenceSummary }: Props) {
+export function LookSelector({
+  onSelect,
+  analysis,
+  explicitPreferences,
+  preferenceSummary,
+  onRefineProfile,
+}: Props) {
   const preferredLooks = new Set(preferenceSummary?.preferredLooks ?? []);
   const discouragedLooks = new Set(preferenceSummary?.discouragedLooks ?? []);
   const recentLooks = new Set(preferenceSummary?.recentLooks ?? []);
@@ -45,10 +53,76 @@ export function LookSelector({ onSelect, analysis, preferenceSummary }: Props) {
           {topLookId && (
             <p className="mt-4 max-w-xl text-sm leading-relaxed text-rose-100/72">
               MEDUSA would start with {LOOK_DEFINITIONS[topLookId].label.toLowerCase()} for your
-              current face read and saved taste signals.
+              current face read and taste memory.
             </p>
           )}
         </div>
+
+        {(topLookId || preferenceSummary) && (
+          <div className="mb-8 grid gap-4 lg:grid-cols-[1.1fr_0.9fr]">
+            <div className="rounded-[2rem] border border-rose-400/16 bg-rose-500/[0.06] p-6">
+              <p className="text-[10px] uppercase tracking-[0.24em] text-rose-300">Recommended Direction</p>
+              <div className="mt-4 flex flex-wrap items-center gap-3">
+                {topLookId && (
+                  <span className="rounded-full border border-rose-300/26 bg-rose-500/12 px-4 py-2 text-xs uppercase tracking-[0.18em] text-rose-100">
+                    {LOOK_DEFINITIONS[topLookId].label}
+                  </span>
+                )}
+                {preferenceSummary?.intensityPreference && (
+                  <span className="rounded-full border border-white/10 bg-white/[0.04] px-4 py-2 text-xs uppercase tracking-[0.18em] text-white/62">
+                    {preferenceSummary.intensityPreference} intensity
+                  </span>
+                )}
+                {preferenceSummary?.finishPreference && (
+                  <span className="rounded-full border border-white/10 bg-white/[0.04] px-4 py-2 text-xs uppercase tracking-[0.18em] text-white/62">
+                    {preferenceSummary.finishPreference} finish
+                  </span>
+                )}
+                {preferenceSummary?.featureFocus && (
+                  <span className="rounded-full border border-white/10 bg-white/[0.04] px-4 py-2 text-xs uppercase tracking-[0.18em] text-white/62">
+                    {preferenceSummary.featureFocus} focus
+                  </span>
+                )}
+              </div>
+              <p className="mt-4 max-w-2xl text-sm leading-relaxed text-white/58">
+                {buildRecommendationRationale(topLookId, preferenceSummary, analysis)}
+              </p>
+            </div>
+
+            <div className="rounded-[2rem] border border-white/8 bg-white/[0.03] p-6">
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <p className="text-[10px] uppercase tracking-[0.24em] text-white/30">Taste Profile</p>
+                  <p className="mt-3 text-sm leading-relaxed text-white/52">
+                    {explicitPreferences?.completedOnboarding
+                      ? "Your saved defaults are already shaping what MEDUSA prioritizes."
+                      : "You can keep going, or tune your defaults before you choose a look."}
+                  </p>
+                </div>
+                {onRefineProfile && (
+                  <button
+                    type="button"
+                    onClick={onRefineProfile}
+                    className="rounded-full border border-white/10 px-4 py-2 text-[11px] uppercase tracking-[0.18em] text-white/60 transition-colors hover:border-white/18 hover:text-white/80"
+                  >
+                    {explicitPreferences?.completedOnboarding ? "Refine" : "Tune"}
+                  </button>
+                )}
+              </div>
+
+              <div className="mt-4 flex flex-wrap gap-2">
+                {buildProfileChips(preferenceSummary).map((chip) => (
+                  <span
+                    key={chip}
+                    className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-[10px] uppercase tracking-[0.18em] text-white/60"
+                  >
+                    {chip}
+                  </span>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
 
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
           {rankedLooks.map(({ look }, index) => {
@@ -216,4 +290,62 @@ function scoreLook(
   }
 
   return score;
+}
+
+function buildRecommendationRationale(
+  topLookId: LookId | null,
+  preferenceSummary?: ProfileHistoryResult["preferenceSummary"] | null,
+  analysis?: ResolvedFaceAnalysis | null
+) {
+  if (!topLookId) {
+    return "MEDUSA will keep the recommendation close to your face read until it has stronger taste memory.";
+  }
+
+  const reasons: string[] = [];
+
+  if (preferenceSummary?.preferredLooks.includes(topLookId)) {
+    reasons.push("you have already leaned toward this direction before");
+  }
+
+  if (preferenceSummary?.featureFocus === "eyes" && (topLookId === "soft-glam" || topLookId === "editorial" || topLookId === "evening")) {
+    reasons.push("your profile keeps favoring eye-led placement");
+  }
+
+  if (preferenceSummary?.featureFocus === "lips" && (topLookId === "bold-lip" || topLookId === "monochromatic")) {
+    reasons.push("your profile keeps favoring lip-led balance");
+  }
+
+  if (analysis?.beautyHighlights.some((item) => /eye/i.test(item)) && (topLookId === "soft-glam" || topLookId === "editorial")) {
+    reasons.push("your current face read gives MEDUSA strong eye architecture to work with");
+  }
+
+  if (analysis?.beautyHighlights.some((item) => /lip/i.test(item)) && topLookId === "bold-lip") {
+    reasons.push("your current face read can carry a stronger lip statement cleanly");
+  }
+
+  if (preferenceSummary?.intensityPreference) {
+    reasons.push(`your saved taste currently sits closer to ${preferenceSummary.intensityPreference} intensity`);
+  }
+
+  return reasons.length > 0
+    ? `This is leading because ${reasons.slice(0, 2).join(" and ")}.`
+    : "This is currently the cleanest match between your face read and the preference signals MEDUSA has saved.";
+}
+
+function buildProfileChips(
+  preferenceSummary?: ProfileHistoryResult["preferenceSummary"] | null
+) {
+  if (!preferenceSummary) {
+    return ["no saved signals yet"];
+  }
+
+  const chips = [
+    preferenceSummary.skillLevel ? `${preferenceSummary.skillLevel} skill` : null,
+    preferenceSummary.intensityPreference ? `${preferenceSummary.intensityPreference} intensity` : null,
+    preferenceSummary.finishPreference ? `${preferenceSummary.finishPreference} finish` : null,
+    preferenceSummary.styleMood ? `${preferenceSummary.styleMood} mood` : null,
+    preferenceSummary.featureFocus ? `${preferenceSummary.featureFocus} focus` : null,
+  ].filter((value): value is string => Boolean(value));
+
+  return chips.length > 0 ? chips : ["taste memory is still building"];
 }

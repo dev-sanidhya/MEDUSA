@@ -58,6 +58,7 @@ export default function MedusaApp() {
   const [tutorialResult, setTutorialResult] = useState<GenerateTutorialResult | null>(null);
   const [tutorialRunId, setTutorialRunId] = useState<string | null>(null);
   const [history, setHistory] = useState<ProfileHistoryResult | null>(null);
+  const [showProfileRefine, setShowProfileRefine] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const currentPhotoNumber = capturedPhotos.length + 1;
@@ -94,6 +95,7 @@ export default function MedusaApp() {
     }
 
     await loadProfileHistory();
+    setShowProfileRefine(false);
   };
 
   const saveProfilePreferences = async (payload: ProfileExplicitPreferences) => {
@@ -225,12 +227,14 @@ export default function MedusaApp() {
     setSelectedSkinUndertone(null);
     setTutorialResult(null);
     setTutorialRunId(null);
+    setShowProfileRefine(false);
     setError(null);
   };
 
   const handleChooseAnotherLook = () => {
     setTutorialResult(null);
     setTutorialRunId(null);
+    setShowProfileRefine(false);
     setError(null);
     setStage("look_selection");
   };
@@ -299,18 +303,6 @@ export default function MedusaApp() {
               {history && (
                 <div className="mt-10">
                   <ProfileHistoryPanel history={history} />
-                </div>
-              )}
-
-              {history && !history.explicitPreferences.completedOnboarding && (
-                <div className="mt-6">
-                  <PreferenceOnboardingPanel
-                    initialPreferences={history.explicitPreferences}
-                    title="Shape Your Profile"
-                    body="Tell MEDUSA what kind of looks you actually want so recommendations stop feeling generic."
-                    submitLabel="Save Profile"
-                    onSubmit={saveProfilePreferences}
-                  />
                 </div>
               )}
             </div>
@@ -534,8 +526,8 @@ export default function MedusaApp() {
                   { id: "face_fit", label: "Face Fit" },
                   { id: "tone_right", label: "Tone Right" },
                   { id: "tone_off", label: "Tone Off" },
-                  { id: "too_generic", label: "Too Generic" },
                   { id: "missed_feature", label: "Missed Feature" },
+                  { id: "too_generic", label: "Too Generic" },
                 ]}
                 submitLabel="Save Analysis Feedback"
                 onSubmit={({ rating, tags }) =>
@@ -557,10 +549,28 @@ export default function MedusaApp() {
   if (stage === "look_selection") {
     return (
       <>
+        {showProfileRefine && history && (
+          <div className="mx-auto max-w-6xl px-6 pt-10">
+            <PreferenceOnboardingPanel
+              initialPreferences={history.explicitPreferences}
+              title={
+                history.explicitPreferences.completedOnboarding
+                  ? "Refine Your Taste Profile"
+                  : "Set Your Taste Profile"
+              }
+              body="Tune MEDUSA before you choose a direction. This changes recommendation bias, not your face-fit rules."
+              submitLabel="Save Profile"
+              compact
+              onSubmit={saveProfilePreferences}
+            />
+          </div>
+        )}
         <LookSelector
           onSelect={handleLookSelected}
           analysis={analysisResult}
+          explicitPreferences={history?.explicitPreferences ?? null}
           preferenceSummary={history?.preferenceSummary ?? null}
+          onRefineProfile={() => setShowProfileRefine((value) => !value)}
         />
         {error && (
           <div className="fixed bottom-6 left-1/2 -translate-x-1/2">
@@ -615,18 +625,12 @@ export default function MedusaApp() {
                   { id: "fresh_glow", label: "Fresh Glow" },
                   { id: "soft_blend", label: "Soft Blend" },
                   { id: "sharp_definition", label: "Sharp Definition" },
-                  { id: "graphic_lines", label: "Graphic" },
                   { id: "eye_focus", label: "Eye Focus" },
                   { id: "lip_focus", label: "Lip Focus" },
-                  { id: "too_generic", label: "Too Generic" },
                   { id: "not_my_style", label: "Not My Style" },
                   { id: "too_bold", label: "Too Bold" },
                   { id: "too_soft", label: "Too Soft" },
-                  { id: "too_glossy", label: "Too Glossy" },
-                  { id: "too_matte", label: "Too Matte" },
-                  { id: "too_sharp", label: "Too Sharp" },
-                  { id: "too_plain", label: "Too Plain" },
-                  { id: "too_experimental", label: "Too Experimental" },
+                  { id: "too_generic", label: "Too Generic" },
                 ]}
                 submitLabel="Save Routine Feedback"
                 onSubmit={({ rating, tags }) =>
@@ -643,9 +647,10 @@ export default function MedusaApp() {
             {history && !history.explicitPreferences.completedOnboarding ? (
               <PreferenceOnboardingPanel
                 initialPreferences={history.explicitPreferences}
-                title="Lock In Your Style Profile"
-                body="Before MEDUSA writes your next routine, give it a few direct taste signals."
-                submitLabel="Save Style Profile"
+                title="Tune What MEDUSA Shows You Next"
+                body="Save a few defaults now and the next recommendation pass will stop feeling generic."
+                submitLabel="Save Taste Profile"
+                compact
                 onSubmit={saveProfilePreferences}
               />
             ) : null}
