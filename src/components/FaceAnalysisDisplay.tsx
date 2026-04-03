@@ -32,6 +32,33 @@ export function FaceAnalysisDisplay({
   onProceed,
   onAdjustTone,
 }: Props) {
+  const confidenceItems = [
+    {
+      key: "faceShape",
+      label: "Face shape",
+      tier: analysis.readConfidence.features.faceShape.tier,
+      bestPhotoIndex: analysis.readConfidence.features.faceShape.bestPhotoIndex,
+    },
+    {
+      key: "eyes",
+      label: "Eyes",
+      tier: analysis.readConfidence.features.eyes.tier,
+      bestPhotoIndex: analysis.readConfidence.features.eyes.bestPhotoIndex,
+    },
+    {
+      key: "lips",
+      label: "Lips",
+      tier: analysis.readConfidence.features.lips.tier,
+      bestPhotoIndex: analysis.readConfidence.features.lips.bestPhotoIndex,
+    },
+    {
+      key: "skinTone",
+      label: "Tone match",
+      tier: analysis.readConfidence.features.skinTone.tier,
+      bestPhotoIndex: analysis.readConfidence.features.skinTone.bestPhotoIndex,
+    },
+  ] as const;
+
   const spotlights = [
     {
       id: "shape",
@@ -96,6 +123,11 @@ export function FaceAnalysisDisplay({
 
           <p className="text-lg leading-relaxed text-white/82">{analysis.personalReading}</p>
 
+          <div className="mt-4 rounded-[1.5rem] border border-white/8 bg-white/[0.03] px-4 py-4">
+            <p className="text-[10px] uppercase tracking-[0.22em] text-white/30">Why we trust this read</p>
+            <p className="mt-2 text-sm leading-relaxed text-white/60">{analysis.readConfidence.summary}</p>
+          </div>
+
           {analysis.precisionLevel === "medium" && (
             <p className="mt-4 rounded-2xl border border-white/8 bg-white/4 px-4 py-3 text-sm leading-relaxed text-white/52">
               {analysis.precisionNote}
@@ -104,16 +136,40 @@ export function FaceAnalysisDisplay({
         </div>
 
         <div className="glass-card rounded-[2.25rem] border border-white/8 p-7 md:p-8">
-          <p className="text-[11px] uppercase tracking-[0.3em] text-white/35">Best Features To Play Up</p>
-          <div className="mt-5 flex flex-wrap gap-3">
-            {analysis.beautyHighlights.map((highlight) => (
-              <span
-                key={highlight}
-                className="rounded-full border border-white/10 bg-white/[0.03] px-4 py-2.5 text-sm text-white/72"
+          <p className="text-[11px] uppercase tracking-[0.3em] text-white/35">Read Confidence</p>
+          <p className="mt-2 text-sm leading-relaxed text-white/48">
+            MEDUSA is reading these areas with different levels of certainty across your photos.
+          </p>
+
+          <div className="mt-5 grid gap-3">
+            {confidenceItems.map((item) => (
+              <div
+                key={item.key}
+                className="flex items-center justify-between gap-4 rounded-[1.35rem] border border-white/8 bg-white/[0.03] px-4 py-4"
               >
-                {highlight}
-              </span>
+                <div>
+                  <p className="text-sm font-medium text-white/82">{item.label}</p>
+                  <p className="mt-1 text-xs uppercase tracking-[0.16em] text-white/28">
+                    Best seen in photo {item.bestPhotoIndex}
+                  </p>
+                </div>
+                <ConfidenceBadge tier={item.tier} />
+              </div>
             ))}
+          </div>
+
+          <div className="mt-5 border-t border-white/8 pt-5">
+            <p className="text-[11px] uppercase tracking-[0.3em] text-white/35">Best Features To Play Up</p>
+            <div className="mt-4 flex flex-wrap gap-3">
+              {analysis.beautyHighlights.map((highlight) => (
+                <span
+                  key={highlight}
+                  className="rounded-full border border-white/10 bg-white/[0.03] px-4 py-2.5 text-sm text-white/72"
+                >
+                  {highlight}
+                </span>
+              ))}
+            </div>
           </div>
         </div>
       </div>
@@ -384,6 +440,32 @@ function FeatureNote({ title, body }: { title: string; body: string }) {
       <p className="text-[10px] uppercase tracking-[0.22em] text-white/30">{title}</p>
       <p className="mt-2 text-sm leading-relaxed text-white/62">{body}</p>
     </div>
+  );
+}
+
+function ConfidenceBadge({ tier }: { tier: ResolvedFaceAnalysis["readConfidence"]["overall"] }) {
+  const tone =
+    tier === "strong"
+      ? {
+          label: "Very Clear",
+          className: "border-emerald-500/20 bg-emerald-500/[0.08] text-emerald-200",
+        }
+      : tier === "usable"
+        ? {
+            label: "Good Read",
+            className: "border-amber-400/18 bg-amber-400/[0.08] text-amber-100",
+          }
+        : {
+            label: "Softer Read",
+            className: "border-white/10 bg-white/[0.04] text-white/62",
+          };
+
+  return (
+    <span
+      className={`inline-flex rounded-full border px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.14em] ${tone.className}`}
+    >
+      {tone.label}
+    </span>
   );
 }
 
