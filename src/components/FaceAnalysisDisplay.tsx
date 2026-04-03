@@ -194,7 +194,7 @@ export function FaceAnalysisDisplay({
           </div>
 
           <div className="glass-card rounded-[2.25rem] border border-white/8 p-6 md:p-7">
-            <p className="text-[11px] uppercase tracking-[0.3em] text-white/35">Colors That Should Flatter You</p>
+            <p className="text-[11px] uppercase tracking-[0.3em] text-white/35">Best Makeup Shades For You</p>
             <p className="mt-2 text-sm leading-relaxed text-white/48">
               Based on your current tone match, these families should feel the easiest and most natural to wear.
             </p>
