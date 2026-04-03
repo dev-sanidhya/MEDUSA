@@ -45,6 +45,7 @@ export function PhotoCapture({
   disabled,
 }: PhotoCaptureProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const cameraInputRef = useRef<HTMLInputElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -156,7 +157,6 @@ export function PhotoCapture({
             ${isDragging ? "border-rose-400 bg-[rgba(244,63,94,0.08)]" : "border-white/12 bg-[rgba(13,13,20,0.72)] hover:border-rose-400/45 hover:bg-[rgba(244,63,94,0.04)]"}
             ${disabled ? "opacity-50 pointer-events-none" : ""}
           `}
-          onClick={() => fileInputRef.current?.click()}
           onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
           onDragLeave={() => setIsDragging(false)}
           onDrop={handleDrop}
@@ -169,6 +169,15 @@ export function PhotoCapture({
             ref={fileInputRef}
             type="file"
             accept="image/jpeg,image/png,image/webp"
+            className="hidden"
+            onChange={handleFileChange}
+            disabled={disabled}
+          />
+          <input
+            ref={cameraInputRef}
+            type="file"
+            accept="image/jpeg,image/png,image/webp"
+            capture="user"
             className="hidden"
             onChange={handleFileChange}
             disabled={disabled}
@@ -193,8 +202,30 @@ export function PhotoCapture({
                   {photoNumber === 1 ? "Upload your photo" : `Upload photo ${photoNumber}`}
                 </p>
                 <p className="mt-1 text-sm text-white/45">
-                  JPG, PNG, or WebP - Drop here or click to browse
+                  Take a live selfie or upload one you already have
                 </p>
+                <div className="mt-6 flex w-full max-w-md flex-col gap-3 sm:flex-row sm:justify-center">
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      cameraInputRef.current?.click();
+                    }}
+                    className="inline-flex items-center justify-center rounded-full bg-rose-500 px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-rose-400"
+                  >
+                    Take Live Photo
+                  </button>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      fileInputRef.current?.click();
+                    }}
+                    className="inline-flex items-center justify-center rounded-full border border-white/10 px-5 py-3 text-sm font-semibold text-white/75 transition-colors hover:border-white/18 hover:bg-white/[0.04]"
+                  >
+                    Upload From Device
+                  </button>
+                </div>
                 <div className="mt-5 inline-flex items-center gap-2 rounded-full border border-white/10 px-3 py-1.5 text-[11px] uppercase tracking-[0.2em] text-white/35">
                   <span className="h-1.5 w-1.5 rounded-full bg-rose-400" />
                   Best with a clear, straight-on photo

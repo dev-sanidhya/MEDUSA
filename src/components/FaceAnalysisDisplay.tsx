@@ -37,25 +37,21 @@ export function FaceAnalysisDisplay({
       key: "faceShape",
       label: "Face shape",
       tier: analysis.readConfidence.features.faceShape.tier,
-      bestPhotoIndex: analysis.readConfidence.features.faceShape.bestPhotoIndex,
     },
     {
       key: "eyes",
       label: "Eyes",
       tier: analysis.readConfidence.features.eyes.tier,
-      bestPhotoIndex: analysis.readConfidence.features.eyes.bestPhotoIndex,
     },
     {
       key: "lips",
       label: "Lips",
       tier: analysis.readConfidence.features.lips.tier,
-      bestPhotoIndex: analysis.readConfidence.features.lips.bestPhotoIndex,
     },
     {
       key: "skinTone",
       label: "Tone match",
       tier: analysis.readConfidence.features.skinTone.tier,
-      bestPhotoIndex: analysis.readConfidence.features.skinTone.bestPhotoIndex,
     },
   ] as const;
 
@@ -147,12 +143,7 @@ export function FaceAnalysisDisplay({
                 key={item.key}
                 className="flex items-center justify-between gap-4 rounded-[1.35rem] border border-white/8 bg-white/[0.03] px-4 py-4"
               >
-                <div>
-                  <p className="text-sm font-medium text-white/82">{item.label}</p>
-                  <p className="mt-1 text-xs uppercase tracking-[0.16em] text-white/28">
-                    Best seen in photo {item.bestPhotoIndex}
-                  </p>
-                </div>
+                <p className="text-sm font-medium text-white/82">{item.label}</p>
                 <ConfidenceBadge tier={item.tier} />
               </div>
             ))}
