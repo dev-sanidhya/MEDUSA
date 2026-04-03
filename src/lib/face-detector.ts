@@ -26,6 +26,16 @@ export interface FaceDetectionResult {
   blendShapes: Record<string, number>; // 52 blend shape scores (expression data)
   facialTransformationMatrix: number[] | null; // 4x4 pose matrix — gives us yaw/pitch/roll
   faceCount: number;
+  selectedFaceIndex: number;
+  faceBox: {
+    minX: number;
+    maxX: number;
+    minY: number;
+    maxY: number;
+    area: number;
+    centerX: number;
+    centerY: number;
+  };
   imageWidth: number;
   imageHeight: number;
 }
@@ -93,6 +103,9 @@ async function getLandmarker(): Promise<FaceLandmarker> {
         outputFacialTransformationMatrixes: true,
         runningMode: "IMAGE",
         numFaces: 2,
+        minFaceDetectionConfidence: 0.6,
+        minFacePresenceConfidence: 0.6,
+        minTrackingConfidence: 0.5,
       });
     });
   } finally {
@@ -118,12 +131,14 @@ export async function detectFaceLandmarks(
     return null; // No face detected
   }
 
-  const rawLandmarks = result.faceLandmarks[0] as RawLandmark[];
+  const selectedFaceIndex = selectPrimaryFaceIndex(result.faceLandmarks);
+  const rawLandmarks = result.faceLandmarks[selectedFaceIndex] as RawLandmark[];
+  const faceBox = getFaceBox(rawLandmarks);
 
   // Extract blend shapes into a flat map
   const blendShapes: Record<string, number> = {};
-  if (result.faceBlendshapes && result.faceBlendshapes.length > 0) {
-    for (const cat of result.faceBlendshapes[0].categories) {
+  if (result.faceBlendshapes && result.faceBlendshapes.length > selectedFaceIndex) {
+    for (const cat of result.faceBlendshapes[selectedFaceIndex].categories) {
       blendShapes[cat.categoryName] = cat.score;
     }
   }
@@ -131,8 +146,8 @@ export async function detectFaceLandmarks(
   // Facial transformation matrix (4x4 flat array)
   const matrix =
     result.facialTransformationMatrixes &&
-    result.facialTransformationMatrixes.length > 0
-      ? Array.from(result.facialTransformationMatrixes[0].data)
+    result.facialTransformationMatrixes.length > selectedFaceIndex
+      ? Array.from(result.facialTransformationMatrixes[selectedFaceIndex].data)
       : null;
 
   const isDomImage =
@@ -147,8 +162,52 @@ export async function detectFaceLandmarks(
     blendShapes,
     facialTransformationMatrix: matrix,
     faceCount: result.faceLandmarks.length,
+    selectedFaceIndex,
+    faceBox,
     imageWidth: width,
     imageHeight: height,
+  };
+}
+
+function selectPrimaryFaceIndex(faces: NormalizedLandmark[][]): number {
+  if (faces.length === 1) {
+    return 0;
+  }
+
+  let bestIndex = 0;
+  let bestScore = -Infinity;
+
+  for (let index = 0; index < faces.length; index += 1) {
+    const box = getFaceBox(faces[index] as RawLandmark[]);
+    const centerednessPenalty =
+      Math.abs(box.centerX - 0.5) * 0.35 + Math.abs(box.centerY - 0.5) * 0.25;
+    const score = box.area - centerednessPenalty;
+
+    if (score > bestScore) {
+      bestScore = score;
+      bestIndex = index;
+    }
+  }
+
+  return bestIndex;
+}
+
+function getFaceBox(landmarks: RawLandmark[]) {
+  const xs = landmarks.map((point) => point.x);
+  const ys = landmarks.map((point) => point.y);
+  const minX = Math.min(...xs);
+  const maxX = Math.max(...xs);
+  const minY = Math.min(...ys);
+  const maxY = Math.max(...ys);
+
+  return {
+    minX,
+    maxX,
+    minY,
+    maxY,
+    area: (maxX - minX) * (maxY - minY),
+    centerX: (minX + maxX) / 2,
+    centerY: (minY + maxY) / 2,
   };
 }
 
