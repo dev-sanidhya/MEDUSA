@@ -31,7 +31,7 @@ export interface ZonePrecision {
 
 export interface PrecisionReport {
   overallScore: number;          // 0–100
-  canProceed: boolean;           // true if overallScore >= 78
+  canProceed: boolean;           // true if we have enough signal for a useful read
   headPose: {
     yaw: number;
     pitch: number;
@@ -277,20 +277,24 @@ export function scorePrecision(detection: FaceDetectionResult): PrecisionReport 
   if (isTooSmall) overallScore = Math.max(0, overallScore - 20);
   if (isTooClose) overallScore = Math.max(0, overallScore - 10);
 
-  const blockingIssues: PrecisionIssue[] = [
-    "face_angle_yaw",
-    "face_angle_pitch",
-    "face_angle_roll",
-    "face_too_small",
-    "multiple_faces",
-  ];
-  const canProceed = overallScore >= 78 && !issues.some((issue) => blockingIssues.includes(issue));
+  const canProceed = hasEnoughSignalToProceed({
+    overallScore,
+    issues,
+    yawOff,
+    pitchOff,
+    rollOff,
+    isTooSmall,
+    faceCount,
+    eyeScore: eyeZone.score,
+    lipScore: lipZone.score,
+    jawScore: jawZone.score,
+  });
 
   // ── Photo request ──────────────────────────────────────────────────────────
   let photoRequest: PhotoRequest | null = null;
 
   if (!canProceed) {
-    photoRequest = buildPhotoRequest(issues, yaw, pitch);
+    photoRequest = buildPhotoRequest(issues);
   }
 
   // Deduplicate issues
@@ -317,88 +321,81 @@ export function scorePrecision(detection: FaceDetectionResult): PrecisionReport 
 // ─── Photo request builder ────────────────────────────────────────────────────
 
 function buildPhotoRequest(
-  issues: PrecisionIssue[],
-  yaw: number,
-  pitch: number
+  issues: PrecisionIssue[]
 ): PhotoRequest {
-  // Priority ordering: pose issues first, then occlusion, then framing
-
   if (issues.includes("face_too_small")) {
     return {
-      reason: "Your face is too far from the camera — I can see you, but I can't measure your features with enough precision.",
-      instruction: "Could you take another photo a bit closer? Ideally your face should fill about half the frame. Make sure your full face — forehead to chin — is visible.",
+      reason: "This is a nice photo, but I need your face a little closer so I can read your features properly.",
+      instruction: "Could you take one more a bit closer, with your full face visible from forehead to chin?",
+      priority: "required",
+      angleHint: "slightly closer, full face visible",
+    };
+  }
+
+  if (issues.includes("face_angle_yaw")) {
+    return {
+      reason: "You look great here, but I need one straighter angle so I do not overread your face shape.",
+      instruction: "Could you take one more facing the camera directly, like you are looking into a mirror?",
       priority: "required",
       angleHint: "face directly forward",
     };
   }
 
-  if (issues.includes("face_angle_yaw")) {
-    const direction = yaw > 0 ? "slightly to the right" : "slightly to the left";
-    return {
-      reason: `Your face is turned ${direction} in this photo. I need a straight-on view to measure your face structure precisely — even a small angle affects the accuracy of cheekbone width, eye spacing, and jaw measurements.`,
-      instruction: "Could you take another photo facing directly forward? Imagine looking straight into a mirror. Your nose should point straight at the camera.",
-      priority: "required",
-      angleHint: "face directly forward, nose pointing at the camera",
-    };
-  }
-
   if (issues.includes("face_angle_pitch")) {
-    const direction = pitch > 0 ? "tilted upward" : "tilted downward";
     return {
-      reason: `Your chin is ${direction} in this photo. This changes how your face proportions appear and affects my measurement of the face thirds (forehead:midface:chin ratio).`,
-      instruction: "Try holding your phone at eye level and looking straight into the camera — chin parallel to the floor, not tucked or raised.",
+      reason: "This photo still works, but I would trust the read more with your face held a little more level.",
+      instruction: "Try one more at eye level with your chin relaxed and your face looking straight ahead.",
       priority: "required",
-      angleHint: "chin level, eyes looking straight at camera",
+      angleHint: "chin level, eyes to camera",
     };
   }
 
   if (issues.includes("face_angle_roll")) {
     return {
-      reason: "Your head is tilted to one side in this photo. This makes it hard to accurately compare your left and right features — symmetry analysis is key to personalized makeup placement.",
-      instruction: "Could you straighten your head so it's not tilted left or right? Imagine a vertical line running from the top of your head through your chin.",
+      reason: "This is a lovely shot, but I need your head a little straighter to compare both sides evenly.",
+      instruction: "Could you take one more with your head upright, without leaning left or right?",
       priority: "required",
-      angleHint: "head straight, no tilt",
+      angleHint: "head upright",
     };
   }
 
   if (issues.includes("multiple_faces")) {
     return {
-      reason: "I can see more than one face in frame, so I can't be sure which features to measure.",
-      instruction: "Take another photo with only your face in frame and keep the background clear of other people or portraits.",
+      reason: "I can see more than one face here, so I cannot tell which one I should follow.",
+      instruction: "Could you send one more with only your face in frame?",
       priority: "required",
     };
   }
 
   if (issues.includes("eyes_partially_occluded")) {
     return {
-      reason: "I'm having trouble reading your eyes clearly — they may be partially covered by hair, glasses, or strong lighting shadows.",
-      instruction: "If you're wearing glasses, could you remove them for this photo? Also make sure your hair isn't falling across your eyes. Natural, even lighting works best.",
+      reason: "Your photo is good, but I cannot see your eyes clearly enough yet for a confident read.",
+      instruction: "Could you send one more with your eyes fully clear, with hair or anything else away from them?",
       priority: "required",
     };
   }
 
   if (issues.includes("lips_partially_occluded")) {
     return {
-      reason: "Your lips are partially obscured in this photo — possibly by a shadow, a scarf, or the angle.",
-      instruction: "Could you make sure your full lips are visible and unobstructed? A relaxed, neutral expression (mouth closed, lips together) works best.",
+      reason: "I can work with a lot here, but your lips are not fully clear enough for me yet.",
+      instruction: "Could you send one more with your lips fully visible and your expression relaxed?",
       priority: "required",
     };
   }
 
   if (issues.includes("jaw_occluded")) {
     return {
-      reason: "I can't get a clear read on your jaw and chin — this is essential for face shape classification and contouring guidance.",
-      instruction: "Make sure your jawline and chin are fully visible. Pull your hair back if it's covering the sides of your face, and make sure nothing is covering your chin.",
+      reason: "This photo gives me a start, but I need a clearer view of your jaw and chin for the shape read.",
+      instruction: "Please send one more with your jawline clear, hair pulled back, and nothing covering your chin.",
       priority: "required",
     };
   }
 
-  // Fallback for low overall confidence
   return {
-    reason: "The photo quality isn't quite giving me enough detail to do a precise analysis — I want to make sure every recommendation I give you is specific to your face, not approximate.",
-    instruction: "Could you take another photo in good natural light, facing directly forward, with your full face visible from forehead to chin? Avoid flash if possible — it flattens the face.",
+    reason: "This is a strong start. I can already work with it, but one more clear photo would make the read tighter.",
+    instruction: "If you want the most accurate result, send one more straight-on photo in soft, even light.",
     priority: "recommended",
-    angleHint: "face directly forward, good natural light",
+    angleHint: "straight-on, soft light",
   };
 }
 
@@ -425,14 +422,18 @@ export function mergeReports(reports: PrecisionReport[]): PrecisionReport {
   const mergedOverall = Math.round(
     Object.values(mergedZones).reduce((s, z) => s + z.score, 0) / 6
   );
-  const blockingIssues: PrecisionIssue[] = [
-    "face_angle_yaw",
-    "face_angle_pitch",
-    "face_angle_roll",
-    "face_too_small",
-    "multiple_faces",
-  ];
-  const mergedCanProceed = mergedOverall >= 78 && !mergedIssues.some((issue) => blockingIssues.includes(issue));
+  const mergedCanProceed = hasEnoughSignalToProceed({
+    overallScore: mergedOverall,
+    issues: mergedIssues,
+    yawOff: Math.abs(best.headPose.yaw),
+    pitchOff: Math.abs(best.headPose.pitch),
+    rollOff: Math.abs(best.headPose.roll),
+    isTooSmall: best.faceFraming.isTooSmall,
+    faceCount: reports.some((report) => report.issues.includes("multiple_faces")) ? 2 : 1,
+    eyeScore: mergedZones.eyes.score,
+    lipScore: mergedZones.lips.score,
+    jawScore: mergedZones.jaw.score,
+  });
 
   return {
     ...best,
@@ -440,6 +441,44 @@ export function mergeReports(reports: PrecisionReport[]): PrecisionReport {
     canProceed: mergedCanProceed,
     zones: mergedZones,
     issues: mergedCanProceed ? [] : mergedIssues,
-    photoRequest: mergedCanProceed ? null : buildPhotoRequest(mergedIssues, best.headPose.yaw, best.headPose.pitch),
+    photoRequest: mergedCanProceed ? null : buildPhotoRequest(mergedIssues),
   };
+}
+
+function hasEnoughSignalToProceed({
+  overallScore,
+  issues,
+  yawOff,
+  pitchOff,
+  rollOff,
+  isTooSmall,
+  faceCount,
+  eyeScore,
+  lipScore,
+  jawScore,
+}: {
+  overallScore: number;
+  issues: PrecisionIssue[];
+  yawOff: number;
+  pitchOff: number;
+  rollOff: number;
+  isTooSmall: boolean;
+  faceCount: number;
+  eyeScore: number;
+  lipScore: number;
+  jawScore: number;
+}) {
+  const hardPoseFailure = yawOff > 26 || pitchOff > 24 || rollOff > 18;
+  const weakCoreZones = [eyeScore, lipScore, jawScore].filter((score) => score < 55).length;
+  const hasMultipleFaces = faceCount > 1 || issues.includes("multiple_faces");
+
+  if (hasMultipleFaces || isTooSmall || hardPoseFailure) {
+    return false;
+  }
+
+  if (overallScore >= 72) {
+    return true;
+  }
+
+  return overallScore >= 68 && weakCoreZones < 2;
 }
