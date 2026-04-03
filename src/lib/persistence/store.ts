@@ -23,10 +23,12 @@ import type {
   ProfileExplicitPreferences,
   ProfileHistoryResult,
   ProfilePreferenceSummary,
+  RecommendedLookSummary,
   ProfileTutorialHistoryItem,
   RecordedFeedbackEvent,
 } from "@/lib/persistence/types";
 import { mergeReports } from "@/lib/precision-scorer";
+import { LOOK_DEFINITIONS, LOOK_IDS } from "@/lib/medusa/look-config";
 
 let hasWarnedMissingDatabaseUrl = false;
 
@@ -251,7 +253,10 @@ export async function getAnalysisRunFaceAnalysis(
 
 export async function getProfileHistory(
   profileId: string,
-  { limit = 6 }: { limit?: number } = {}
+  {
+    limit = 6,
+    analysisRunId,
+  }: { limit?: number; analysisRunId?: string | null } = {}
 ): Promise<ProfileHistoryResult | null> {
   const db = getPersistencePool();
 
@@ -392,15 +397,19 @@ export async function getProfileHistory(
     const explicitPreferences = normalizeExplicitPreferences(
       profileResult.rows[0]?.preferences ?? null
     );
+    const activeAnalysis =
+      analysisRunId ? await getAnalysisRunFaceAnalysis(profileId, analysisRunId) : null;
+    const preferenceSummary = buildPreferenceSummary(
+      tutorials,
+      feedbackResult.rows,
+      explicitPreferences
+    );
 
     return {
       profileId,
       explicitPreferences,
-      preferenceSummary: buildPreferenceSummary(
-        tutorials,
-        feedbackResult.rows,
-        explicitPreferences
-      ),
+      preferenceSummary,
+      recommendedLooks: buildRecommendedLooks(preferenceSummary, activeAnalysis),
       analyses,
       tutorials,
     };
@@ -671,6 +680,21 @@ function buildPersonalizationProfile(
   };
 }
 
+function buildRecommendedLooks(
+  preferenceSummary: ProfilePreferenceSummary,
+  analysis: FaceAnalysis | null
+): RecommendedLookSummary[] {
+  return LOOK_IDS.map((lookId) => ({
+    lookId,
+    label: LOOK_DEFINITIONS[lookId].label,
+    score: scoreLookRecommendation(lookId, preferenceSummary, analysis),
+    rationale: buildLookRecommendationRationale(lookId, preferenceSummary, analysis),
+    badges: buildLookRecommendationBadges(lookId, preferenceSummary),
+  }))
+    .sort((a, b) => b.score - a.score)
+    .slice(0, 3);
+}
+
 function normalizeExplicitPreferences(
   raw: Record<string, unknown> | Partial<ProfileExplicitPreferences> | null
 ): ProfileExplicitPreferences {
@@ -702,6 +726,142 @@ function getTopTags(tagCounts: Map<string, number>) {
     .sort((a, b) => b[1] - a[1])
     .map(([tag]) => tag)
     .slice(0, 4);
+}
+
+function scoreLookRecommendation(
+  lookId: LookId,
+  preferenceSummary: ProfilePreferenceSummary,
+  analysis: FaceAnalysis | null
+) {
+  let score = 0;
+
+  if (preferenceSummary.preferredLooks.includes(lookId)) score += 5;
+  if (preferenceSummary.discouragedLooks.includes(lookId)) score -= 4;
+  if (preferenceSummary.recentLooks.includes(lookId)) score += 1;
+
+  if (preferenceSummary.intensityPreference && LOOK_DEFINITIONS[lookId].engine.defaultIntensity === preferenceSummary.intensityPreference) {
+    score += 2;
+  }
+
+  switch (preferenceSummary.styleMood) {
+    case "classic":
+    case "soft":
+      if (lookId === "natural" || lookId === "soft-glam" || lookId === "monochromatic") score += 2;
+      break;
+    case "graphic":
+      if (lookId === "editorial" || lookId === "evening") score += 2;
+      break;
+    case "experimental":
+      if (lookId === "editorial" || lookId === "monochromatic") score += 2;
+      break;
+  }
+
+  switch (preferenceSummary.finishPreference) {
+    case "glowy":
+      if (lookId === "natural" || lookId === "soft-glam" || lookId === "monochromatic") score += 2;
+      break;
+    case "matte":
+      if (lookId === "evening" || lookId === "bold-lip" || lookId === "editorial") score += 2;
+      break;
+  }
+
+  switch (preferenceSummary.definitionPreference) {
+    case "sharp":
+      if (lookId === "editorial" || lookId === "evening") score += 2;
+      break;
+    case "diffused":
+      if (lookId === "natural" || lookId === "soft-glam" || lookId === "monochromatic") score += 2;
+      break;
+  }
+
+  if (
+    preferenceSummary.featureFocus === "eyes" &&
+    (lookId === "soft-glam" || lookId === "editorial" || lookId === "evening")
+  ) {
+    score += 1;
+  }
+
+  if (
+    preferenceSummary.featureFocus === "lips" &&
+    (lookId === "bold-lip" || lookId === "monochromatic")
+  ) {
+    score += 1;
+  }
+
+  if (analysis?.skinUndertone === "warm" && (lookId === "soft-glam" || lookId === "monochromatic")) {
+    score += 1;
+  }
+
+  if (analysis?.beautyHighlights.some((item) => /lip/i.test(item)) && lookId === "bold-lip") {
+    score += 1;
+  }
+
+  if (
+    analysis?.beautyHighlights.some((item) => /eye/i.test(item)) &&
+    (lookId === "soft-glam" || lookId === "editorial")
+  ) {
+    score += 1;
+  }
+
+  return score;
+}
+
+function buildLookRecommendationRationale(
+  lookId: LookId,
+  preferenceSummary: ProfilePreferenceSummary,
+  analysis: FaceAnalysis | null
+) {
+  const reasons: string[] = [];
+
+  if (preferenceSummary.preferredLooks.includes(lookId)) {
+    reasons.push("you have leaned toward this direction before");
+  }
+
+  if (
+    preferenceSummary.featureFocus === "eyes" &&
+    (lookId === "soft-glam" || lookId === "editorial" || lookId === "evening")
+  ) {
+    reasons.push("your profile keeps favoring eye-led placement");
+  }
+
+  if (
+    preferenceSummary.featureFocus === "lips" &&
+    (lookId === "bold-lip" || lookId === "monochromatic")
+  ) {
+    reasons.push("your profile keeps favoring lip-led balance");
+  }
+
+  if (
+    analysis?.beautyHighlights.some((item) => /eye/i.test(item)) &&
+    (lookId === "soft-glam" || lookId === "editorial")
+  ) {
+    reasons.push("your current face read gives MEDUSA strong eye architecture to work with");
+  }
+
+  if (analysis?.beautyHighlights.some((item) => /lip/i.test(item)) && lookId === "bold-lip") {
+    reasons.push("your current face read can carry a stronger lip statement cleanly");
+  }
+
+  if (preferenceSummary.intensityPreference) {
+    reasons.push(`your saved taste is closer to ${preferenceSummary.intensityPreference} intensity`);
+  }
+
+  return reasons.length > 0
+    ? `Leading because ${reasons.slice(0, 2).join(" and ")}.`
+    : "This is currently the cleanest match between your face read and saved taste signals.";
+}
+
+function buildLookRecommendationBadges(
+  lookId: LookId,
+  preferenceSummary: ProfilePreferenceSummary
+) {
+  const badges: string[] = [];
+
+  if (preferenceSummary.preferredLooks.includes(lookId)) badges.push("preferred");
+  if (preferenceSummary.recentLooks.includes(lookId)) badges.push("recent");
+  if (preferenceSummary.discouragedLooks.includes(lookId)) badges.push("lower match");
+
+  return badges;
 }
 
 function inferFinishPreference(

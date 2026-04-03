@@ -67,9 +67,15 @@ export default function MedusaApp() {
     void loadProfileHistory();
   }, []);
 
-  const loadProfileHistory = async () => {
+  const loadProfileHistory = async (activeAnalysisRunId?: string | null) => {
     try {
-      const res = await fetch("/api/profile/history?limit=6");
+      const params = new URLSearchParams({ limit: "6" });
+
+      if (activeAnalysisRunId) {
+        params.set("analysisRunId", activeAnalysisRunId);
+      }
+
+      const res = await fetch(`/api/profile/history?${params.toString()}`);
 
       if (!res.ok) {
         return;
@@ -94,7 +100,7 @@ export default function MedusaApp() {
       throw new Error(errBody.error ?? `API error: ${res.status}`);
     }
 
-    await loadProfileHistory();
+    await loadProfileHistory(analysisRunId);
     setShowProfileRefine(false);
   };
 
@@ -110,7 +116,7 @@ export default function MedusaApp() {
       throw new Error(errBody.error ?? `API error: ${res.status}`);
     }
 
-    await loadProfileHistory();
+    await loadProfileHistory(analysisRunId);
   };
 
   const handlePhotoCaptured = async (photo: CapturedPhoto) => {
@@ -152,7 +158,7 @@ export default function MedusaApp() {
         setSelectedSkinTone(result.faceAnalysis.skinToneOptions[0] ?? result.faceAnalysis.skinTone);
         setSelectedSkinUndertone(result.faceAnalysis.skinUndertoneOptions[0] ?? result.faceAnalysis.skinUndertone);
         setStage("analysis_complete");
-        void loadProfileHistory();
+        void loadProfileHistory(result.analysisRunId ?? null);
       } else {
         throw new Error("Unexpected agent response");
       }
@@ -207,7 +213,7 @@ export default function MedusaApp() {
       setTutorialResult(tutorial);
       setTutorialRunId(tutorial.tutorialRunId ?? null);
       setStage("tutorial");
-      void loadProfileHistory();
+      void loadProfileHistory(analysisRunId);
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Something went wrong. Please try again.";
       console.error(err);
@@ -570,6 +576,7 @@ export default function MedusaApp() {
           analysis={analysisResult}
           explicitPreferences={history?.explicitPreferences ?? null}
           preferenceSummary={history?.preferenceSummary ?? null}
+          recommendedLooks={history?.recommendedLooks ?? null}
           onRefineProfile={() => setShowProfileRefine((value) => !value)}
         />
         {error && (

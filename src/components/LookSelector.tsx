@@ -12,6 +12,7 @@ interface Props {
   analysis?: ResolvedFaceAnalysis | null;
   explicitPreferences?: ProfileHistoryResult["explicitPreferences"] | null;
   preferenceSummary?: ProfileHistoryResult["preferenceSummary"] | null;
+  recommendedLooks?: ProfileHistoryResult["recommendedLooks"] | null;
   onRefineProfile?: () => void;
 }
 
@@ -20,18 +21,21 @@ export function LookSelector({
   analysis,
   explicitPreferences,
   preferenceSummary,
+  recommendedLooks,
   onRefineProfile,
 }: Props) {
   const preferredLooks = new Set(preferenceSummary?.preferredLooks ?? []);
   const discouragedLooks = new Set(preferenceSummary?.discouragedLooks ?? []);
   const recentLooks = new Set(preferenceSummary?.recentLooks ?? []);
-  const rankedLooks = [...LOOK_PRESENTATIONS]
-    .map((look) => ({
-      look,
-      score: scoreLook(look.id, analysis, preferenceSummary),
-    }))
-    .sort((a, b) => b.score - a.score);
-  const topLookId = rankedLooks[0]?.look.id ?? null;
+  const recommendedMap = new Map(
+    (recommendedLooks ?? []).map((recommendation) => [recommendation.lookId, recommendation])
+  );
+  const rankedLooks = [
+    ...LOOK_PRESENTATIONS.filter((look) => recommendedMap.has(look.id)),
+    ...LOOK_PRESENTATIONS.filter((look) => !recommendedMap.has(look.id)),
+  ];
+  const topRecommendation = recommendedLooks?.[0] ?? null;
+  const topLookId = topRecommendation?.lookId ?? null;
 
   return (
     <main className="min-h-screen bg-[#050508] px-6 py-12 text-white">
@@ -85,7 +89,7 @@ export function LookSelector({
                 )}
               </div>
               <p className="mt-4 max-w-2xl text-sm leading-relaxed text-white/58">
-                {buildRecommendationRationale(topLookId, preferenceSummary, analysis)}
+                {topRecommendation?.rationale ?? buildRecommendationRationale(topLookId, preferenceSummary, analysis)}
               </p>
             </div>
 
@@ -125,11 +129,12 @@ export function LookSelector({
         )}
 
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-          {rankedLooks.map(({ look }, index) => {
+          {rankedLooks.map((look, index) => {
             const isPreferred = preferredLooks.has(look.id);
             const isDiscouraged = discouragedLooks.has(look.id);
             const isRecent = recentLooks.has(look.id);
             const isTopMatch = topLookId === look.id;
+            const recommendation = recommendedMap.get(look.id);
 
             return (
               <button
@@ -176,6 +181,20 @@ export function LookSelector({
                         Best Match
                       </span>
                     )}
+                    {recommendation?.badges
+                      .filter((badge) => !(
+                        (badge === "preferred" && isPreferred) ||
+                        (badge === "recent" && isRecent) ||
+                        (badge === "lower match" && isDiscouraged)
+                      ))
+                      .map((badge) => (
+                        <span
+                          key={badge}
+                          className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-[10px] uppercase tracking-[0.18em] text-white/58"
+                        >
+                          {badge}
+                        </span>
+                      ))}
                     {isPreferred && (
                       <span className="rounded-full border border-rose-400/22 bg-rose-500/10 px-3 py-1 text-[10px] uppercase tracking-[0.18em] text-rose-100/88">
                         Preferred
@@ -209,87 +228,6 @@ export function LookSelector({
       </div>
     </main>
   );
-}
-
-function scoreLook(
-  lookId: LookId,
-  analysis?: ResolvedFaceAnalysis | null,
-  preferenceSummary?: ProfileHistoryResult["preferenceSummary"] | null
-) {
-  let score = 0;
-
-  if (preferenceSummary?.preferredLooks.includes(lookId)) score += 5;
-  if (preferenceSummary?.discouragedLooks.includes(lookId)) score -= 4;
-  if (preferenceSummary?.recentLooks.includes(lookId)) score += 1;
-
-  const intensityPreference = preferenceSummary?.intensityPreference;
-  if (intensityPreference && LOOK_DEFINITIONS[lookId].engine.defaultIntensity === intensityPreference) {
-    score += 2;
-  }
-
-  switch (preferenceSummary?.styleMood) {
-    case "classic":
-      if (lookId === "natural" || lookId === "soft-glam" || lookId === "monochromatic") score += 2;
-      break;
-    case "soft":
-      if (lookId === "natural" || lookId === "soft-glam" || lookId === "monochromatic") score += 2;
-      break;
-    case "graphic":
-      if (lookId === "editorial" || lookId === "evening") score += 2;
-      break;
-    case "experimental":
-      if (lookId === "editorial" || lookId === "monochromatic") score += 2;
-      break;
-  }
-
-  switch (preferenceSummary?.finishPreference) {
-    case "glowy":
-      if (lookId === "natural" || lookId === "soft-glam" || lookId === "monochromatic") score += 2;
-      break;
-    case "matte":
-      if (lookId === "evening" || lookId === "bold-lip" || lookId === "editorial") score += 2;
-      break;
-  }
-
-  switch (preferenceSummary?.definitionPreference) {
-    case "sharp":
-      if (lookId === "editorial" || lookId === "evening") score += 2;
-      break;
-    case "diffused":
-      if (lookId === "natural" || lookId === "soft-glam" || lookId === "monochromatic") score += 2;
-      break;
-  }
-
-  if (
-    preferenceSummary?.featureFocus === "eyes" &&
-    (lookId === "soft-glam" || lookId === "editorial" || lookId === "evening")
-  ) {
-    score += 1;
-  }
-
-  if (
-    preferenceSummary?.featureFocus === "lips" &&
-    (lookId === "bold-lip" || lookId === "monochromatic")
-  ) {
-    score += 1;
-  }
-
-  if (analysis?.skinUndertone === "warm" && (lookId === "soft-glam" || lookId === "monochromatic")) {
-    score += 1;
-  }
-
-  if (analysis?.beautyHighlights.some((item) => /lip/i.test(item)) && lookId === "bold-lip") {
-    score += 1;
-  }
-
-  if (
-    analysis?.beautyHighlights.some((item) => /eye/i.test(item)) &&
-    (lookId === "soft-glam" || lookId === "editorial")
-  ) {
-    score += 1;
-  }
-
-  return score;
 }
 
 function buildRecommendationRationale(

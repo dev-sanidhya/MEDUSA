@@ -1,3 +1,5 @@
+import type { LookId } from "@/lib/medusa/generate-tutorial";
+
 export type FeedbackEventType =
   | "analysis_rating"
   | "tutorial_rating"
@@ -15,6 +17,14 @@ export interface ProfilePreferenceSummary {
   featureFocus: "eyes" | "lips" | null;
   positiveTags: string[];
   dislikedTags: string[];
+}
+
+export interface RecommendedLookSummary {
+  lookId: LookId;
+  label: string;
+  score: number;
+  rationale: string;
+  badges: string[];
 }
 
 export interface ProfileExplicitPreferences {
@@ -64,6 +74,7 @@ export interface ProfileHistoryResult {
   profileId: string;
   explicitPreferences: ProfileExplicitPreferences;
   preferenceSummary: ProfilePreferenceSummary;
+  recommendedLooks: RecommendedLookSummary[];
   analyses: ProfileAnalysisHistoryItem[];
   tutorials: ProfileTutorialHistoryItem[];
 }

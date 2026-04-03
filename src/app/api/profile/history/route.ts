@@ -16,9 +16,11 @@ export async function GET(req: NextRequest) {
     await ensureAnonymousProfile(profileId);
 
     const limitParam = req.nextUrl.searchParams.get("limit");
+    const analysisRunId = req.nextUrl.searchParams.get("analysisRunId");
     const parsedLimit = limitParam ? Number.parseInt(limitParam, 10) : undefined;
     const history = await getProfileHistory(profileId, {
       limit: Number.isFinite(parsedLimit) ? parsedLimit : undefined,
+      analysisRunId,
     });
 
     const response = NextResponse.json(
@@ -48,6 +50,7 @@ export async function GET(req: NextRequest) {
           positiveTags: [],
           dislikedTags: [],
         },
+        recommendedLooks: [],
         analyses: [],
         tutorials: [],
       } satisfies ProfileHistoryResult
