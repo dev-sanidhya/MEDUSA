@@ -26,7 +26,16 @@ export type PrecisionIssue =
 
 export interface ZonePrecision {
   score: number;           // 0–100
+  tier: ConfidenceTier;
   issues: PrecisionIssue[];
+}
+
+export type ConfidenceTier = "strong" | "usable" | "weak";
+
+export interface FeatureConfidence {
+  tier: ConfidenceTier;
+  score: number;
+  bestPhotoIndex: number;
 }
 
 export interface PrecisionReport {
@@ -50,6 +59,12 @@ export interface PrecisionReport {
     faceSizeRatio: number;       // face bounding box / image area (ideal: 0.2–0.6)
     isTooSmall: boolean;
     isTooClose: boolean;
+  };
+  featureConfidence: {
+    faceShape: FeatureConfidence;
+    eyes: FeatureConfidence;
+    lips: FeatureConfidence;
+    skinTone: FeatureConfidence;
   };
   issues: PrecisionIssue[];      // deduplicated list of all issues
 
@@ -153,6 +168,7 @@ function scoreZone(
   const score = Math.max(0, Math.min(100, Math.round(100 - edgePenalty - posePenalty)));
   return {
     score,
+    tier: getConfidenceTier(score),
     issues: score < minScore ? [issueKey] : [],
   };
 }
@@ -313,6 +329,18 @@ export function scorePrecision(detection: FaceDetectionResult): PrecisionReport 
       cheeks: cheekZone,
     },
     faceFraming: { faceSizeRatio, isTooSmall, isTooClose },
+    featureConfidence: {
+      faceShape: buildFeatureConfidence(
+        Math.round((jawZone.score + foreheadZone.score + cheekZone.score) / 3),
+        1
+      ),
+      eyes: buildFeatureConfidence(eyeZone.score, 1),
+      lips: buildFeatureConfidence(lipZone.score, 1),
+      skinTone: buildFeatureConfidence(
+        Math.round((foreheadZone.score + cheekZone.score) / 2),
+        1
+      ),
+    },
     issues: uniqueIssues,
     photoRequest,
   };
@@ -408,15 +436,23 @@ export function mergeReports(reports: PrecisionReport[]): PrecisionReport {
 
   const best = reports.reduce((a, b) => (a.overallScore > b.overallScore ? a : b));
   const mergedIssues = [...new Set(reports.flatMap((report) => report.issues))];
+  const bestZonePhotoIndex = {
+    eyes: getBestZonePhotoIndex(reports, "eyes"),
+    lips: getBestZonePhotoIndex(reports, "lips"),
+    nose: getBestZonePhotoIndex(reports, "nose"),
+    jaw: getBestZonePhotoIndex(reports, "jaw"),
+    forehead: getBestZonePhotoIndex(reports, "forehead"),
+    cheeks: getBestZonePhotoIndex(reports, "cheeks"),
+  };
 
   // Take the best zone score from any photo
   const mergedZones = {
-    eyes: { score: Math.max(...reports.map(r => r.zones.eyes.score)), issues: best.zones.eyes.issues },
-    lips: { score: Math.max(...reports.map(r => r.zones.lips.score)), issues: best.zones.lips.issues },
-    nose: { score: Math.max(...reports.map(r => r.zones.nose.score)), issues: best.zones.nose.issues },
-    jaw: { score: Math.max(...reports.map(r => r.zones.jaw.score)), issues: best.zones.jaw.issues },
-    forehead: { score: Math.max(...reports.map(r => r.zones.forehead.score)), issues: best.zones.forehead.issues },
-    cheeks: { score: Math.max(...reports.map(r => r.zones.cheeks.score)), issues: best.zones.cheeks.issues },
+    eyes: buildMergedZone(reports, "eyes", bestZonePhotoIndex.eyes),
+    lips: buildMergedZone(reports, "lips", bestZonePhotoIndex.lips),
+    nose: buildMergedZone(reports, "nose", bestZonePhotoIndex.nose),
+    jaw: buildMergedZone(reports, "jaw", bestZonePhotoIndex.jaw),
+    forehead: buildMergedZone(reports, "forehead", bestZonePhotoIndex.forehead),
+    cheeks: buildMergedZone(reports, "cheeks", bestZonePhotoIndex.cheeks),
   };
 
   const mergedOverall = Math.round(
@@ -440,6 +476,22 @@ export function mergeReports(reports: PrecisionReport[]): PrecisionReport {
     overallScore: mergedOverall,
     canProceed: mergedCanProceed,
     zones: mergedZones,
+    featureConfidence: {
+      faceShape: buildFeatureConfidence(
+        Math.round((mergedZones.jaw.score + mergedZones.forehead.score + mergedZones.cheeks.score) / 3),
+        pickBestFeaturePhotoIndex(
+          bestZonePhotoIndex.jaw,
+          bestZonePhotoIndex.forehead,
+          bestZonePhotoIndex.cheeks
+        )
+      ),
+      eyes: buildFeatureConfidence(mergedZones.eyes.score, bestZonePhotoIndex.eyes),
+      lips: buildFeatureConfidence(mergedZones.lips.score, bestZonePhotoIndex.lips),
+      skinTone: buildFeatureConfidence(
+        Math.round((mergedZones.forehead.score + mergedZones.cheeks.score) / 2),
+        pickBestFeaturePhotoIndex(bestZonePhotoIndex.forehead, bestZonePhotoIndex.cheeks)
+      ),
+    },
     issues: mergedCanProceed ? [] : mergedIssues,
     photoRequest: mergedCanProceed ? null : buildPhotoRequest(mergedIssues),
   };
@@ -481,4 +533,59 @@ function hasEnoughSignalToProceed({
   }
 
   return overallScore >= 68 && weakCoreZones < 2;
+}
+
+function getConfidenceTier(score: number): ConfidenceTier {
+  if (score >= 78) return "strong";
+  if (score >= 60) return "usable";
+  return "weak";
+}
+
+function buildFeatureConfidence(score: number, bestPhotoIndex: number): FeatureConfidence {
+  return {
+    tier: getConfidenceTier(score),
+    score,
+    bestPhotoIndex,
+  };
+}
+
+function getBestZonePhotoIndex(
+  reports: PrecisionReport[],
+  zone: keyof PrecisionReport["zones"]
+) {
+  let bestIndex = 0;
+  let bestScore = -Infinity;
+
+  for (let index = 0; index < reports.length; index += 1) {
+    const score = reports[index].zones[zone].score;
+    if (score > bestScore) {
+      bestScore = score;
+      bestIndex = index;
+    }
+  }
+
+  return bestIndex + 1;
+}
+
+function buildMergedZone(
+  reports: PrecisionReport[],
+  zone: keyof PrecisionReport["zones"],
+  bestPhotoIndex: number
+): ZonePrecision {
+  const score = Math.max(...reports.map((report) => report.zones[zone].score));
+  return {
+    score,
+    tier: getConfidenceTier(score),
+    issues: reports[bestPhotoIndex - 1].zones[zone].issues,
+  };
+}
+
+function pickBestFeaturePhotoIndex(...indices: number[]) {
+  const counts = new Map<number, number>();
+
+  for (const index of indices) {
+    counts.set(index, (counts.get(index) ?? 0) + 1);
+  }
+
+  return [...counts.entries()].sort((a, b) => b[1] - a[1])[0][0];
 }

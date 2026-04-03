@@ -351,6 +351,14 @@ function buildGeometryPrompt(
 - A usable read is enough to move forward. Do not ask for another photo just because a second image might be nicer to have.
 - Use blocked zones and detected issues when writing any retry request.
 
+### Feature Confidence
+- Face shape confidence: ${pr.featureConfidence.faceShape.tier} (${pr.featureConfidence.faceShape.score}/100), best from photo ${pr.featureConfidence.faceShape.bestPhotoIndex}
+- Eyes confidence: ${pr.featureConfidence.eyes.tier} (${pr.featureConfidence.eyes.score}/100), best from photo ${pr.featureConfidence.eyes.bestPhotoIndex}
+- Lips confidence: ${pr.featureConfidence.lips.tier} (${pr.featureConfidence.lips.score}/100), best from photo ${pr.featureConfidence.lips.bestPhotoIndex}
+- Skin tone confidence: ${pr.featureConfidence.skinTone.tier} (${pr.featureConfidence.skinTone.score}/100), best from photo ${pr.featureConfidence.skinTone.bestPhotoIndex}
+- If a feature confidence is weak, soften certainty for that feature instead of overclaiming.
+- If a feature confidence is usable or strong, you can move forward without asking for another photo unless a hard blocker is present.
+
 ### Face Structure
 - Shape (calculated): ${p.faceShape}
 - Width-to-height: ${p.faceRatios.widthToHeight.toFixed(3)}
