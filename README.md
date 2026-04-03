@@ -11,6 +11,14 @@ The product is built for users who are not makeup experts. Instead of dumping te
 - generates a tutorial that is specific to that user's face
 - paints the tutorial zones back onto the user's own photo
 
+MEDUSA is no longer one-shot only. The app now includes:
+
+- anonymous profile persistence
+- saved analysis and tutorial runs
+- feedback capture
+- lightweight profile preference onboarding
+- server-side look recommendations based on saved taste signals plus the current face read
+
 ## What The Product Does
 
 At a high level, MEDUSA combines three systems:
@@ -98,52 +106,62 @@ MEDUSA is designed around a few rules:
 - MediaPipe Tasks Vision
 - Claude Agent / Claude-backed internal helpers
 - Postgres for eval persistence and profile history
+- Render blueprint support for app + Postgres deployment
 
 ## App Structure
 
 Important paths:
 
-- [src/app/page.tsx](C:\Users\shish\Desktop\PORTFOLIO\MEDUSA\src\app\page.tsx)
+- `src/app/page.tsx`
   Marketing / landing page
 
-- [src/app/app/page.tsx](C:\Users\shish\Desktop\PORTFOLIO\MEDUSA\src\app\app\page.tsx)
+- `src/app/app/page.tsx`
   Main product flow and app state machine
 
-- [src/components/PhotoCapture.tsx](C:\Users\shish\Desktop\PORTFOLIO\MEDUSA\src\components\PhotoCapture.tsx)
+- `src/components/PhotoCapture.tsx`
   Photo upload, MediaPipe processing, and capture UX
 
-- [src/components/FaceAnalysisDisplay.tsx](C:\Users\shish\Desktop\PORTFOLIO\MEDUSA\src\components\FaceAnalysisDisplay.tsx)
+- `src/components/FaceAnalysisDisplay.tsx`
   Quick-read analysis UI
 
-- [src/components/LookSelector.tsx](C:\Users\shish\Desktop\PORTFOLIO\MEDUSA\src\components\LookSelector.tsx)
+- `src/components/LookSelector.tsx`
   Look selection UI
 
-- [src/components/TutorialDisplay.tsx](C:\Users\shish\Desktop\PORTFOLIO\MEDUSA\src\components\TutorialDisplay.tsx)
+- `src/components/TutorialDisplay.tsx`
   Tutorial step UI
 
-- [src/components/FaceZoneCanvas.tsx](C:\Users\shish\Desktop\PORTFOLIO\MEDUSA\src\components\FaceZoneCanvas.tsx)
+- `src/components/FaceZoneCanvas.tsx`
   Paints tutorial zones and motion guides over the user's face photo
 
-- [src/lib/face-zone-painter.ts](C:\Users\shish\Desktop\PORTFOLIO\MEDUSA\src\lib\face-zone-painter.ts)
+- `src/lib/face-zone-painter.ts`
   Zone fill shapes, highlight colors, and motion arrow logic
 
-- [src/lib/medusa/analyze-face.ts](C:\Users\shish\Desktop\PORTFOLIO\MEDUSA\src\lib\medusa\analyze-face.ts)
+- `src/lib/medusa/analyze-face.ts`
   Core face analysis prompt, schema, and orchestration
 
-- [src/lib/medusa/generate-tutorial.ts](C:\Users\shish\Desktop\PORTFOLIO\MEDUSA\src\lib\medusa\generate-tutorial.ts)
+- `src/lib/medusa/generate-tutorial.ts`
   Tutorial generation prompt, schema, validation, and repair loop
 
-- [src/app/api/analyze-face/route.ts](C:\Users\shish\Desktop\PORTFOLIO\MEDUSA\src\app\api\analyze-face\route.ts)
+- `src/app/api/analyze-face/route.ts`
   API route for face analysis
 
-- [src/app/api/generate-tutorial/route.ts](C:\Users\shish\Desktop\PORTFOLIO\MEDUSA\src\app\api\generate-tutorial\route.ts)
+- `src/app/api/generate-tutorial/route.ts`
   API route for tutorial generation
 
-- [src/app/api/feedback/route.ts](C:\Users\shish\Desktop\PORTFOLIO\MEDUSA\src\app\api\feedback\route.ts)
+- `src/app/api/feedback/route.ts`
   Feedback ingestion
 
-- [src/app/api/profile/history/route.ts](C:\Users\shish\Desktop\PORTFOLIO\MEDUSA\src\app\api\profile\history\route.ts)
+- `src/app/api/profile/history/route.ts`
   Profile history / persistence API
+
+- `src/app/api/profile/preferences/route.ts`
+  Explicit profile preference onboarding API
+
+- `src/lib/persistence/store.ts`
+  Persistence, history derivation, and server-side recommendation logic
+
+- `render.yaml`
+  Render blueprint for managed Postgres + web service deployment
 
 ## Analysis Pipeline
 
@@ -173,6 +191,7 @@ The tutorial generation system takes:
 - the final face analysis
 - the user-selected look
 - the optional editorial subtype
+- the saved personalization profile derived from explicit preferences, history, and feedback
 
 It then produces:
 
@@ -191,6 +210,30 @@ For example:
 - `bold-lip` should not accidentally become a full smoky-eye tutorial
 - `natural` should stay minimal
 - `editorial` should feel directional and fashion-led
+
+## Persistence And Personalization
+
+MEDUSA now persists product state in Postgres and uses that history to influence the next recommendation pass.
+
+Current persistence includes:
+
+- anonymous profile creation via cookie
+- saved face analysis runs
+- saved tutorial runs
+- feedback events
+- explicit profile preferences
+- profile history reads
+
+Current personalization includes:
+
+- explicit preferences such as skill level, intensity, feature focus, preferred looks, and disliked looks
+- inferred preference memory from ratings and tags
+- server-side ranked look recommendations for the active face analysis
+- tutorial generation conditioned on the saved profile
+
+Current limitation:
+
+- there is still no auth-based account system, so persistence is device/browser scoped for now
 
 ## Visual Tutorial Overlay
 
@@ -269,8 +312,8 @@ npm run db:migrate
 
 Current migrations live in:
 
-- [db/migrations/001_inference_evals.sql](C:\Users\shish\Desktop\PORTFOLIO\MEDUSA\db\migrations\001_inference_evals.sql)
-- [db/migrations/002_product_persistence.sql](C:\Users\shish\Desktop\PORTFOLIO\MEDUSA\db\migrations\002_product_persistence.sql)
+- `db/migrations/001_inference_evals.sql`
+- `db/migrations/002_product_persistence.sql`
 
 These cover:
 
@@ -282,16 +325,24 @@ If `DATABASE_URL` is not set, the product still runs, but eval rows, profiles, r
 
 Setup and deployment notes also live in `docs/database.md`.
 
+For Render deployments, the repo also includes `render.yaml`, which:
+
+- provisions a managed Postgres database
+- injects `DATABASE_URL` into the web service
+- runs `npm run db:migrate` before deploy
+
+If you already have an existing Render service, update the names in `render.yaml` before syncing it so Render adopts the correct resources instead of creating duplicates.
+
 ## Evals
 
 MEDUSA includes an eval layer for analysis and generation quality.
 
 Supporting files:
 
-- [docs/evals.md](C:\Users\shish\Desktop\PORTFOLIO\MEDUSA\docs\evals.md)
-- [src/lib/evals/store.ts](C:\Users\shish\Desktop\PORTFOLIO\MEDUSA\src\lib\evals\store.ts)
-- [src/lib/evals/validators.ts](C:\Users\shish\Desktop\PORTFOLIO\MEDUSA\src\lib\evals\validators.ts)
-- [src/lib/evals/versioning.ts](C:\Users\shish\Desktop\PORTFOLIO\MEDUSA\src\lib\evals\versioning.ts)
+- `docs/evals.md`
+- `src/lib/evals/store.ts`
+- `src/lib/evals/validators.ts`
+- `src/lib/evals/versioning.ts`
 
 This layer exists so the team can measure whether:
 
@@ -304,9 +355,9 @@ This layer exists so the team can measure whether:
 
 Profile persistence helpers live under:
 
-- [src/lib/persistence/store.ts](C:\Users\shish\Desktop\PORTFOLIO\MEDUSA\src\lib\persistence\store.ts)
-- [src/lib/persistence/profile-cookie.ts](C:\Users\shish\Desktop\PORTFOLIO\MEDUSA\src\lib\persistence\profile-cookie.ts)
-- [src/lib/persistence/types.ts](C:\Users\shish\Desktop\PORTFOLIO\MEDUSA\src\lib\persistence\types.ts)
+- `src/lib/persistence/store.ts`
+- `src/lib/persistence/profile-cookie.ts`
+- `src/lib/persistence/types.ts`
 
 These support product memory and saved history patterns rather than treating every session as stateless.
 
