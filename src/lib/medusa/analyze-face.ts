@@ -15,7 +15,11 @@ import type {
   SkinTone,
   SkinUndertone,
 } from "@/lib/geometry-calculator";
-import { mergeReports, type PrecisionReport } from "@/lib/precision-scorer";
+import {
+  mergeReports,
+  type ConfidenceTier,
+  type PrecisionReport,
+} from "@/lib/precision-scorer";
 
 export interface AnalyzeFacePhoto {
   base64: string;
@@ -74,6 +78,28 @@ export interface FaceAnalysis {
   avoidTechniques: string[];
   precisionLevel: "high" | "medium";
   precisionNote: string;
+  readConfidence: {
+    overall: ConfidenceTier;
+    summary: string;
+    features: {
+      faceShape: {
+        tier: ConfidenceTier;
+        bestPhotoIndex: number;
+      };
+      eyes: {
+        tier: ConfidenceTier;
+        bestPhotoIndex: number;
+      };
+      lips: {
+        tier: ConfidenceTier;
+        bestPhotoIndex: number;
+      };
+      skinTone: {
+        tier: ConfidenceTier;
+        bestPhotoIndex: number;
+      };
+    };
+  };
 }
 
 export interface FaceAnalysisResult {
@@ -256,6 +282,7 @@ export async function analyzeFace(photos: AnalyzeFacePhoto[]): Promise<FaceAnaly
   const photoCount = boundedPhotos.length;
   const startedAt = Date.now();
   const mergedPrecision = mergeReports(boundedPhotos.map((photo) => photo.precisionReport));
+  const geometryTrust = assessGeometryTrust(boundedPhotos, mergedPrecision);
   const representativePhoto = boundedPhotos.reduce((best, candidate) =>
     candidate.precisionReport.overallScore > best.precisionReport.overallScore ? candidate : best
   );
@@ -279,6 +306,7 @@ export async function analyzeFace(photos: AnalyzeFacePhoto[]): Promise<FaceAnaly
     text: buildGeometryPrompt(
       representativePhoto.geometryProfile,
       mergedPrecision,
+      geometryTrust,
       photoCount
     ),
   });
@@ -292,12 +320,13 @@ export async function analyzeFace(photos: AnalyzeFacePhoto[]): Promise<FaceAnaly
     });
 
     const automaticEvaluation = evaluateFaceAnalysisResult(result, photoCount);
+    const hydratedResult = hydrateReadConfidence(result, geometryTrust, mergedPrecision);
 
     await persistEval({
       executionStatus: "succeeded",
-      outputStatus: result.status,
+      outputStatus: hydratedResult.status,
       requestSummary: summarizeAnalyzeFaceInput(boundedPhotos),
-      responseSummary: summarizeAnalyzeFaceOutput(result),
+      responseSummary: summarizeAnalyzeFaceOutput(hydratedResult),
       automaticEvaluation,
       metrics: {
         durationMs: Date.now() - startedAt,
@@ -306,7 +335,7 @@ export async function analyzeFace(photos: AnalyzeFacePhoto[]): Promise<FaceAnaly
       },
     });
 
-    return result;
+    return hydratedResult;
   } catch (error) {
     await persistEval({
       executionStatus: "failed",
@@ -327,6 +356,7 @@ export async function analyzeFace(photos: AnalyzeFacePhoto[]): Promise<FaceAnaly
 function buildGeometryPrompt(
   profile: FaceProfile,
   precision: PrecisionReport,
+  geometryTrust: GeometryTrustSummary,
   photoCount: number
 ): string {
   const p = profile;
@@ -358,6 +388,16 @@ function buildGeometryPrompt(
 - Skin tone confidence: ${pr.featureConfidence.skinTone.tier} (${pr.featureConfidence.skinTone.score}/100), best from photo ${pr.featureConfidence.skinTone.bestPhotoIndex}
 - If a feature confidence is weak, soften certainty for that feature instead of overclaiming.
 - If a feature confidence is usable or strong, you can move forward without asking for another photo unless a hard blocker is present.
+
+### Cross Photo Consistency
+- Overall consistency: ${geometryTrust.overall} (${geometryTrust.overallScore}/100)
+- Face shape consistency: ${geometryTrust.features.faceShape.tier} (${geometryTrust.features.faceShape.score}/100)
+- Eyes consistency: ${geometryTrust.features.eyes.tier} (${geometryTrust.features.eyes.score}/100)
+- Lips consistency: ${geometryTrust.features.lips.tier} (${geometryTrust.features.lips.score}/100)
+- Skin tone support: ${geometryTrust.features.skinTone.tier} (${geometryTrust.features.skinTone.score}/100)
+- Trust notes: ${geometryTrust.notes.length > 0 ? geometryTrust.notes.join("; ") : "cross-photo read looks stable"}
+- If overall consistency is weak and photos so far are below 3, it is acceptable to ask for one more photo.
+- If one feature is weak but the rest are stable, keep the full analysis and simply speak more softly on the weaker feature.
 
 ### Face Structure
 - Shape (calculated): ${p.faceShape}
@@ -400,6 +440,245 @@ function buildGeometryPrompt(
 
 Based on the photos AND geometric measurements above, return your analysis as structured JSON matching the output schema.
 `.trim();
+}
+
+interface GeometryTrustFeature {
+  tier: ConfidenceTier;
+  score: number;
+}
+
+interface GeometryTrustSummary {
+  overall: ConfidenceTier;
+  overallScore: number;
+  notes: string[];
+  features: {
+    faceShape: GeometryTrustFeature;
+    eyes: GeometryTrustFeature;
+    lips: GeometryTrustFeature;
+    skinTone: GeometryTrustFeature;
+  };
+}
+
+function hydrateReadConfidence(
+  result: FaceAnalysisResult,
+  geometryTrust: GeometryTrustSummary,
+  mergedPrecision: PrecisionReport
+): FaceAnalysisResult {
+  if (!result.faceAnalysis) {
+    return result;
+  }
+
+  return {
+    ...result,
+    faceAnalysis: {
+      ...result.faceAnalysis,
+      readConfidence: {
+        overall: geometryTrust.overall,
+        summary: buildConfidenceSummary(geometryTrust),
+        features: {
+          faceShape: {
+            tier: geometryTrust.features.faceShape.tier,
+            bestPhotoIndex: mergedPrecision.featureConfidence.faceShape.bestPhotoIndex,
+          },
+          eyes: {
+            tier: geometryTrust.features.eyes.tier,
+            bestPhotoIndex: mergedPrecision.featureConfidence.eyes.bestPhotoIndex,
+          },
+          lips: {
+            tier: geometryTrust.features.lips.tier,
+            bestPhotoIndex: mergedPrecision.featureConfidence.lips.bestPhotoIndex,
+          },
+          skinTone: {
+            tier: geometryTrust.features.skinTone.tier,
+            bestPhotoIndex: mergedPrecision.featureConfidence.skinTone.bestPhotoIndex,
+          },
+        },
+      },
+    },
+  };
+}
+
+function assessGeometryTrust(
+  photos: AnalyzeFacePhoto[],
+  mergedPrecision: PrecisionReport
+): GeometryTrustSummary {
+  const profiles = photos.map((photo) => photo.geometryProfile);
+  const precisionReports = photos.map((photo) => photo.precisionReport);
+  const faceShapeScore = clampScore(
+    mergedPrecision.featureConfidence.faceShape.score -
+      mismatchPenalty(profiles.map((profile) => profile.faceShape)) -
+      rangePenalty(profiles.map((profile) => profile.faceRatios.widthToHeight), 0.08, 18) -
+      rangePenalty(profiles.map((profile) => profile.faceRatios.jawToForehead), 0.12, 14) -
+      rangePenalty(
+        profiles.map((profile) => maxRange(profile.faceRatios.thirdRatios)),
+        0.08,
+        10
+      )
+  );
+
+  const eyesScore = clampScore(
+    mergedPrecision.featureConfidence.eyes.score -
+      mismatchPenalty(profiles.map((profile) => profile.eyes.setType), 12) -
+      mismatchPenalty(profiles.map((profile) => profile.eyes.shape), 10) -
+      rangePenalty(profiles.map((profile) => profile.eyes.interEyeRatio), 0.2, 16) -
+      rangePenalty(profiles.map((profile) => profile.eyes.tiltDeg), 5.5, 18) -
+      rangePenalty(
+        profiles.map(
+          (profile) =>
+            (profile.eyes.leftEyeAspectRatio + profile.eyes.rightEyeAspectRatio) / 2
+        ),
+        0.08,
+        10
+      )
+  );
+
+  const lipsScore = clampScore(
+    mergedPrecision.featureConfidence.lips.score -
+      mismatchPenalty(profiles.map((profile) => profile.lips.fullness), 12) -
+      rangePenalty(profiles.map((profile) => profile.lips.upperToLowerRatio), 0.28, 18) -
+      rangePenalty(profiles.map((profile) => profile.lips.widthToFaceRatio), 0.08, 14) -
+      rangePenalty(profiles.map((profile) => profile.lips.symmetry), 0.18, 12)
+  );
+
+  const skinSupportScore = clampScore(
+    mergedPrecision.featureConfidence.skinTone.score -
+      rangePenalty(
+        precisionReports.map(
+          (report) => Math.round((report.zones.forehead.score + report.zones.cheeks.score) / 2)
+        ),
+        16,
+        14
+      ) +
+      Math.min(
+        8,
+        precisionReports.filter(
+          (report) =>
+            report.zones.forehead.tier !== "weak" && report.zones.cheeks.tier !== "weak"
+        ).length * 4
+      )
+  );
+
+  const featureScores = {
+    faceShape: buildGeometryTrustFeature(faceShapeScore),
+    eyes: buildGeometryTrustFeature(eyesScore),
+    lips: buildGeometryTrustFeature(lipsScore),
+    skinTone: buildGeometryTrustFeature(skinSupportScore),
+  };
+
+  const overallScore = Math.round(
+    (featureScores.faceShape.score * 0.3 +
+      featureScores.eyes.score * 0.25 +
+      featureScores.lips.score * 0.2 +
+      featureScores.skinTone.score * 0.25)
+  );
+
+  return {
+    overall: getTierFromScore(overallScore),
+    overallScore,
+    notes: buildGeometryTrustNotes(featureScores, photos.length),
+    features: featureScores,
+  };
+}
+
+function buildGeometryTrustFeature(score: number): GeometryTrustFeature {
+  return {
+    tier: getTierFromScore(score),
+    score,
+  };
+}
+
+function buildConfidenceSummary(trust: GeometryTrustSummary) {
+  const strongFeatures = Object.entries(trust.features)
+    .filter(([, feature]) => feature.tier === "strong")
+    .map(([name]) => labelFeature(name));
+  const softFeatures = Object.entries(trust.features)
+    .filter(([, feature]) => feature.tier === "weak")
+    .map(([name]) => labelFeature(name));
+
+  if (softFeatures.length === 0 && strongFeatures.length >= 3) {
+    return "This read looks very stable across your photos, so the main feature calls are landing cleanly.";
+  }
+
+  if (softFeatures.length === 0) {
+    return "This read is holding together well, with enough consistency to move forward confidently.";
+  }
+
+  return `${joinLabels(strongFeatures)} are reading clearly. ${joinLabels(softFeatures)} are a little softer, so MEDUSA is keeping those calls more approximate.`;
+}
+
+function buildGeometryTrustNotes(
+  features: GeometryTrustSummary["features"],
+  photoCount: number
+) {
+  const notes: string[] = [];
+
+  if (photoCount > 1 && features.faceShape.tier === "strong") {
+    notes.push("face shape stays consistent across the set");
+  }
+  if (features.eyes.tier === "weak") {
+    notes.push("eye structure shifts a bit between photos");
+  }
+  if (features.lips.tier === "weak") {
+    notes.push("lip read is softer than the rest");
+  }
+  if (features.skinTone.tier !== "strong") {
+    notes.push("tone call is usable but still light-sensitive");
+  }
+
+  return notes.slice(0, 3);
+}
+
+function mismatchPenalty(values: string[], penalty = 18) {
+  return new Set(values).size > 1 ? penalty : 0;
+}
+
+function rangePenalty(values: number[], threshold: number, penalty: number) {
+  if (values.length <= 1) {
+    return 0;
+  }
+
+  return maxRange(values) > threshold ? penalty : 0;
+}
+
+function maxRange(values: readonly number[]) {
+  return Math.max(...values) - Math.min(...values);
+}
+
+function clampScore(score: number) {
+  return Math.max(0, Math.min(100, Math.round(score)));
+}
+
+function getTierFromScore(score: number): ConfidenceTier {
+  if (score >= 78) return "strong";
+  if (score >= 60) return "usable";
+  return "weak";
+}
+
+function labelFeature(key: string) {
+  const labels: Record<string, string> = {
+    faceShape: "Face shape",
+    eyes: "Eyes",
+    lips: "Lips",
+    skinTone: "Tone",
+  };
+
+  return labels[key] ?? key;
+}
+
+function joinLabels(labels: string[]) {
+  if (labels.length === 0) {
+    return "The main read";
+  }
+
+  if (labels.length === 1) {
+    return labels[0];
+  }
+
+  if (labels.length === 2) {
+    return `${labels[0]} and ${labels[1]}`;
+  }
+
+  return `${labels.slice(0, -1).join(", ")}, and ${labels[labels.length - 1]}`;
 }
 
 type FaceAnalysisEvalRecord = Omit<
