@@ -135,14 +135,12 @@ export async function detectFaceLandmarks(
       ? Array.from(result.facialTransformationMatrixes[0].data)
       : null;
 
-  const width =
-    imageEl instanceof HTMLImageElement
-      ? imageEl.naturalWidth
-      : imageEl.width;
-  const height =
-    imageEl instanceof HTMLImageElement
-      ? imageEl.naturalHeight
-      : imageEl.height;
+  const isDomImage =
+    typeof HTMLImageElement !== "undefined" &&
+    imageEl instanceof HTMLImageElement;
+
+  const width = isDomImage ? imageEl.naturalWidth : imageEl.width;
+  const height = isDomImage ? imageEl.naturalHeight : imageEl.height;
 
   return {
     landmarks: rawLandmarks,
