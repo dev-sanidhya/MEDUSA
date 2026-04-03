@@ -714,7 +714,7 @@ function inferFinishPreference(
   }
 
   const glowScore = (positiveTags.get("fresh_glow") ?? 0) + (dislikedTags.get("too_matte") ?? 0);
-  const matteScore = (positiveTags.get("matte_skin") ?? 0) + (dislikedTags.get("too_glossy") ?? 0);
+  const matteScore = dislikedTags.get("too_glossy") ?? 0;
 
   if (glowScore === 0 && matteScore === 0) {
     return null;
@@ -743,7 +743,7 @@ function inferStyleMood(
   const classicScore = (positiveTags.get("clean_luxury") ?? 0) + (dislikedTags.get("too_experimental") ?? 0);
   const softScore = (positiveTags.get("soft_blend") ?? 0) + (dislikedTags.get("too_sharp") ?? 0);
   const graphicScore = (positiveTags.get("graphic_lines") ?? 0) + (positiveTags.get("sharp_definition") ?? 0);
-  const experimentalScore = (dislikedTags.get("too_plain") ?? 0) + (positiveTags.get("experimental_color") ?? 0);
+  const experimentalScore = dislikedTags.get("too_plain") ?? 0;
 
   const candidates = [
     ["classic", classicScore],

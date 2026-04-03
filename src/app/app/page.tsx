@@ -559,6 +559,7 @@ export default function MedusaApp() {
       <>
         <LookSelector
           onSelect={handleLookSelected}
+          analysis={analysisResult}
           preferenceSummary={history?.preferenceSummary ?? null}
         />
         {error && (

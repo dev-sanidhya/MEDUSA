@@ -528,9 +528,7 @@ function resolveLookVariant(
   preferenceProfile?: PersonalizationProfile | null
 ): ResolvedLookVariant {
   if (selectedLook === "editorial") {
-    const resolvedEditorialSubtype =
-      selectedEditorialSubtype ??
-      pickEditorialSubtype(analysis, preferenceProfile);
+    const resolvedEditorialSubtype = selectedEditorialSubtype ?? pickEditorialSubtype(analysis, preferenceProfile);
 
     return {
       editorialSubtype: resolvedEditorialSubtype,
@@ -538,7 +536,7 @@ function resolveLookVariant(
         family: "editorial",
         id: resolvedEditorialSubtype,
         label: `Editorial tuned ${resolvedEditorialSubtype} for you`,
-        rationale: buildEditorialVariantReason(resolvedEditorialSubtype, analysis),
+        rationale: buildEditorialVariantReason(resolvedEditorialSubtype, analysis, preferenceProfile),
       },
     };
   }
@@ -552,7 +550,11 @@ function resolveLookVariant(
         family: "monochromatic",
         id: resolvedMonochromaticVariant,
         label: `Monochromatic in ${resolvedMonochromaticVariant} for you`,
-        rationale: buildMonochromaticVariantReason(resolvedMonochromaticVariant, analysis),
+        rationale: buildMonochromaticVariantReason(
+          resolvedMonochromaticVariant,
+          analysis,
+          preferenceProfile
+        ),
       },
     };
   }
@@ -574,87 +576,279 @@ function pickEditorialSubtype(
   analysis: FaceAnalysis,
   preferenceProfile?: PersonalizationProfile | null
 ): EditorialSubtype {
-  if (
-    preferenceProfile?.skillLevel === "beginner" ||
-    preferenceProfile?.intensityPreference === "soft" ||
-    preferenceProfile?.dislikedTags.includes("too_bold")
-  ) {
-    return "soft";
+  const scores: Record<EditorialSubtype, number> = {
+    sharp: 0,
+    glossy: 0,
+    messy: 0,
+    soft: 0,
+  };
+
+  switch (preferenceProfile?.skillLevel) {
+    case "beginner":
+      scores.soft += 3;
+      scores.glossy += 1;
+      break;
+    case "advanced":
+      scores.sharp += 1;
+      scores.messy += 2;
+      break;
+  }
+
+  switch (preferenceProfile?.intensityPreference) {
+    case "soft":
+      scores.soft += 3;
+      scores.glossy += 1;
+      break;
+    case "bold":
+      scores.sharp += 2;
+      scores.messy += 2;
+      break;
+    case "balanced":
+      scores.glossy += 1;
+      scores.sharp += 1;
+      break;
+  }
+
+  switch (preferenceProfile?.finishPreference) {
+    case "glowy":
+      scores.glossy += 3;
+      break;
+    case "matte":
+      scores.sharp += 1;
+      scores.messy += 1;
+      break;
+    case "balanced":
+      scores.sharp += 1;
+      scores.soft += 1;
+      break;
+  }
+
+  switch (preferenceProfile?.styleMood) {
+    case "classic":
+      scores.sharp += 2;
+      scores.glossy += 1;
+      break;
+    case "soft":
+      scores.soft += 3;
+      scores.glossy += 1;
+      break;
+    case "graphic":
+      scores.sharp += 3;
+      break;
+    case "experimental":
+      scores.messy += 3;
+      scores.glossy += 1;
+      break;
+  }
+
+  switch (preferenceProfile?.definitionPreference) {
+    case "sharp":
+      scores.sharp += 3;
+      break;
+    case "diffused":
+      scores.soft += 3;
+      scores.messy += 1;
+      break;
+    case "balanced":
+      scores.glossy += 1;
+      break;
+  }
+
+  if (preferenceProfile?.preferredLooks.includes("editorial")) {
+    scores.sharp += 1;
+    scores.messy += 1;
+  }
+
+  if (preferenceProfile?.preferredLooks.includes("soft-glam")) {
+    scores.glossy += 1;
+  }
+
+  if (preferenceProfile?.preferredLooks.includes("monochromatic")) {
+    scores.soft += 1;
+    scores.glossy += 1;
+  }
+
+  if (preferenceProfile?.positiveTags.includes("fresh_glow")) scores.glossy += 2;
+  if (preferenceProfile?.positiveTags.includes("soft_blend")) scores.soft += 2;
+  if (preferenceProfile?.positiveTags.includes("sharp_definition")) scores.sharp += 2;
+  if (preferenceProfile?.positiveTags.includes("graphic_lines")) {
+    scores.sharp += 2;
+    scores.messy += 1;
+  }
+  if (preferenceProfile?.positiveTags.includes("clean_luxury")) {
+    scores.sharp += 1;
+    scores.glossy += 1;
+  }
+
+  if (preferenceProfile?.dislikedTags.includes("too_sharp")) {
+    scores.soft += 2;
+    scores.glossy += 1;
+  }
+  if (preferenceProfile?.dislikedTags.includes("too_soft")) {
+    scores.sharp += 2;
+    scores.messy += 1;
+  }
+  if (preferenceProfile?.dislikedTags.includes("too_glossy")) {
+    scores.sharp += 1;
+    scores.soft += 1;
+  }
+  if (preferenceProfile?.dislikedTags.includes("too_plain")) {
+    scores.sharp += 1;
+    scores.messy += 1;
+  }
+  if (preferenceProfile?.dislikedTags.includes("too_experimental")) {
+    scores.soft += 2;
+    scores.sharp += 1;
   }
 
   if (
-    preferenceProfile?.skillLevel === "advanced" &&
-    preferenceProfile?.intensityPreference === "bold" &&
-    preferenceProfile?.preferredLooks.includes("editorial")
+    analysis.skinUndertone !== "cool" &&
+    analysis.beautyHighlights.some((item) => /glow|skin|warm/i.test(item))
   ) {
-    return "messy";
+    scores.glossy += 1;
   }
 
-  if (
-    preferenceProfile?.preferredLooks.includes("soft-glam") ||
-    preferenceProfile?.preferredLooks.includes("monochromatic") ||
-    (analysis.skinUndertone !== "cool" && analysis.beautyHighlights.some((item) => /glow|skin|warm/i.test(item)))
-  ) {
-    return "glossy";
-  }
-
-  return "sharp";
+  return maxScoreKey(scores);
 }
 
 function pickMonochromaticVariant(
   analysis: FaceAnalysis,
   preferenceProfile?: PersonalizationProfile | null
 ): MonochromaticVariant {
-  if (
-    analysis.skinUndertone === "warm" &&
-    preferenceProfile?.intensityPreference !== "bold" &&
-    preferenceProfile?.featureFocus !== "eyes"
-  ) {
-    return "peach";
+  const scores: Record<MonochromaticVariant, number> = {
+    peach: 0,
+    brown: 0,
+    rose: 0,
+  };
+
+  switch (analysis.skinUndertone) {
+    case "warm":
+      scores.peach += 3;
+      scores.brown += 1;
+      break;
+    case "cool":
+      scores.rose += 3;
+      scores.brown += 1;
+      break;
+    case "neutral":
+      scores.rose += 2;
+      scores.peach += 1;
+      scores.brown += 1;
+      break;
   }
 
-  if (
-    preferenceProfile?.intensityPreference === "bold" ||
-    preferenceProfile?.preferredLooks.includes("evening") ||
-    preferenceProfile?.preferredLooks.includes("bold-lip") ||
-    ["medium", "tan", "deep"].includes(analysis.skinTone)
-  ) {
-    return "brown";
+  switch (analysis.skinTone) {
+    case "medium":
+    case "tan":
+    case "deep":
+      scores.brown += 2;
+      break;
+    case "wheatish":
+      scores.peach += 1;
+      scores.brown += 1;
+      break;
+    case "fair":
+    case "light":
+      scores.peach += 1;
+      scores.rose += 1;
+      break;
   }
 
-  return "rose";
+  switch (preferenceProfile?.finishPreference) {
+    case "glowy":
+      scores.peach += 2;
+      scores.rose += 1;
+      break;
+    case "matte":
+      scores.brown += 2;
+      scores.rose += 1;
+      break;
+    case "balanced":
+      scores.rose += 1;
+      break;
+  }
+
+  switch (preferenceProfile?.styleMood) {
+    case "classic":
+      scores.rose += 2;
+      scores.brown += 1;
+      break;
+    case "soft":
+      scores.peach += 2;
+      scores.rose += 1;
+      break;
+    case "graphic":
+      scores.brown += 2;
+      break;
+    case "experimental":
+      scores.brown += 1;
+      scores.rose += 1;
+      break;
+  }
+
+  switch (preferenceProfile?.definitionPreference) {
+    case "sharp":
+      scores.brown += 2;
+      break;
+    case "diffused":
+      scores.peach += 2;
+      scores.rose += 1;
+      break;
+    case "balanced":
+      scores.rose += 1;
+      break;
+  }
+
+  if (preferenceProfile?.intensityPreference === "bold") scores.brown += 2;
+  if (preferenceProfile?.preferredLooks.includes("evening")) scores.brown += 1;
+  if (preferenceProfile?.preferredLooks.includes("bold-lip")) scores.brown += 1;
+  if (preferenceProfile?.positiveTags.includes("fresh_glow")) scores.peach += 2;
+  if (preferenceProfile?.positiveTags.includes("clean_luxury")) scores.rose += 2;
+  if (preferenceProfile?.positiveTags.includes("sharp_definition")) scores.brown += 2;
+  if (preferenceProfile?.dislikedTags.includes("too_glossy")) {
+    scores.brown += 1;
+    scores.rose += 1;
+  }
+
+  return maxScoreKey(scores);
 }
 
 function buildEditorialVariantReason(
   subtype: EditorialSubtype,
-  analysis: FaceAnalysis
+  analysis: FaceAnalysis,
+  preferenceProfile?: PersonalizationProfile | null
 ) {
   switch (subtype) {
     case "soft":
-      return "Your saved taste signals lean softer, so MEDUSA kept editorial diffused and easier to wear on your features.";
+      return `Your ${preferenceProfile?.definitionPreference ?? "softer"} preference signals lean diffused, so MEDUSA kept editorial easier and more blended on your features.`;
     case "glossy":
-      return `Your ${analysis.skinUndertone} undertone and polished preference signals point toward a cleaner, glow-led editorial finish.`;
+      return `Your ${analysis.skinUndertone} undertone and ${preferenceProfile?.finishPreference ?? "polished"} finish preference point toward a cleaner, glow-led editorial finish.`;
     case "messy":
       return "Your profile reads bolder and more experimental, so MEDUSA pushed editorial into a smudged, fashion-led direction.";
     case "sharp":
     default:
-      return "Your structure and current preference signals can carry a crisp, graphic editorial look without losing control.";
+      return "Your structure and current taste signals can carry a crisp, graphic editorial look without losing control.";
   }
 }
 
 function buildMonochromaticVariantReason(
   variant: MonochromaticVariant,
-  analysis: FaceAnalysis
+  analysis: FaceAnalysis,
+  preferenceProfile?: PersonalizationProfile | null
 ) {
   switch (variant) {
     case "peach":
-      return `Your ${analysis.skinUndertone} undertone and softer profile cues are strongest in peach-based monochromatic tones.`;
+      return `Your ${analysis.skinUndertone} undertone and ${preferenceProfile?.styleMood ?? "softer"} profile cues are strongest in peach-based monochromatic tones.`;
     case "brown":
       return "Your depth, intensity signals, and look history can carry a richer brown monochromatic story most cleanly.";
     case "rose":
     default:
       return "Rose gives you the most balanced monochromatic read, keeping the palette polished without pushing too warm or too deep.";
   }
+}
+
+function maxScoreKey<T extends string>(scores: Record<T, number>): T {
+  return (Object.entries(scores) as Array<[T, number]>).sort((a, b) => b[1] - a[1])[0][0];
 }
 
 export function validateTutorialForLook(
