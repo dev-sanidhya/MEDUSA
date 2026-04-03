@@ -15,6 +15,14 @@ export const EDITORIAL_SUBTYPES = [
 
 export type EditorialSubtype = (typeof EDITORIAL_SUBTYPES)[number];
 
+export const MONOCHROMATIC_VARIANTS = [
+  "peach",
+  "brown",
+  "rose",
+] as const;
+
+export type MonochromaticVariant = (typeof MONOCHROMATIC_VARIANTS)[number];
+
 export const LOOK_PRIMARY_AXES = [
   "restraint",
   "polish",
@@ -76,6 +84,20 @@ export interface EditorialSubtypeDefinition {
     edgeStyle: string;
     textureStyle: string;
     statementPlacement: string;
+  };
+}
+
+export interface MonochromaticVariantDefinition {
+  id: MonochromaticVariant;
+  label: string;
+  subtitle: string;
+  body: string;
+  accent: string;
+  promptDefinition: string;
+  engine: {
+    paletteFocus: string;
+    finishStyle: string;
+    placementMood: string;
   };
 }
 
@@ -228,10 +250,62 @@ export const EDITORIAL_SUBTYPE_DEFINITIONS: Record<EditorialSubtype, EditorialSu
   },
 };
 
+export const MONOCHROMATIC_VARIANT_DEFINITIONS: Record<
+  MonochromaticVariant,
+  MonochromaticVariantDefinition
+> = {
+  peach: {
+    id: "peach",
+    label: "Peach",
+    subtitle: "Warm and easy",
+    body: "Soft apricot, peach nude, and warm flush tones that keep the face bright and approachable.",
+    accent: "rgba(251,146,60,0.14)",
+    promptDefinition:
+      "Peach Monochromatic - build the whole look from peach, apricot, soft coral, and warm nude tones. Keep the palette fresh, lifted, and easy to wear.",
+    engine: {
+      paletteFocus: "peach, apricot, coral-leaning nude, soft terracotta",
+      finishStyle: "fresh satin or soft glow",
+      placementMood: "light, flattering warmth that keeps the face open",
+    },
+  },
+  brown: {
+    id: "brown",
+    label: "Brown",
+    subtitle: "Sculpted and richer",
+    body: "Cocoa, bronze, caramel, and espresso tones that create the most depth and structure.",
+    accent: "rgba(120,78,53,0.18)",
+    promptDefinition:
+      "Brown Monochromatic - build the whole look from caramel, bronze, cocoa, mocha, and espresso tones. Keep it cohesive, rich, and softly sculpted rather than colorful.",
+    engine: {
+      paletteFocus: "caramel, bronze, cocoa, mocha, espresso",
+      finishStyle: "satin to soft matte with dimension",
+      placementMood: "more sculpted, grounded, and defined",
+    },
+  },
+  rose: {
+    id: "rose",
+    label: "Rose",
+    subtitle: "Balanced and refined",
+    body: "Rose, mauve, and dusty pink tones that feel polished, soft, and naturally elegant.",
+    accent: "rgba(244,114,182,0.14)",
+    promptDefinition:
+      "Rose Monochromatic - build the whole look from muted rose, mauve, dusty pink, and rosy nude tones. Keep the palette cohesive, refined, and softly romantic.",
+    engine: {
+      paletteFocus: "muted rose, mauve, dusty pink, rosy nude",
+      finishStyle: "refined satin with soft-focus edges",
+      placementMood: "polished, feminine, and balanced",
+    },
+  },
+};
+
 export function isLookId(value: string): value is LookId {
   return LOOK_IDS.includes(value as LookId);
 }
 
 export function isEditorialSubtype(value: string): value is EditorialSubtype {
   return EDITORIAL_SUBTYPES.includes(value as EditorialSubtype);
+}
+
+export function isMonochromaticVariant(value: string): value is MonochromaticVariant {
+  return MONOCHROMATIC_VARIANTS.includes(value as MonochromaticVariant);
 }

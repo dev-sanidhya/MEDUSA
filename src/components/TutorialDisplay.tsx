@@ -69,6 +69,13 @@ export function TutorialDisplay({
             <p className="mt-4 text-sm leading-relaxed text-white/45 md:text-base">
               Every step below is based on your face map, your proportions, and the look you picked.
             </p>
+            {tutorial.lookVariant && (
+              <div className="mt-5 inline-flex max-w-xl flex-col rounded-[1.4rem] border border-white/8 bg-white/[0.03] px-4 py-3">
+                <p className="text-[10px] uppercase tracking-[0.22em] text-rose-300">MEDUSA Picked</p>
+                <p className="mt-2 text-sm font-medium text-white/82">{tutorial.lookVariant.label}</p>
+                <p className="mt-2 text-sm leading-relaxed text-white/48">{tutorial.lookVariant.rationale}</p>
+              </div>
+            )}
           </div>
 
           <div className="glass-card rounded-full border border-white/8 px-5 py-3 text-sm text-white/48">

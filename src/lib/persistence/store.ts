@@ -630,6 +630,7 @@ function buildPreferenceSummary(
     preferredLooks: orderedPreferredLooks,
     discouragedLooks: orderedDiscouragedLooks,
     recentLooks,
+    skillLevel: explicitPreferences.skillLevel,
     intensityPreference:
       explicitPreferences.intensityPreference ?? inferredIntensityPreference,
     featureFocus: explicitPreferences.featureFocus ?? inferredFeatureFocus,
@@ -645,6 +646,7 @@ function buildPersonalizationProfile(
     preferredLooks: summary.preferredLooks.filter(isLookId),
     discouragedLooks: summary.discouragedLooks.filter(isLookId),
     recentLooks: summary.recentLooks.filter(isLookId),
+    skillLevel: summary.skillLevel,
     intensityPreference: summary.intensityPreference,
     featureFocus: summary.featureFocus,
     positiveTags: summary.positiveTags,

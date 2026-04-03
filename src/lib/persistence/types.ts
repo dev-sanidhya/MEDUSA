@@ -7,6 +7,7 @@ export interface ProfilePreferenceSummary {
   preferredLooks: string[];
   discouragedLooks: string[];
   recentLooks: string[];
+  skillLevel: "beginner" | "intermediate" | "advanced" | null;
   intensityPreference: "soft" | "balanced" | "bold" | null;
   featureFocus: "eyes" | "lips" | null;
   positiveTags: string[];

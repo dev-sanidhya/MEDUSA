@@ -16,11 +16,13 @@ import {
   LOOK_DEFINITIONS,
   LOOK_INTENSITIES,
   LOOK_PRIMARY_AXES,
+  MONOCHROMATIC_VARIANT_DEFINITIONS,
+  type MonochromaticVariant,
   type EditorialSubtype,
   type LookId,
 } from "@/lib/medusa/look-config";
 
-export type { EditorialSubtype, LookId };
+export type { EditorialSubtype, LookId, MonochromaticVariant };
 
 export type ZoneKey =
   | "full_face"
@@ -57,6 +59,12 @@ export interface GenerateTutorialRequest {
 
 export interface GenerateTutorialResult {
   tutorialRunId?: string | null;
+  lookVariant?: {
+    family: "editorial" | "monochromatic";
+    id: string;
+    label: string;
+    rationale: string;
+  } | null;
   lookName: string;
   lookDescription: string;
   lookIntent: {
@@ -75,10 +83,17 @@ export interface PersonalizationProfile {
   preferredLooks: LookId[];
   discouragedLooks: LookId[];
   recentLooks: LookId[];
+  skillLevel: "beginner" | "intermediate" | "advanced" | null;
   intensityPreference: "soft" | "balanced" | "bold" | null;
   featureFocus: "eyes" | "lips" | null;
   positiveTags: string[];
   dislikedTags: string[];
+}
+
+interface ResolvedLookVariant {
+  editorialSubtype?: EditorialSubtype;
+  monochromaticVariant?: MonochromaticVariant;
+  metadata?: NonNullable<GenerateTutorialResult["lookVariant"]>;
 }
 
 const ZONE_KEYS = [
@@ -171,6 +186,7 @@ const SYSTEM_PROMPT = `You are MEDUSA's tutorial engine. You are a luxury makeup
 - The supplied look contract is authoritative.
 - The selected look decides intensity, anchor feature, color discipline, complexion behavior, and statement placement.
 - Editorial subtype only modifies the editorial direction. It does not replace the main look contract.
+- Monochromatic variant decides the exact color family and finish mood inside the monochromatic contract.
 - Preferences can steer finish or emphasis, but they cannot override the selected look.
 
 ## Output Goal
@@ -184,8 +200,12 @@ export async function generateTutorial(
   preferenceProfile?: PersonalizationProfile | null
 ): Promise<GenerateTutorialResult> {
   const lookDef = LOOK_DEFINITIONS[selectedLook];
-  const resolvedEditorialSubtype =
-    selectedLook === "editorial" ? (selectedEditorialSubtype ?? "sharp") : undefined;
+  const resolvedVariant = resolveLookVariant(
+    faceAnalysis,
+    selectedLook,
+    selectedEditorialSubtype,
+    preferenceProfile
+  );
   const startedAt = Date.now();
 
   if (!lookDef) {
@@ -194,18 +214,25 @@ export async function generateTutorial(
 
   try {
     const initialResult = await runTutorialQuery(
-      buildTutorialPrompt(faceAnalysis, lookDef, resolvedEditorialSubtype, preferenceProfile),
+      buildTutorialPrompt(faceAnalysis, lookDef, resolvedVariant, preferenceProfile),
       "generate-tutorial"
     );
+    const enrichedInitialResult = attachResolvedVariant(initialResult, resolvedVariant);
 
-    const initialEvaluation = evaluateTutorialResult(initialResult, selectedLook);
+    const initialEvaluation = evaluateTutorialResult(enrichedInitialResult, selectedLook);
     if (initialEvaluation.passed) {
       await persistEval({
         executionStatus: "succeeded",
         outputStatus: "initial_pass",
         selectedLook,
-        requestSummary: summarizeTutorialInput(faceAnalysis, selectedLook, resolvedEditorialSubtype, preferenceProfile),
-        responseSummary: summarizeTutorialOutput(initialResult),
+        requestSummary: summarizeTutorialInput(
+          faceAnalysis,
+          selectedLook,
+          resolvedVariant.editorialSubtype,
+          preferenceProfile,
+          resolvedVariant.metadata?.label ?? null
+        ),
+        responseSummary: summarizeTutorialOutput(enrichedInitialResult),
         automaticEvaluation: initialEvaluation,
         metrics: {
           durationMs: Date.now() - startedAt,
@@ -214,7 +241,7 @@ export async function generateTutorial(
         },
       });
 
-      return initialResult;
+      return enrichedInitialResult;
     }
 
     const repairedResult = await runTutorialQuery(
@@ -222,15 +249,16 @@ export async function generateTutorial(
         faceAnalysis,
         selectedLook,
         lookDef,
-        initialResult,
+        enrichedInitialResult,
         initialEvaluation.issues.map((issue) => issue.message),
-        resolvedEditorialSubtype,
+        resolvedVariant,
         preferenceProfile
       ),
       "generate-tutorial-repair"
     );
+    const enrichedRepairedResult = attachResolvedVariant(repairedResult, resolvedVariant);
 
-    const repairedEvaluation = evaluateTutorialResult(repairedResult, selectedLook);
+    const repairedEvaluation = evaluateTutorialResult(enrichedRepairedResult, selectedLook);
     if (!repairedEvaluation.passed) {
       console.warn(
         "[generate-tutorial] Tutorial still failed look validation:",
@@ -242,12 +270,18 @@ export async function generateTutorial(
       executionStatus: "succeeded",
       outputStatus: repairedEvaluation.passed ? "repaired_pass" : "repaired_with_issues",
       selectedLook,
-      requestSummary: summarizeTutorialInput(faceAnalysis, selectedLook, resolvedEditorialSubtype, preferenceProfile),
+      requestSummary: summarizeTutorialInput(
+        faceAnalysis,
+        selectedLook,
+        resolvedVariant.editorialSubtype,
+        preferenceProfile,
+        resolvedVariant.metadata?.label ?? null
+      ),
       responseSummary: {
-        final: summarizeTutorialOutput(repairedResult),
+        final: summarizeTutorialOutput(enrichedRepairedResult),
         repair: {
           attempted: true,
-          initialResult: summarizeTutorialOutput(initialResult),
+          initialResult: summarizeTutorialOutput(enrichedInitialResult),
           initialIssues: initialEvaluation.issues,
         },
       },
@@ -261,12 +295,18 @@ export async function generateTutorial(
       },
     });
 
-    return repairedResult;
+    return enrichedRepairedResult;
   } catch (error) {
     await persistEval({
       executionStatus: "failed",
       selectedLook,
-      requestSummary: summarizeTutorialInput(faceAnalysis, selectedLook, resolvedEditorialSubtype, preferenceProfile),
+      requestSummary: summarizeTutorialInput(
+        faceAnalysis,
+        selectedLook,
+        resolvedVariant.editorialSubtype,
+        preferenceProfile,
+        resolvedVariant.metadata?.label ?? null
+      ),
       metrics: {
         durationMs: Date.now() - startedAt,
         validatorVersion: VALIDATOR_VERSION,
@@ -294,20 +334,32 @@ function runTutorialQuery(
 function buildTutorialPrompt(
   analysis: FaceAnalysis,
   lookDef: (typeof LOOK_DEFINITIONS)[LookId],
-  selectedEditorialSubtype?: EditorialSubtype,
+  resolvedVariant?: ResolvedLookVariant,
   preferenceProfile?: PersonalizationProfile | null
 ): string {
   const editorialSubtypeBlock =
-    lookDef.id === "editorial" && selectedEditorialSubtype
+    lookDef.id === "editorial" && resolvedVariant?.editorialSubtype
       ? `
 ## Editorial subtype to build
-${EDITORIAL_SUBTYPE_DEFINITIONS[selectedEditorialSubtype].promptDefinition}
+${EDITORIAL_SUBTYPE_DEFINITIONS[resolvedVariant.editorialSubtype].promptDefinition}
 
 Subtype contract:
-- Contrast level: ${EDITORIAL_SUBTYPE_DEFINITIONS[selectedEditorialSubtype].engine.contrastLevel}
-- Edge style: ${EDITORIAL_SUBTYPE_DEFINITIONS[selectedEditorialSubtype].engine.edgeStyle}
-- Texture style: ${EDITORIAL_SUBTYPE_DEFINITIONS[selectedEditorialSubtype].engine.textureStyle}
-- Statement placement: ${EDITORIAL_SUBTYPE_DEFINITIONS[selectedEditorialSubtype].engine.statementPlacement}
+- Contrast level: ${EDITORIAL_SUBTYPE_DEFINITIONS[resolvedVariant.editorialSubtype].engine.contrastLevel}
+- Edge style: ${EDITORIAL_SUBTYPE_DEFINITIONS[resolvedVariant.editorialSubtype].engine.edgeStyle}
+- Texture style: ${EDITORIAL_SUBTYPE_DEFINITIONS[resolvedVariant.editorialSubtype].engine.textureStyle}
+- Statement placement: ${EDITORIAL_SUBTYPE_DEFINITIONS[resolvedVariant.editorialSubtype].engine.statementPlacement}
+`
+      : "";
+  const monochromaticVariantBlock =
+    lookDef.id === "monochromatic" && resolvedVariant?.monochromaticVariant
+      ? `
+## Monochromatic color family to build
+${MONOCHROMATIC_VARIANT_DEFINITIONS[resolvedVariant.monochromaticVariant].promptDefinition}
+
+Variant contract:
+- Palette focus: ${MONOCHROMATIC_VARIANT_DEFINITIONS[resolvedVariant.monochromaticVariant].engine.paletteFocus}
+- Finish style: ${MONOCHROMATIC_VARIANT_DEFINITIONS[resolvedVariant.monochromaticVariant].engine.finishStyle}
+- Placement mood: ${MONOCHROMATIC_VARIANT_DEFINITIONS[resolvedVariant.monochromaticVariant].engine.placementMood}
 `
       : "";
 
@@ -353,6 +405,7 @@ Subtype contract:
 
 ${preferenceBlock}
 ${editorialSubtypeBlock}
+${monochromaticVariantBlock}
 
 Return JSON matching the schema. The lookIntent fields must align with the look contract above, not generic defaults.
 `.trim();
@@ -364,23 +417,38 @@ function buildRepairPrompt(
   lookDef: (typeof LOOK_DEFINITIONS)[LookId],
   previousResult: GenerateTutorialResult,
   issues: string[],
-  selectedEditorialSubtype?: EditorialSubtype,
+  resolvedVariant?: ResolvedLookVariant,
   preferenceProfile?: PersonalizationProfile | null
 ): string {
   const editorialSubtypeBlock =
-    selectedLook === "editorial" && selectedEditorialSubtype
+    selectedLook === "editorial" && resolvedVariant?.editorialSubtype
       ? `
 Editorial subtype:
-${selectedEditorialSubtype}
+${resolvedVariant.editorialSubtype}
 
 Subtype definition:
-${EDITORIAL_SUBTYPE_DEFINITIONS[selectedEditorialSubtype].promptDefinition}
+${EDITORIAL_SUBTYPE_DEFINITIONS[resolvedVariant.editorialSubtype].promptDefinition}
 
 Subtype contract:
-- Contrast level: ${EDITORIAL_SUBTYPE_DEFINITIONS[selectedEditorialSubtype].engine.contrastLevel}
-- Edge style: ${EDITORIAL_SUBTYPE_DEFINITIONS[selectedEditorialSubtype].engine.edgeStyle}
-- Texture style: ${EDITORIAL_SUBTYPE_DEFINITIONS[selectedEditorialSubtype].engine.textureStyle}
-- Statement placement: ${EDITORIAL_SUBTYPE_DEFINITIONS[selectedEditorialSubtype].engine.statementPlacement}
+- Contrast level: ${EDITORIAL_SUBTYPE_DEFINITIONS[resolvedVariant.editorialSubtype].engine.contrastLevel}
+- Edge style: ${EDITORIAL_SUBTYPE_DEFINITIONS[resolvedVariant.editorialSubtype].engine.edgeStyle}
+- Texture style: ${EDITORIAL_SUBTYPE_DEFINITIONS[resolvedVariant.editorialSubtype].engine.textureStyle}
+- Statement placement: ${EDITORIAL_SUBTYPE_DEFINITIONS[resolvedVariant.editorialSubtype].engine.statementPlacement}
+`
+      : "";
+  const monochromaticVariantBlock =
+    selectedLook === "monochromatic" && resolvedVariant?.monochromaticVariant
+      ? `
+Monochromatic variant:
+${resolvedVariant.monochromaticVariant}
+
+Variant definition:
+${MONOCHROMATIC_VARIANT_DEFINITIONS[resolvedVariant.monochromaticVariant].promptDefinition}
+
+Variant contract:
+- Palette focus: ${MONOCHROMATIC_VARIANT_DEFINITIONS[resolvedVariant.monochromaticVariant].engine.paletteFocus}
+- Finish style: ${MONOCHROMATIC_VARIANT_DEFINITIONS[resolvedVariant.monochromaticVariant].engine.finishStyle}
+- Placement mood: ${MONOCHROMATIC_VARIANT_DEFINITIONS[resolvedVariant.monochromaticVariant].engine.placementMood}
 `
       : "";
 
@@ -417,6 +485,7 @@ Look contract:
 - Statement directive: ${lookDef.engine.statementDirective}
 
 ${editorialSubtypeBlock}
+${monochromaticVariantBlock}
 ${preferenceBlock}
 
 Validation failures:
@@ -441,6 +510,142 @@ Rebuild the tutorial so it fully matches the selected look and still matches the
 
 Return only corrected JSON matching the schema. The lookIntent object must match the supplied contract.
 `.trim();
+}
+
+function resolveLookVariant(
+  analysis: FaceAnalysis,
+  selectedLook: LookId,
+  selectedEditorialSubtype?: EditorialSubtype,
+  preferenceProfile?: PersonalizationProfile | null
+): ResolvedLookVariant {
+  if (selectedLook === "editorial") {
+    const resolvedEditorialSubtype =
+      selectedEditorialSubtype ??
+      pickEditorialSubtype(analysis, preferenceProfile);
+
+    return {
+      editorialSubtype: resolvedEditorialSubtype,
+      metadata: {
+        family: "editorial",
+        id: resolvedEditorialSubtype,
+        label: `Editorial tuned ${resolvedEditorialSubtype} for you`,
+        rationale: buildEditorialVariantReason(resolvedEditorialSubtype, analysis),
+      },
+    };
+  }
+
+  if (selectedLook === "monochromatic") {
+    const resolvedMonochromaticVariant = pickMonochromaticVariant(analysis, preferenceProfile);
+
+    return {
+      monochromaticVariant: resolvedMonochromaticVariant,
+      metadata: {
+        family: "monochromatic",
+        id: resolvedMonochromaticVariant,
+        label: `Monochromatic in ${resolvedMonochromaticVariant} for you`,
+        rationale: buildMonochromaticVariantReason(resolvedMonochromaticVariant, analysis),
+      },
+    };
+  }
+
+  return {};
+}
+
+function attachResolvedVariant(
+  result: GenerateTutorialResult,
+  resolvedVariant: ResolvedLookVariant
+): GenerateTutorialResult {
+  return {
+    ...result,
+    lookVariant: resolvedVariant.metadata ?? null,
+  };
+}
+
+function pickEditorialSubtype(
+  analysis: FaceAnalysis,
+  preferenceProfile?: PersonalizationProfile | null
+): EditorialSubtype {
+  if (
+    preferenceProfile?.skillLevel === "beginner" ||
+    preferenceProfile?.intensityPreference === "soft" ||
+    preferenceProfile?.dislikedTags.includes("too_bold")
+  ) {
+    return "soft";
+  }
+
+  if (
+    preferenceProfile?.skillLevel === "advanced" &&
+    preferenceProfile?.intensityPreference === "bold" &&
+    preferenceProfile?.preferredLooks.includes("editorial")
+  ) {
+    return "messy";
+  }
+
+  if (
+    preferenceProfile?.preferredLooks.includes("soft-glam") ||
+    preferenceProfile?.preferredLooks.includes("monochromatic") ||
+    (analysis.skinUndertone !== "cool" && analysis.beautyHighlights.some((item) => /glow|skin|warm/i.test(item)))
+  ) {
+    return "glossy";
+  }
+
+  return "sharp";
+}
+
+function pickMonochromaticVariant(
+  analysis: FaceAnalysis,
+  preferenceProfile?: PersonalizationProfile | null
+): MonochromaticVariant {
+  if (
+    analysis.skinUndertone === "warm" &&
+    preferenceProfile?.intensityPreference !== "bold" &&
+    preferenceProfile?.featureFocus !== "eyes"
+  ) {
+    return "peach";
+  }
+
+  if (
+    preferenceProfile?.intensityPreference === "bold" ||
+    preferenceProfile?.preferredLooks.includes("evening") ||
+    preferenceProfile?.preferredLooks.includes("bold-lip") ||
+    ["medium", "tan", "deep"].includes(analysis.skinTone)
+  ) {
+    return "brown";
+  }
+
+  return "rose";
+}
+
+function buildEditorialVariantReason(
+  subtype: EditorialSubtype,
+  analysis: FaceAnalysis
+) {
+  switch (subtype) {
+    case "soft":
+      return "Your saved taste signals lean softer, so MEDUSA kept editorial diffused and easier to wear on your features.";
+    case "glossy":
+      return `Your ${analysis.skinUndertone} undertone and polished preference signals point toward a cleaner, glow-led editorial finish.`;
+    case "messy":
+      return "Your profile reads bolder and more experimental, so MEDUSA pushed editorial into a smudged, fashion-led direction.";
+    case "sharp":
+    default:
+      return "Your structure and current preference signals can carry a crisp, graphic editorial look without losing control.";
+  }
+}
+
+function buildMonochromaticVariantReason(
+  variant: MonochromaticVariant,
+  analysis: FaceAnalysis
+) {
+  switch (variant) {
+    case "peach":
+      return `Your ${analysis.skinUndertone} undertone and softer profile cues are strongest in peach-based monochromatic tones.`;
+    case "brown":
+      return "Your depth, intensity signals, and look history can carry a richer brown monochromatic story most cleanly.";
+    case "rose":
+    default:
+      return "Rose gives you the most balanced monochromatic read, keeping the palette polished without pushing too warm or too deep.";
+  }
 }
 
 export function validateTutorialForLook(

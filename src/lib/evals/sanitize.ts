@@ -30,11 +30,13 @@ export function summarizeTutorialInput(
   faceAnalysis: FaceAnalysis,
   selectedLook: LookId,
   selectedEditorialSubtype?: EditorialSubtype,
-  preferenceProfile?: PersonalizationProfile | null
+  preferenceProfile?: PersonalizationProfile | null,
+  resolvedLookVariant?: string | null
 ) {
   return {
     selectedLook,
     selectedEditorialSubtype: selectedEditorialSubtype ?? null,
+    resolvedLookVariant: resolvedLookVariant ?? null,
     preferenceProfile: preferenceProfile ?? null,
     faceAnalysis,
   };
