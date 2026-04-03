@@ -11,6 +11,9 @@ export type LookId = (typeof LOOK_IDS)[number];
 
 export const EDITORIAL_SUBTYPES = [
   "sharp",
+  "glossy",
+  "messy",
+  "soft",
 ] as const;
 
 export type EditorialSubtype = (typeof EDITORIAL_SUBTYPES)[number];
@@ -210,11 +213,11 @@ export const LOOK_DEFINITIONS: Record<LookId, LookDefinition> = {
   editorial: {
     id: "editorial",
     label: "Editorial",
-    subtitle: "Statement-led and sharply defined",
+    subtitle: "Statement-led, tuned to you",
     tag: "Creative",
     accent: "rgba(109,40,217,0.16)",
     promptDefinition:
-      "Editorial - 8-12 steps. Bold, directional, photogenic, and sharply defined. Use graphic structure, clean edges, clear contrast, and a statement fashion-led finish.",
+      "Editorial - 8-12 steps. Bold, directional, photogenic. The exact editorial direction can shift between sharp, glossy, messy, or soft depending on the personalized concept.",
     engine: {
       primaryAxis: "concept",
       defaultIntensity: "bold",
@@ -246,6 +249,51 @@ export const EDITORIAL_SUBTYPE_DEFINITIONS: Record<EditorialSubtype, EditorialSu
       edgeStyle: "Edges must read clean, cut, and intentional.",
       textureStyle: "Keep texture polished and controlled rather than dewy or messy.",
       statementPlacement: "Prioritize graphic placement, symmetry, and visible structure.",
+    },
+  },
+  glossy: {
+    id: "glossy",
+    label: "Glossy",
+    subtitle: "Wet-look shine",
+    body: "Reflective lids or skin, fresh texture, and controlled shine that catches light.",
+    accent: "rgba(96,165,250,0.16)",
+    promptDefinition:
+      "Glossy Editorial - wet-looking shine, reflective lids or skin, fresh base, controlled glow, and modern shine without looking greasy. Keep gloss intentional and placed with restraint.",
+    engine: {
+      contrastLevel: "balanced",
+      edgeStyle: "Edges can stay softer if the shine placement remains deliberate.",
+      textureStyle: "Texture is the hero. Reflective surfaces should feel strategic, not oily.",
+      statementPlacement: "Prioritize glossy lids, skin planes, or reflective accents with controlled placement.",
+    },
+  },
+  messy: {
+    id: "messy",
+    label: "Messy",
+    subtitle: "Lived-in and smudged",
+    body: "Deliberately blurred, grungy, and undone, but still designed with intent.",
+    accent: "rgba(168,85,247,0.16)",
+    promptDefinition:
+      "Messy Editorial - intentionally undone, smudged, lived-in texture with attitude. Think blurred edges, slept-in eyes, imperfect diffusion, and cool contrast, but still deliberately designed.",
+    engine: {
+      contrastLevel: "bold",
+      edgeStyle: "Edges should look blurred or smudged on purpose, never accidental.",
+      textureStyle: "Texture can feel grungy, diffused, and lived-in, but still clearly designed.",
+      statementPlacement: "Prioritize imperfect diffusion, smudged eyes, or broken-up placement with strong intent.",
+    },
+  },
+  soft: {
+    id: "soft",
+    label: "Soft",
+    subtitle: "Diffused and airy",
+    body: "Washed color, blurred edges, and a gentler editorial look with less harsh contrast.",
+    accent: "rgba(251,191,36,0.12)",
+    promptDefinition:
+      "Soft Editorial - diffused, airy, washed, and fashion-led rather than dramatic. Think hazy edges, blended tones, gentle glow, blurred lips, and softer transitions everywhere.",
+    engine: {
+      contrastLevel: "soft",
+      edgeStyle: "Edges should be hazy, airy, and low-harshness.",
+      textureStyle: "Texture should feel soft-focus and atmospheric rather than wet or sharp.",
+      statementPlacement: "Prioritize subtle but unmistakable shape through diffusion, draping, or color haze.",
     },
   },
 };
