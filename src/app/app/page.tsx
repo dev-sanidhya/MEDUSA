@@ -532,8 +532,10 @@ export default function MedusaApp() {
                 tagOptions={[
                   { id: "accurate", label: "Accurate" },
                   { id: "face_fit", label: "Face Fit" },
+                  { id: "tone_right", label: "Tone Right" },
                   { id: "tone_off", label: "Tone Off" },
                   { id: "too_generic", label: "Too Generic" },
+                  { id: "missed_feature", label: "Missed Feature" },
                 ]}
                 submitLabel="Save Analysis Feedback"
                 onSubmit={({ rating, tags }) =>
@@ -607,14 +609,23 @@ export default function MedusaApp() {
                 title="Rate This Routine"
                 body="Tell MEDUSA what landed and what did not. This feedback will start shaping both recommendations and tutorial tone."
                 tagOptions={[
-                  { id: "accurate", label: "Accurate" },
-                  { id: "my_style", label: "My Style" },
+                  { id: "felt_like_me", label: "Felt Like Me" },
+                  { id: "clean_luxury", label: "Clean Luxury" },
+                  { id: "fresh_glow", label: "Fresh Glow" },
+                  { id: "soft_blend", label: "Soft Blend" },
+                  { id: "sharp_definition", label: "Sharp Definition" },
+                  { id: "graphic_lines", label: "Graphic" },
                   { id: "eye_focus", label: "Eye Focus" },
                   { id: "lip_focus", label: "Lip Focus" },
                   { id: "too_generic", label: "Too Generic" },
                   { id: "not_my_style", label: "Not My Style" },
                   { id: "too_bold", label: "Too Bold" },
                   { id: "too_soft", label: "Too Soft" },
+                  { id: "too_glossy", label: "Too Glossy" },
+                  { id: "too_matte", label: "Too Matte" },
+                  { id: "too_sharp", label: "Too Sharp" },
+                  { id: "too_plain", label: "Too Plain" },
+                  { id: "too_experimental", label: "Too Experimental" },
                 ]}
                 submitLabel="Save Routine Feedback"
                 onSubmit={({ rating, tags }) =>

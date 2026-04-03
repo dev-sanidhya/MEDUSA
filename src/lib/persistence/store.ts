@@ -625,6 +625,17 @@ function buildPreferenceSummary(
       : featureFocusCounts.eyes > featureFocusCounts.lips
         ? "eyes"
         : "lips";
+  const inferredFinishPreference = inferFinishPreference(
+    explicitPreferences,
+    positiveTags,
+    dislikedTags
+  );
+  const inferredStyleMood = inferStyleMood(explicitPreferences, positiveTags, dislikedTags);
+  const inferredDefinitionPreference = inferDefinitionPreference(
+    explicitPreferences,
+    positiveTags,
+    dislikedTags
+  );
 
   return {
     preferredLooks: orderedPreferredLooks,
@@ -633,9 +644,9 @@ function buildPreferenceSummary(
     skillLevel: explicitPreferences.skillLevel,
     intensityPreference:
       explicitPreferences.intensityPreference ?? inferredIntensityPreference,
-    finishPreference: explicitPreferences.finishPreference,
-    styleMood: explicitPreferences.styleMood,
-    definitionPreference: explicitPreferences.definitionPreference,
+    finishPreference: inferredFinishPreference,
+    styleMood: inferredStyleMood,
+    definitionPreference: inferredDefinitionPreference,
     featureFocus: explicitPreferences.featureFocus ?? inferredFeatureFocus,
     positiveTags: getTopTags(positiveTags),
     dislikedTags: getTopTags(dislikedTags),
@@ -693,11 +704,96 @@ function getTopTags(tagCounts: Map<string, number>) {
     .slice(0, 4);
 }
 
+function inferFinishPreference(
+  explicitPreferences: ProfileExplicitPreferences,
+  positiveTags: Map<string, number>,
+  dislikedTags: Map<string, number>
+): ProfilePreferenceSummary["finishPreference"] {
+  if (explicitPreferences.finishPreference) {
+    return explicitPreferences.finishPreference;
+  }
+
+  const glowScore = (positiveTags.get("fresh_glow") ?? 0) + (dislikedTags.get("too_matte") ?? 0);
+  const matteScore = (positiveTags.get("matte_skin") ?? 0) + (dislikedTags.get("too_glossy") ?? 0);
+
+  if (glowScore === 0 && matteScore === 0) {
+    return null;
+  }
+
+  if (glowScore > matteScore) {
+    return "glowy";
+  }
+
+  if (matteScore > glowScore) {
+    return "matte";
+  }
+
+  return "balanced";
+}
+
+function inferStyleMood(
+  explicitPreferences: ProfileExplicitPreferences,
+  positiveTags: Map<string, number>,
+  dislikedTags: Map<string, number>
+): ProfilePreferenceSummary["styleMood"] {
+  if (explicitPreferences.styleMood) {
+    return explicitPreferences.styleMood;
+  }
+
+  const classicScore = (positiveTags.get("clean_luxury") ?? 0) + (dislikedTags.get("too_experimental") ?? 0);
+  const softScore = (positiveTags.get("soft_blend") ?? 0) + (dislikedTags.get("too_sharp") ?? 0);
+  const graphicScore = (positiveTags.get("graphic_lines") ?? 0) + (positiveTags.get("sharp_definition") ?? 0);
+  const experimentalScore = (dislikedTags.get("too_plain") ?? 0) + (positiveTags.get("experimental_color") ?? 0);
+
+  const candidates = [
+    ["classic", classicScore],
+    ["soft", softScore],
+    ["graphic", graphicScore],
+    ["experimental", experimentalScore],
+  ] as const;
+  const winner = candidates.sort((a, b) => b[1] - a[1])[0];
+
+  return winner[1] > 0 ? winner[0] : null;
+}
+
+function inferDefinitionPreference(
+  explicitPreferences: ProfileExplicitPreferences,
+  positiveTags: Map<string, number>,
+  dislikedTags: Map<string, number>
+): ProfilePreferenceSummary["definitionPreference"] {
+  if (explicitPreferences.definitionPreference) {
+    return explicitPreferences.definitionPreference;
+  }
+
+  const sharpScore = (positiveTags.get("sharp_definition") ?? 0) + (positiveTags.get("graphic_lines") ?? 0);
+  const diffusedScore = (positiveTags.get("soft_blend") ?? 0) + (dislikedTags.get("too_sharp") ?? 0);
+
+  if (sharpScore === 0 && diffusedScore === 0) {
+    return null;
+  }
+
+  if (sharpScore > diffusedScore) {
+    return "sharp";
+  }
+
+  if (diffusedScore > sharpScore) {
+    return "diffused";
+  }
+
+  return "balanced";
+}
+
 const POSITIVE_PREFERENCE_TAGS = new Set([
   "accurate",
-  "my_style",
+  "felt_like_me",
+  "tone_right",
   "love_this",
   "face_fit",
+  "clean_luxury",
+  "fresh_glow",
+  "soft_blend",
+  "sharp_definition",
+  "graphic_lines",
   "eye_focus",
   "lip_focus",
 ]);
@@ -708,6 +804,12 @@ const NEGATIVE_PREFERENCE_TAGS = new Set([
   "too_bold",
   "too_soft",
   "tone_off",
+  "missed_feature",
+  "too_glossy",
+  "too_matte",
+  "too_sharp",
+  "too_plain",
+  "too_experimental",
 ]);
 
 const SOFT_LOOKS = new Set(["natural", "soft-glam", "monochromatic"]);
