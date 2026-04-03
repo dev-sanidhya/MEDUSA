@@ -184,6 +184,8 @@ export async function generateTutorial(
   preferenceProfile?: PersonalizationProfile | null
 ): Promise<GenerateTutorialResult> {
   const lookDef = LOOK_DEFINITIONS[selectedLook];
+  const resolvedEditorialSubtype =
+    selectedLook === "editorial" ? (selectedEditorialSubtype ?? "sharp") : undefined;
   const startedAt = Date.now();
 
   if (!lookDef) {
@@ -192,7 +194,7 @@ export async function generateTutorial(
 
   try {
     const initialResult = await runTutorialQuery(
-      buildTutorialPrompt(faceAnalysis, lookDef, selectedEditorialSubtype, preferenceProfile),
+      buildTutorialPrompt(faceAnalysis, lookDef, resolvedEditorialSubtype, preferenceProfile),
       "generate-tutorial"
     );
 
@@ -202,7 +204,7 @@ export async function generateTutorial(
         executionStatus: "succeeded",
         outputStatus: "initial_pass",
         selectedLook,
-        requestSummary: summarizeTutorialInput(faceAnalysis, selectedLook, selectedEditorialSubtype, preferenceProfile),
+        requestSummary: summarizeTutorialInput(faceAnalysis, selectedLook, resolvedEditorialSubtype, preferenceProfile),
         responseSummary: summarizeTutorialOutput(initialResult),
         automaticEvaluation: initialEvaluation,
         metrics: {
@@ -222,7 +224,7 @@ export async function generateTutorial(
         lookDef,
         initialResult,
         initialEvaluation.issues.map((issue) => issue.message),
-        selectedEditorialSubtype,
+        resolvedEditorialSubtype,
         preferenceProfile
       ),
       "generate-tutorial-repair"
@@ -240,7 +242,7 @@ export async function generateTutorial(
       executionStatus: "succeeded",
       outputStatus: repairedEvaluation.passed ? "repaired_pass" : "repaired_with_issues",
       selectedLook,
-      requestSummary: summarizeTutorialInput(faceAnalysis, selectedLook, selectedEditorialSubtype, preferenceProfile),
+      requestSummary: summarizeTutorialInput(faceAnalysis, selectedLook, resolvedEditorialSubtype, preferenceProfile),
       responseSummary: {
         final: summarizeTutorialOutput(repairedResult),
         repair: {
@@ -264,7 +266,7 @@ export async function generateTutorial(
     await persistEval({
       executionStatus: "failed",
       selectedLook,
-      requestSummary: summarizeTutorialInput(faceAnalysis, selectedLook, selectedEditorialSubtype, preferenceProfile),
+      requestSummary: summarizeTutorialInput(faceAnalysis, selectedLook, resolvedEditorialSubtype, preferenceProfile),
       metrics: {
         durationMs: Date.now() - startedAt,
         validatorVersion: VALIDATOR_VERSION,

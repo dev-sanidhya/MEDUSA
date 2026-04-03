@@ -64,10 +64,12 @@ export async function POST(req: NextRequest) {
     }
 
     const preferenceProfile = await getPersonalizationProfile(profileId);
+    const resolvedEditorialSubtype =
+      body.selectedLook === "editorial" ? (body.selectedEditorialSubtype ?? "sharp") : undefined;
     const result = await generateTutorial(
       resolvedFaceAnalysis,
       body.selectedLook,
-      body.selectedEditorialSubtype,
+      resolvedEditorialSubtype,
       preferenceProfile
     );
 
@@ -76,7 +78,7 @@ export async function POST(req: NextRequest) {
       analysisRunId: body.analysisRunId,
       faceAnalysis: resolvedFaceAnalysis,
       selectedLook: body.selectedLook,
-      selectedEditorialSubtype: body.selectedEditorialSubtype,
+      selectedEditorialSubtype: resolvedEditorialSubtype,
       tutorial: result,
     });
 
