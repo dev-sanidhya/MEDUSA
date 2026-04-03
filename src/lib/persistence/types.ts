@@ -9,6 +9,9 @@ export interface ProfilePreferenceSummary {
   recentLooks: string[];
   skillLevel: "beginner" | "intermediate" | "advanced" | null;
   intensityPreference: "soft" | "balanced" | "bold" | null;
+  finishPreference: "glowy" | "balanced" | "matte" | null;
+  styleMood: "classic" | "soft" | "graphic" | "experimental" | null;
+  definitionPreference: "diffused" | "balanced" | "sharp" | null;
   featureFocus: "eyes" | "lips" | null;
   positiveTags: string[];
   dislikedTags: string[];
@@ -18,6 +21,9 @@ export interface ProfileExplicitPreferences {
   completedOnboarding: boolean;
   skillLevel: "beginner" | "intermediate" | "advanced" | null;
   intensityPreference: "soft" | "balanced" | "bold" | null;
+  finishPreference: "glowy" | "balanced" | "matte" | null;
+  styleMood: "classic" | "soft" | "graphic" | "experimental" | null;
+  definitionPreference: "diffused" | "balanced" | "sharp" | null;
   featureFocus: "eyes" | "lips" | null;
   preferredLooks: string[];
   dislikedLooks: string[];

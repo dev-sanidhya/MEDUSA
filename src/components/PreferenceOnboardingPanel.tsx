@@ -25,6 +25,15 @@ export function PreferenceOnboardingPanel({
   const [intensityPreference, setIntensityPreference] = useState<
     ProfileExplicitPreferences["intensityPreference"]
   >(initialPreferences?.intensityPreference ?? null);
+  const [finishPreference, setFinishPreference] = useState<
+    ProfileExplicitPreferences["finishPreference"]
+  >(initialPreferences?.finishPreference ?? null);
+  const [styleMood, setStyleMood] = useState<ProfileExplicitPreferences["styleMood"]>(
+    initialPreferences?.styleMood ?? null
+  );
+  const [definitionPreference, setDefinitionPreference] = useState<
+    ProfileExplicitPreferences["definitionPreference"]
+  >(initialPreferences?.definitionPreference ?? null);
   const [featureFocus, setFeatureFocus] = useState<ProfileExplicitPreferences["featureFocus"]>(
     initialPreferences?.featureFocus ?? null
   );
@@ -64,6 +73,9 @@ export function PreferenceOnboardingPanel({
         completedOnboarding: true,
         skillLevel,
         intensityPreference,
+        finishPreference,
+        styleMood,
+        definitionPreference,
         featureFocus,
         preferredLooks,
         dislikedLooks,
@@ -106,6 +118,44 @@ export function PreferenceOnboardingPanel({
             selected={intensityPreference}
             onSelect={(value) =>
               setIntensityPreference(value as ProfileExplicitPreferences["intensityPreference"])
+            }
+          />
+
+          <PreferenceGroup
+            label="Preferred Finish"
+            options={[
+              { id: "glowy", label: "Glowy" },
+              { id: "balanced", label: "Balanced" },
+              { id: "matte", label: "Matte" },
+            ]}
+            selected={finishPreference}
+            onSelect={(value) =>
+              setFinishPreference(value as ProfileExplicitPreferences["finishPreference"])
+            }
+          />
+
+          <PreferenceGroup
+            label="Style Mood"
+            options={[
+              { id: "classic", label: "Classic" },
+              { id: "soft", label: "Soft" },
+              { id: "graphic", label: "Graphic" },
+              { id: "experimental", label: "Experimental" },
+            ]}
+            selected={styleMood}
+            onSelect={(value) => setStyleMood(value as ProfileExplicitPreferences["styleMood"])}
+          />
+
+          <PreferenceGroup
+            label="Edge Preference"
+            options={[
+              { id: "diffused", label: "Diffused" },
+              { id: "balanced", label: "Balanced" },
+              { id: "sharp", label: "Sharp" },
+            ]}
+            selected={definitionPreference}
+            onSelect={(value) =>
+              setDefinitionPreference(value as ProfileExplicitPreferences["definitionPreference"])
             }
           />
 

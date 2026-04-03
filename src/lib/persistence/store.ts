@@ -633,6 +633,9 @@ function buildPreferenceSummary(
     skillLevel: explicitPreferences.skillLevel,
     intensityPreference:
       explicitPreferences.intensityPreference ?? inferredIntensityPreference,
+    finishPreference: explicitPreferences.finishPreference,
+    styleMood: explicitPreferences.styleMood,
+    definitionPreference: explicitPreferences.definitionPreference,
     featureFocus: explicitPreferences.featureFocus ?? inferredFeatureFocus,
     positiveTags: getTopTags(positiveTags),
     dislikedTags: getTopTags(dislikedTags),
@@ -648,6 +651,9 @@ function buildPersonalizationProfile(
     recentLooks: summary.recentLooks.filter(isLookId),
     skillLevel: summary.skillLevel,
     intensityPreference: summary.intensityPreference,
+    finishPreference: summary.finishPreference,
+    styleMood: summary.styleMood,
+    definitionPreference: summary.definitionPreference,
     featureFocus: summary.featureFocus,
     positiveTags: summary.positiveTags,
     dislikedTags: summary.dislikedTags,
@@ -662,6 +668,13 @@ function normalizeExplicitPreferences(
     skillLevel: isSkillLevel(raw?.skillLevel) ? raw.skillLevel : null,
     intensityPreference: isIntensityPreference(raw?.intensityPreference)
       ? raw.intensityPreference
+      : null,
+    finishPreference: isFinishPreference(raw?.finishPreference)
+      ? raw.finishPreference
+      : null,
+    styleMood: isStyleMood(raw?.styleMood) ? raw.styleMood : null,
+    definitionPreference: isDefinitionPreference(raw?.definitionPreference)
+      ? raw.definitionPreference
       : null,
     featureFocus: isFeatureFocus(raw?.featureFocus) ? raw.featureFocus : null,
     preferredLooks: Array.isArray(raw?.preferredLooks)
@@ -719,6 +732,24 @@ function isIntensityPreference(
   value: unknown
 ): value is ProfileExplicitPreferences["intensityPreference"] {
   return value === "soft" || value === "balanced" || value === "bold";
+}
+
+function isFinishPreference(
+  value: unknown
+): value is ProfileExplicitPreferences["finishPreference"] {
+  return value === "glowy" || value === "balanced" || value === "matte";
+}
+
+function isStyleMood(
+  value: unknown
+): value is ProfileExplicitPreferences["styleMood"] {
+  return value === "classic" || value === "soft" || value === "graphic" || value === "experimental";
+}
+
+function isDefinitionPreference(
+  value: unknown
+): value is ProfileExplicitPreferences["definitionPreference"] {
+  return value === "diffused" || value === "balanced" || value === "sharp";
 }
 
 function isFeatureFocus(

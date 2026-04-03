@@ -85,6 +85,9 @@ export interface PersonalizationProfile {
   recentLooks: LookId[];
   skillLevel: "beginner" | "intermediate" | "advanced" | null;
   intensityPreference: "soft" | "balanced" | "bold" | null;
+  finishPreference: "glowy" | "balanced" | "matte" | null;
+  styleMood: "classic" | "soft" | "graphic" | "experimental" | null;
+  definitionPreference: "diffused" | "balanced" | "sharp" | null;
   featureFocus: "eyes" | "lips" | null;
   positiveTags: string[];
   dislikedTags: string[];
@@ -370,6 +373,9 @@ Variant contract:
 - Discouraged looks: ${preferenceProfile.discouragedLooks.length > 0 ? preferenceProfile.discouragedLooks.join(" | ") : "none yet"}
 - Recent looks: ${preferenceProfile.recentLooks.length > 0 ? preferenceProfile.recentLooks.join(" | ") : "none yet"}
 - Intensity preference: ${preferenceProfile.intensityPreference ?? "unknown"}
+- Finish preference: ${preferenceProfile.finishPreference ?? "unknown"}
+- Style mood: ${preferenceProfile.styleMood ?? "unknown"}
+- Edge preference: ${preferenceProfile.definitionPreference ?? "unknown"}
 - Feature focus: ${preferenceProfile.featureFocus ?? "none"}
 - Positive signals: ${preferenceProfile.positiveTags.length > 0 ? preferenceProfile.positiveTags.join(" | ") : "none yet"}
 - Negative signals: ${preferenceProfile.dislikedTags.length > 0 ? preferenceProfile.dislikedTags.join(" | ") : "none yet"}
@@ -458,6 +464,9 @@ Saved preferences:
 - Preferred looks: ${preferenceProfile.preferredLooks.length > 0 ? preferenceProfile.preferredLooks.join(" | ") : "none yet"}
 - Discouraged looks: ${preferenceProfile.discouragedLooks.length > 0 ? preferenceProfile.discouragedLooks.join(" | ") : "none yet"}
 - Intensity preference: ${preferenceProfile.intensityPreference ?? "unknown"}
+- Finish preference: ${preferenceProfile.finishPreference ?? "unknown"}
+- Style mood: ${preferenceProfile.styleMood ?? "unknown"}
+- Edge preference: ${preferenceProfile.definitionPreference ?? "unknown"}
 - Feature focus: ${preferenceProfile.featureFocus ?? "none"}
 - Positive signals: ${preferenceProfile.positiveTags.length > 0 ? preferenceProfile.positiveTags.join(" | ") : "none yet"}
 - Negative signals: ${preferenceProfile.dislikedTags.length > 0 ? preferenceProfile.dislikedTags.join(" | ") : "none yet"}

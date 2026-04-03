@@ -12,6 +12,9 @@ export interface UpdateProfilePreferencesRequest {
   completedOnboarding?: boolean;
   skillLevel?: ProfileExplicitPreferences["skillLevel"];
   intensityPreference?: ProfileExplicitPreferences["intensityPreference"];
+  finishPreference?: ProfileExplicitPreferences["finishPreference"];
+  styleMood?: ProfileExplicitPreferences["styleMood"];
+  definitionPreference?: ProfileExplicitPreferences["definitionPreference"];
   featureFocus?: ProfileExplicitPreferences["featureFocus"];
   preferredLooks?: string[];
   dislikedLooks?: string[];
@@ -27,6 +30,9 @@ export async function POST(req: NextRequest) {
       completedOnboarding: body.completedOnboarding ?? true,
       skillLevel: body.skillLevel ?? null,
       intensityPreference: body.intensityPreference ?? null,
+      finishPreference: body.finishPreference ?? null,
+      styleMood: body.styleMood ?? null,
+      definitionPreference: body.definitionPreference ?? null,
       featureFocus: body.featureFocus ?? null,
       preferredLooks: body.preferredLooks ?? [],
       dislikedLooks: body.dislikedLooks ?? [],
