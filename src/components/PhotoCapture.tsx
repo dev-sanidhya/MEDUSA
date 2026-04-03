@@ -7,7 +7,7 @@
  * and shows precision feedback to the user.
  */
 
-import { useRef, useState, useCallback } from "react";
+import { useRef, useState, useCallback, useEffect } from "react";
 import Image from "next/image";
 import {
   LANDMARK_INDICES,
@@ -45,13 +45,32 @@ export function PhotoCapture({
   disabled,
 }: PhotoCaptureProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const cameraInputRef = useRef<HTMLInputElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [precisionScore, setPrecisionScore] = useState<number | null>(null);
   const [isDragging, setIsDragging] = useState(false);
+  const [cameraStream, setCameraStream] = useState<MediaStream | null>(null);
+  const [isCameraOpen, setIsCameraOpen] = useState(false);
+  const [isStartingCamera, setIsStartingCamera] = useState(false);
+
+  useEffect(() => {
+    return () => {
+      stopCameraStream(cameraStream);
+    };
+  }, [cameraStream]);
+
+  useEffect(() => {
+    if (!videoRef.current) return;
+    if (cameraStream) {
+      videoRef.current.srcObject = cameraStream;
+      void videoRef.current.play().catch(() => {});
+    } else {
+      videoRef.current.srcObject = null;
+    }
+  }, [cameraStream]);
 
   const processFile = useCallback(async (file: File) => {
     if (!file.type.startsWith("image/")) {
@@ -138,6 +157,81 @@ export function PhotoCapture({
     if (file) processFile(file);
   };
 
+  const handleStartCamera = async () => {
+    if (disabled || isStartingCamera || isProcessing) return;
+
+    setError(null);
+    setIsStartingCamera(true);
+
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: {
+          facingMode: "user",
+          width: { ideal: 1280 },
+          height: { ideal: 960 },
+        },
+        audio: false,
+      });
+
+      stopCameraStream(cameraStream);
+      setCameraStream(stream);
+      setIsCameraOpen(true);
+    } catch (err) {
+      console.error(err);
+      setError("Camera access was blocked. Please allow permission or upload a photo from your device.");
+      setIsCameraOpen(false);
+    } finally {
+      setIsStartingCamera(false);
+    }
+  };
+
+  const handleCloseCamera = () => {
+    stopCameraStream(cameraStream);
+    setCameraStream(null);
+    setIsCameraOpen(false);
+  };
+
+  const handleCaptureLivePhoto = async () => {
+    const video = videoRef.current;
+    if (!video || !cameraStream) return;
+
+    const width = video.videoWidth;
+    const height = video.videoHeight;
+
+    if (!width || !height) {
+      setError("The camera is still getting ready. Please wait a moment and try again.");
+      return;
+    }
+
+    const captureCanvas = document.createElement("canvas");
+    captureCanvas.width = width;
+    captureCanvas.height = height;
+    const context = captureCanvas.getContext("2d");
+
+    if (!context) {
+      setError("The camera capture could not be prepared. Please try again.");
+      return;
+    }
+
+    context.drawImage(video, 0, 0, width, height);
+
+    const blob = await new Promise<Blob | null>((resolve) => {
+      captureCanvas.toBlob((capturedBlob) => resolve(capturedBlob), "image/jpeg", 0.92);
+    });
+
+    if (!blob) {
+      setError("The live photo could not be captured. Please try again.");
+      return;
+    }
+
+    const liveFile = new File([blob], `medusa-live-${Date.now()}.jpg`, {
+      type: "image/jpeg",
+    });
+
+    handleCloseCamera();
+    await processFile(liveFile);
+  };
+
   return (
     <div className="w-full">
       <canvas ref={canvasRef} className="hidden" />
@@ -151,7 +245,7 @@ export function PhotoCapture({
         </div>
       )}
 
-      {!previewUrl && (
+      {!previewUrl && !isCameraOpen && (
         <div
           className={`relative overflow-hidden rounded-[2rem] border border-dashed transition-all cursor-pointer
             ${isDragging ? "border-rose-400 bg-[rgba(244,63,94,0.08)]" : "border-white/12 bg-[rgba(13,13,20,0.72)] hover:border-rose-400/45 hover:bg-[rgba(244,63,94,0.04)]"}
@@ -169,15 +263,6 @@ export function PhotoCapture({
             ref={fileInputRef}
             type="file"
             accept="image/jpeg,image/png,image/webp"
-            className="hidden"
-            onChange={handleFileChange}
-            disabled={disabled}
-          />
-          <input
-            ref={cameraInputRef}
-            type="file"
-            accept="image/jpeg,image/png,image/webp"
-            capture="user"
             className="hidden"
             onChange={handleFileChange}
             disabled={disabled}
@@ -209,11 +294,11 @@ export function PhotoCapture({
                     type="button"
                     onClick={(e) => {
                       e.stopPropagation();
-                      cameraInputRef.current?.click();
+                      void handleStartCamera();
                     }}
                     className="inline-flex items-center justify-center rounded-full bg-rose-500 px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-rose-400"
                   >
-                    Take Live Photo
+                    {isStartingCamera ? "Opening Camera..." : "Take Live Photo"}
                   </button>
                   <button
                     type="button"
@@ -232,6 +317,43 @@ export function PhotoCapture({
                 </div>
               </>
             )}
+          </div>
+        </div>
+      )}
+
+      {!previewUrl && isCameraOpen && (
+        <div className="relative overflow-hidden rounded-[2rem] border border-white/10 bg-black shadow-[0_14px_40px_rgba(0,0,0,0.45)]">
+          <div className="relative aspect-[4/5] w-full bg-black">
+            <video
+              ref={videoRef}
+              autoPlay
+              playsInline
+              muted
+              className="h-full w-full object-cover"
+            />
+            <div className="pointer-events-none absolute inset-x-0 top-0 bg-gradient-to-b from-black/75 via-black/25 to-transparent px-5 py-5">
+              <p className="text-[10px] uppercase tracking-[0.24em] text-rose-300">Live Camera</p>
+              <p className="mt-2 text-sm leading-relaxed text-white/72">
+                Hold your face straight, stay in even light, and capture when the frame feels clear.
+              </p>
+            </div>
+          </div>
+
+          <div className="flex flex-col gap-3 border-t border-white/8 bg-[rgba(10,10,14,0.92)] px-5 py-4 sm:flex-row sm:justify-between">
+            <button
+              type="button"
+              onClick={handleCloseCamera}
+              className="inline-flex items-center justify-center rounded-full border border-white/10 px-5 py-3 text-sm font-semibold text-white/72 transition-colors hover:border-white/18 hover:bg-white/[0.04]"
+            >
+              Cancel Camera
+            </button>
+            <button
+              type="button"
+              onClick={() => void handleCaptureLivePhoto()}
+              className="inline-flex items-center justify-center rounded-full bg-rose-500 px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-rose-400"
+            >
+              Capture Photo
+            </button>
           </div>
         </div>
       )}
@@ -366,4 +488,8 @@ function fileToBase64(file: File): Promise<string> {
     reader.onerror = reject;
     reader.readAsDataURL(file);
   });
+}
+
+function stopCameraStream(stream: MediaStream | null) {
+  stream?.getTracks().forEach((track) => track.stop());
 }
