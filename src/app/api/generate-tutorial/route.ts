@@ -35,7 +35,6 @@ export async function POST(req: NextRequest) {
     const { profileId, shouldSetCookie } = resolveProfileId(req);
     await ensureAnonymousProfile(profileId);
 
-    const preferenceProfilePromise = getPersonalizationProfile(profileId);
     let resolvedFaceAnalysis: FaceAnalysis | null = null;
 
     if (body.analysisRunId) {
@@ -64,7 +63,7 @@ export async function POST(req: NextRequest) {
       resolvedFaceAnalysis = applyFaceAnalysisOverrides(resolvedFaceAnalysis, body.faceAnalysis);
     }
 
-    const preferenceProfile = await preferenceProfilePromise;
+    const preferenceProfile = await getPersonalizationProfile(profileId);
     const resolvedEditorialSubtype =
       body.selectedLook === "editorial" ? (body.selectedEditorialSubtype ?? "sharp") : undefined;
     const result = await generateTutorial(

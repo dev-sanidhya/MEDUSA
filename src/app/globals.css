@@ -106,6 +106,24 @@ body {
   50% { box-shadow: 0 0 0 1px rgba(244,63,94,0.35), 0 0 40px rgba(244,63,94,0.12); }
 }
 
+@keyframes medusa-sheen {
+  0% { transform: translateX(-120%); opacity: 0; }
+  18% { opacity: 0.32; }
+  100% { transform: translateX(120%); opacity: 0; }
+}
+
+@keyframes medusa-grid-drift {
+  0% { background-position: 0 0; }
+  100% { background-position: 64px 64px; }
+}
+
+@keyframes medusa-scan-beam {
+  0% { transform: translateY(-140%); opacity: 0; }
+  16% { opacity: 0.72; }
+  84% { opacity: 0.72; }
+  100% { transform: translateY(360%); opacity: 0; }
+}
+
 /* Glass card effect */
 .glass-card {
   background: rgba(13, 13, 20, 0.7);
@@ -139,4 +157,37 @@ body {
   background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E");
   pointer-events: none;
   z-index: 0;
+}
+
+.medusa-loading-sheen {
+  background: linear-gradient(
+    110deg,
+    transparent 0%,
+    rgba(255,255,255,0.02) 30%,
+    rgba(244,63,94,0.1) 50%,
+    rgba(255,255,255,0.02) 70%,
+    transparent 100%
+  );
+  animation: medusa-sheen 2.4s linear infinite;
+}
+
+.medusa-scan-grid {
+  background-image:
+    linear-gradient(rgba(255,255,255,0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,0.05) 1px, transparent 1px);
+  background-size: 28px 28px;
+  animation: medusa-grid-drift 14s linear infinite;
+}
+
+.medusa-scan-beam {
+  background: linear-gradient(
+    180deg,
+    transparent 0%,
+    rgba(244,63,94,0.04) 18%,
+    rgba(244,63,94,0.24) 50%,
+    rgba(255,255,255,0.08) 75%,
+    transparent 100%
+  );
+  filter: blur(10px);
+  animation: medusa-scan-beam 2.9s ease-in-out infinite;
 }

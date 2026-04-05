@@ -784,32 +784,227 @@ function ProcessingScreen({
   body: string;
   items: string[];
 }) {
+  const [activeIndex, setActiveIndex] = useState(0);
+
+  useEffect(() => {
+    const interval = window.setInterval(() => {
+      setActiveIndex((current) => (current + 1) % items.length);
+    }, 1400);
+
+    return () => window.clearInterval(interval);
+  }, [items.length]);
+
+  const stageCopy =
+    stage === "analyzing"
+      ? {
+          label: "Live Geometry Pass",
+          note: "Watching for structure, tone stability, and the strongest read across the frame set.",
+          accent: "Face map active",
+        }
+      : {
+          label: "Look Composition Pass",
+          note: "Shaping a routine around your structure, finish, and feature emphasis without flattening the look.",
+          accent: "Routine drafting",
+        };
+
   return (
     <AppFrame stage={stage}>
-      <main className="mx-auto flex min-h-screen w-full max-w-3xl items-center px-6 py-16">
-        <div className="glass-card w-full rounded-[2.4rem] border border-white/8 px-8 py-12 text-center">
-          <div className="mx-auto mb-8 flex h-24 w-24 items-center justify-center rounded-full border border-rose-500/18 bg-rose-500/[0.06]">
-            <div className="h-14 w-14 rounded-full border border-rose-400/22 border-t-rose-400 animate-spin" />
-          </div>
-          <p className="text-xs uppercase tracking-[0.3em] text-rose-400">{eyebrow}</p>
-          <h1
-            className="mt-4 text-5xl font-semibold leading-none text-white"
-            style={{ fontFamily: "var(--font-cormorant), Georgia, serif" }}
-          >
-            {title}
-          </h1>
-          <p className="mx-auto mt-5 max-w-xl text-sm leading-relaxed text-white/45 md:text-base">{body}</p>
+      <main className="mx-auto flex min-h-screen w-full max-w-6xl items-center px-6 py-16">
+        <div className="grid w-full gap-8 lg:grid-cols-[1.05fr_0.95fr]">
+          <div className="glass-card noise relative overflow-hidden rounded-[2.6rem] border border-white/8 px-8 py-10 md:px-10">
+            <div
+              className="pointer-events-none absolute inset-0"
+              style={{
+                background:
+                  stage === "analyzing"
+                    ? "radial-gradient(circle at 18% 18%, rgba(244,63,94,0.16), transparent 28%), radial-gradient(circle at 82% 82%, rgba(255,255,255,0.05), transparent 28%)"
+                    : "radial-gradient(circle at 82% 18%, rgba(244,63,94,0.18), transparent 30%), radial-gradient(circle at 20% 82%, rgba(255,255,255,0.04), transparent 28%)",
+              }}
+            />
 
-          <div className="mx-auto mt-10 max-w-xl space-y-3 text-left">
-            {items.map((item) => (
-              <div
-                key={item}
-                className="flex items-center gap-3 rounded-full border border-white/8 bg-white/[0.03] px-4 py-3 text-sm text-white/58"
-              >
-                <span className="h-2 w-2 rounded-full bg-rose-400 animate-pulse" />
-                {item}...
+            <div className="relative">
+              <div className="flex flex-wrap items-center gap-3">
+                <span className="rounded-full border border-rose-500/20 bg-rose-500/8 px-4 py-2 text-[11px] uppercase tracking-[0.26em] text-rose-300">
+                  {eyebrow}
+                </span>
+                <span className="rounded-full border border-white/10 px-4 py-2 text-[11px] uppercase tracking-[0.22em] text-white/34">
+                  {stageCopy.accent}
+                </span>
               </div>
-            ))}
+
+              <h1
+                className="mt-7 max-w-3xl text-[clamp(3.4rem,7vw,5.8rem)] font-semibold leading-none text-white"
+                style={{ fontFamily: "var(--font-cormorant), Georgia, serif" }}
+              >
+                {title}
+              </h1>
+              <p className="mt-5 max-w-2xl text-sm leading-relaxed text-white/48 md:text-base">{body}</p>
+
+              <div className="mt-8 grid gap-4 sm:grid-cols-3">
+                {[
+                  ["Current pass", stageCopy.label],
+                  ["Focused now", items[activeIndex]],
+                  ["System note", stage === "analyzing" ? "Precision stays locked." : "Face-fit logic stays intact."],
+                ].map(([label, value]) => (
+                  <div key={label} className="rounded-[1.5rem] border border-white/8 bg-white/[0.035] px-4 py-4">
+                    <p className="text-[10px] uppercase tracking-[0.22em] text-white/28">{label}</p>
+                    <p className="mt-3 text-sm leading-relaxed text-white/72">{value}</p>
+                  </div>
+                ))}
+              </div>
+
+              <div className="mt-10 space-y-3">
+                {items.map((item, index) => {
+                  const isActive = index === activeIndex;
+                  const isPassed = index < activeIndex;
+
+                  return (
+                    <motion.div
+                      key={item}
+                      initial={false}
+                      animate={{
+                        opacity: isActive ? 1 : isPassed ? 0.8 : 0.46,
+                        x: isActive ? 8 : 0,
+                        scale: isActive ? 1.01 : 1,
+                      }}
+                      transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+                      className={`relative overflow-hidden rounded-[1.6rem] border px-5 py-4 ${
+                        isActive
+                          ? "border-rose-400/30 bg-rose-500/[0.08] shadow-[0_0_40px_rgba(244,63,94,0.1)]"
+                          : "border-white/8 bg-white/[0.03]"
+                      }`}
+                    >
+                      {isActive && <div className="medusa-loading-sheen absolute inset-0" />}
+                      <div className="relative flex items-center justify-between gap-4">
+                        <div className="flex items-center gap-4">
+                          <div
+                            className={`flex h-9 w-9 items-center justify-center rounded-full border text-[11px] uppercase tracking-[0.2em] ${
+                              isActive
+                                ? "border-rose-300/45 bg-rose-500/14 text-rose-200"
+                                : isPassed
+                                  ? "border-white/16 bg-white/[0.05] text-white/62"
+                                  : "border-white/10 bg-transparent text-white/28"
+                            }`}
+                          >
+                            {String(index + 1).padStart(2, "0")}
+                          </div>
+                          <div>
+                            <p className="text-sm text-white/78">{item}</p>
+                            <p className="mt-1 text-[11px] uppercase tracking-[0.22em] text-white/24">
+                              {isActive ? "In focus" : isPassed ? "Stabilized" : "Queued"}
+                            </p>
+                          </div>
+                        </div>
+                        <div
+                          className={`h-2.5 w-2.5 rounded-full ${
+                            isActive ? "bg-rose-400 shadow-[0_0_18px_rgba(244,63,94,0.8)]" : "bg-white/16"
+                          }`}
+                        />
+                      </div>
+                    </motion.div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+
+          <div className="glass-card relative overflow-hidden rounded-[2.6rem] border border-white/8 px-8 py-10">
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(244,63,94,0.08),transparent_45%)]" />
+            <div className="relative flex h-full flex-col justify-between">
+              <div className="mx-auto flex w-full max-w-[22rem] flex-1 items-center justify-center">
+                <div className="relative flex aspect-square w-full items-center justify-center">
+                  <motion.div
+                    animate={{ rotate: 360 }}
+                    transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
+                    className="absolute inset-2 rounded-full border border-white/10"
+                  />
+                  <motion.div
+                    animate={{ rotate: -360 }}
+                    transition={{ duration: 14, repeat: Infinity, ease: "linear" }}
+                    className="absolute inset-8 rounded-full border border-dashed border-rose-400/30"
+                  />
+                  <motion.div
+                    animate={{ scale: [1, 1.06, 1], opacity: [0.45, 0.85, 0.45] }}
+                    transition={{ duration: 3.4, repeat: Infinity, ease: "easeInOut" }}
+                    className="absolute inset-[22%] rounded-full bg-[radial-gradient(circle,rgba(244,63,94,0.24),rgba(244,63,94,0.02)_62%,transparent_70%)]"
+                  />
+                  <div className="medusa-scan-grid absolute inset-[18%] overflow-hidden rounded-full border border-white/8 bg-[rgba(255,255,255,0.02)]">
+                    <div className="medusa-scan-beam absolute inset-x-0 top-0 h-20" />
+                    <svg
+                      viewBox="0 0 300 300"
+                      className="absolute inset-0 h-full w-full"
+                      xmlns="http://www.w3.org/2000/svg"
+                    >
+                      <path
+                        d="M150 48c36 0 66 24 74 58 8 34 6 95-19 132-13 20-33 32-55 32s-42-12-55-32c-25-37-27-98-19-132 8-34 38-58 74-58Z"
+                        fill="none"
+                        stroke="rgba(255,255,255,0.28)"
+                        strokeWidth="1.5"
+                      />
+                      <path
+                        d="M103 126c12-10 26-16 47-16s35 6 47 16"
+                        fill="none"
+                        stroke="rgba(244,63,94,0.52)"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                      />
+                      <path
+                        d="M112 184c13 12 25 18 38 18s25-6 38-18"
+                        fill="none"
+                        stroke="rgba(255,255,255,0.22)"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                      />
+                      {[
+                        [118, 122],
+                        [182, 122],
+                        [150, 146],
+                        [124, 188],
+                        [176, 188],
+                        [150, 214],
+                      ].map(([cx, cy], index) => (
+                        <circle
+                          key={`${cx}-${cy}`}
+                          cx={cx}
+                          cy={cy}
+                          r={index === activeIndex + 1 ? "5.5" : "4"}
+                          fill={index === activeIndex + 1 ? "rgba(244,63,94,0.92)" : "rgba(255,255,255,0.45)"}
+                        />
+                      ))}
+                    </svg>
+                  </div>
+                </div>
+              </div>
+
+              <div className="mt-8 space-y-4">
+                <div className="rounded-[1.6rem] border border-white/8 bg-white/[0.03] p-5">
+                  <p className="text-[10px] uppercase tracking-[0.24em] text-rose-300">System Motion</p>
+                  <p className="mt-3 text-lg text-white/82">{items[activeIndex]}</p>
+                  <p className="mt-2 text-sm leading-relaxed text-white/42">{stageCopy.note}</p>
+                </div>
+
+                <div className="grid gap-3 sm:grid-cols-3">
+                  {items.map((_, index) => (
+                    <motion.div
+                      key={`meter-${index}`}
+                      initial={false}
+                      animate={{
+                        opacity: index === activeIndex ? 1 : 0.28,
+                        scaleY: index === activeIndex ? 1 : 0.72,
+                      }}
+                      transition={{ duration: 0.35 }}
+                      className="rounded-full border border-white/8 bg-white/[0.03] px-3 py-4"
+                    >
+                      <div
+                        className={`mx-auto h-10 w-1.5 rounded-full ${
+                          index === activeIndex ? "bg-rose-400" : "bg-white/20"
+                        }`}
+                      />
+                    </motion.div>
+                  ))}
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </main>
