@@ -101,6 +101,29 @@ Recommended production flow:
 4. Trigger a deploy and confirm the predeploy migration step succeeds
 5. Open the deployed app and run one full persistence loop end to end
 
+## Ops Dashboard
+
+The repo now includes an internal dashboard at `/ops` for:
+
+- persistence volume and recent activity
+- eval volume and recent flagged runs
+- top automatic issue codes
+- look-level tutorial eval health
+
+Set this env var on the web service to unlock it:
+
+```bash
+MEDUSA_OPS_ACCESS_KEY=...
+```
+
+Then open:
+
+```bash
+/ops?key=your-value
+```
+
+This route reads directly from Postgres and is intentionally protected because it exposes user-derived operational data.
+
 ## What persistence exists today
 
 Current product persistence covers:

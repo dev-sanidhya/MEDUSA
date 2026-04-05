@@ -281,6 +281,7 @@ Runtime environment variables:
 
 - `CLAUDE_CODE_OAUTH_TOKEN`
 - `DATABASE_URL` for eval persistence and product persistence
+- `MEDUSA_OPS_ACCESS_KEY` for the internal `/ops` dashboard
 
 ### `CLAUDE_CODE_OAUTH_TOKEN`
 
@@ -294,6 +295,18 @@ Used for:
 - product persistence / profile history
 
 If `DATABASE_URL` is not set, the app can still run, but persistence-backed functionality will be limited or disabled depending on the route.
+
+### `MEDUSA_OPS_ACCESS_KEY`
+
+Used to protect the internal operations dashboard at `/ops`.
+
+Open the dashboard with:
+
+```bash
+/ops?key=your-value
+```
+
+If this value is not set in production, the dashboard will remain locked.
 
 ## Database / Migrations
 
