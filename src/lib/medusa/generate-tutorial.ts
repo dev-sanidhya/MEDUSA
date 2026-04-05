@@ -208,6 +208,7 @@ const SYSTEM_PROMPT = `You are MEDUSA's tutorial engine. You are a luxury makeup
 const TUTORIAL_CACHE_TTL_MS = 1000 * 60 * 30;
 const TUTORIAL_CACHE_MAX_ENTRIES = 100;
 const tutorialResultCache = new Map<string, TutorialCacheEntry>();
+const tutorialInFlightRequests = new Map<string, Promise<GenerateTutorialResult>>();
 
 export async function generateTutorial(
   faceAnalysis: FaceAnalysis,
@@ -262,114 +263,28 @@ export async function generateTutorial(
       return cachedResult;
     }
 
-    const initialPrompt = buildTutorialPrompt(
+    const inFlightResult = tutorialInFlightRequests.get(cacheKey);
+    if (inFlightResult) {
+      return await inFlightResult;
+    }
+
+    const generationPromise = generateFreshTutorial({
+      cacheKey,
       faceAnalysis,
+      selectedLook,
       lookDef,
       resolvedVariant,
-      preferenceProfile
-    );
-    const initialResult = await runTutorialQuery(
-      initialPrompt,
-      "generate-tutorial"
-    );
-    const enrichedInitialResult = finalizeTutorialResult(
-      initialResult,
-      lookDef,
-      resolvedVariant
-    );
-
-    const initialEvaluation = evaluateTutorialResult(enrichedInitialResult, selectedLook);
-    if (initialEvaluation.passed) {
-      setCachedTutorialResult(cacheKey, enrichedInitialResult);
-      await persistEval({
-        executionStatus: "succeeded",
-        outputStatus: "initial_pass",
-        selectedLook,
-        requestSummary: summarizeTutorialInput(
-          faceAnalysis,
-          selectedLook,
-          resolvedVariant.editorialSubtype,
-          preferenceProfile,
-          resolvedVariant.metadata?.label ?? null
-        ),
-        responseSummary: summarizeTutorialOutput(enrichedInitialResult),
-        automaticEvaluation: initialEvaluation,
-        metrics: {
-          durationMs: Date.now() - startedAt,
-          promptCharacters: initialPrompt.length,
-          repairAttempted: false,
-          cacheHit: false,
-          validatorVersion: VALIDATOR_VERSION,
-        },
-      });
-
-      return enrichedInitialResult;
-    }
-
-    const repairPrompt = buildRepairPrompt(
-        faceAnalysis,
-        selectedLook,
-        lookDef,
-        enrichedInitialResult,
-        initialEvaluation.issues.map((issue) => issue.message),
-        resolvedVariant,
-        preferenceProfile
-      );
-    const repairedResult = await runTutorialQuery(
-      repairPrompt,
-      "generate-tutorial-repair"
-    );
-    const enrichedRepairedResult = finalizeTutorialResult(
-      repairedResult,
-      lookDef,
-      resolvedVariant
-    );
-
-    const repairedEvaluation = evaluateTutorialResult(enrichedRepairedResult, selectedLook);
-    if (!repairedEvaluation.passed) {
-      console.warn(
-        "[generate-tutorial] Tutorial still failed look validation:",
-        repairedEvaluation.issues.map((issue) => issue.message)
-      );
-    }
-
-    await persistEval({
-      executionStatus: "succeeded",
-      outputStatus: repairedEvaluation.passed ? "repaired_pass" : "repaired_with_issues",
-      selectedLook,
-      requestSummary: summarizeTutorialInput(
-        faceAnalysis,
-        selectedLook,
-        resolvedVariant.editorialSubtype,
-        preferenceProfile,
-        resolvedVariant.metadata?.label ?? null
-      ),
-      responseSummary: {
-        final: summarizeTutorialOutput(enrichedRepairedResult),
-        repair: {
-          attempted: true,
-        initialResult: summarizeTutorialOutput(enrichedInitialResult),
-          initialIssues: initialEvaluation.issues,
-        },
-      },
-      automaticEvaluation: repairedEvaluation,
-      metrics: {
-        durationMs: Date.now() - startedAt,
-        promptCharacters: initialPrompt.length,
-        repairPromptCharacters: repairPrompt.length,
-        repairAttempted: true,
-        cacheHit: false,
-        initialScore: initialEvaluation.score,
-        repairedScore: repairedEvaluation.score,
-        validatorVersion: VALIDATOR_VERSION,
-      },
+      preferenceProfile,
+      startedAt,
     });
 
-    if (repairedEvaluation.passed) {
-      setCachedTutorialResult(cacheKey, enrichedRepairedResult);
-    }
+    tutorialInFlightRequests.set(cacheKey, generationPromise);
 
-    return enrichedRepairedResult;
+    try {
+      return await generationPromise;
+    } finally {
+      tutorialInFlightRequests.delete(cacheKey);
+    }
   } catch (error) {
     await persistEval({
       executionStatus: "failed",
@@ -392,6 +307,133 @@ export async function generateTutorial(
 
     throw error;
   }
+}
+
+async function generateFreshTutorial({
+  cacheKey,
+  faceAnalysis,
+  selectedLook,
+  lookDef,
+  resolvedVariant,
+  preferenceProfile,
+  startedAt,
+}: {
+  cacheKey: string;
+  faceAnalysis: FaceAnalysis;
+  selectedLook: LookId;
+  lookDef: (typeof LOOK_DEFINITIONS)[LookId];
+  resolvedVariant: ResolvedLookVariant;
+  preferenceProfile?: PersonalizationProfile | null;
+  startedAt: number;
+}): Promise<GenerateTutorialResult> {
+  const initialPrompt = buildTutorialPrompt(
+    faceAnalysis,
+    lookDef,
+    resolvedVariant,
+    preferenceProfile
+  );
+  const initialResult = await runTutorialQuery(
+    initialPrompt,
+    "generate-tutorial"
+  );
+  const enrichedInitialResult = finalizeTutorialResult(
+    initialResult,
+    lookDef,
+    resolvedVariant
+  );
+
+  const initialEvaluation = evaluateTutorialResult(enrichedInitialResult, selectedLook);
+  if (initialEvaluation.passed) {
+    setCachedTutorialResult(cacheKey, enrichedInitialResult);
+    await persistEval({
+      executionStatus: "succeeded",
+      outputStatus: "initial_pass",
+      selectedLook,
+      requestSummary: summarizeTutorialInput(
+        faceAnalysis,
+        selectedLook,
+        resolvedVariant.editorialSubtype,
+        preferenceProfile,
+        resolvedVariant.metadata?.label ?? null
+      ),
+      responseSummary: summarizeTutorialOutput(enrichedInitialResult),
+      automaticEvaluation: initialEvaluation,
+      metrics: {
+        durationMs: Date.now() - startedAt,
+        promptCharacters: initialPrompt.length,
+        repairAttempted: false,
+        cacheHit: false,
+        validatorVersion: VALIDATOR_VERSION,
+      },
+    });
+
+    return enrichedInitialResult;
+  }
+
+  const repairPrompt = buildRepairPrompt(
+    faceAnalysis,
+    selectedLook,
+    lookDef,
+    enrichedInitialResult,
+    initialEvaluation.issues.map((issue) => issue.message),
+    resolvedVariant,
+    preferenceProfile
+  );
+  const repairedResult = await runTutorialQuery(
+    repairPrompt,
+    "generate-tutorial-repair"
+  );
+  const enrichedRepairedResult = finalizeTutorialResult(
+    repairedResult,
+    lookDef,
+    resolvedVariant
+  );
+
+  const repairedEvaluation = evaluateTutorialResult(enrichedRepairedResult, selectedLook);
+  if (!repairedEvaluation.passed) {
+    console.warn(
+      "[generate-tutorial] Tutorial still failed look validation:",
+      repairedEvaluation.issues.map((issue) => issue.message)
+    );
+  }
+
+  await persistEval({
+    executionStatus: "succeeded",
+    outputStatus: repairedEvaluation.passed ? "repaired_pass" : "repaired_with_issues",
+    selectedLook,
+    requestSummary: summarizeTutorialInput(
+      faceAnalysis,
+      selectedLook,
+      resolvedVariant.editorialSubtype,
+      preferenceProfile,
+      resolvedVariant.metadata?.label ?? null
+    ),
+    responseSummary: {
+      final: summarizeTutorialOutput(enrichedRepairedResult),
+      repair: {
+        attempted: true,
+        initialResult: summarizeTutorialOutput(enrichedInitialResult),
+        initialIssues: initialEvaluation.issues,
+      },
+    },
+    automaticEvaluation: repairedEvaluation,
+    metrics: {
+      durationMs: Date.now() - startedAt,
+      promptCharacters: initialPrompt.length,
+      repairPromptCharacters: repairPrompt.length,
+      repairAttempted: true,
+      cacheHit: false,
+      initialScore: initialEvaluation.score,
+      repairedScore: repairedEvaluation.score,
+      validatorVersion: VALIDATOR_VERSION,
+    },
+  });
+
+  if (repairedEvaluation.passed) {
+    setCachedTutorialResult(cacheKey, enrichedRepairedResult);
+  }
+
+  return enrichedRepairedResult;
 }
 
 function runTutorialQuery(
