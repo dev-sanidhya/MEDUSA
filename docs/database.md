@@ -111,6 +111,10 @@ Current product persistence covers:
 - feedback event storage
 - profile history reads
 - lightweight derived preference memory from saved feedback
+- structured derived analysis fields such as geometry summary, tone summary, feature summary, confidence, priorities, and avoid-technique memory
+- persisted tutorial context such as personalization profile, tutorial summary, and look variant metadata
+
+Raw uploaded face photos are still not stored by default. The persistence layer is intentionally `derived_only`.
 
 Current eval persistence covers:
 

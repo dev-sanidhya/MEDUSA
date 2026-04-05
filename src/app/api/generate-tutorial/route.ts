@@ -79,6 +79,7 @@ export async function POST(req: NextRequest) {
       faceAnalysis: resolvedFaceAnalysis,
       selectedLook: body.selectedLook,
       selectedEditorialSubtype: resolvedEditorialSubtype,
+      personalizationProfile: preferenceProfile,
       tutorial: result,
     });
 

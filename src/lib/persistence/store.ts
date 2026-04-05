@@ -80,8 +80,11 @@ export async function persistAnalysisRun({
   const representativePhoto = boundedPhotos.reduce((best, candidate) =>
     candidate.precisionReport.overallScore > best.precisionReport.overallScore ? candidate : best
   );
+  const representativePhotoIndex =
+    boundedPhotos.findIndex((photo) => photo === representativePhoto) + 1;
   const mergedPrecision = mergeReports(boundedPhotos.map((photo) => photo.precisionReport));
   const runId = crypto.randomUUID();
+  const faceAnalysis = result.faceAnalysis ?? null;
 
   try {
     await db.query(
@@ -92,10 +95,20 @@ export async function persistAnalysisRun({
           status,
           photo_count,
           capture_attempts,
+          representative_photo_index,
+          capture_media_types,
           final_geometry_profile,
           final_precision_report,
+          geometry_summary,
+          tone_summary,
+          feature_summary,
+          read_confidence,
+          beauty_highlights,
+          makeup_priorities,
+          avoid_techniques,
           photo_request,
           face_analysis,
+          storage_policy,
           model,
           prompt_version,
           schema_version,
@@ -107,13 +120,22 @@ export async function persistAnalysisRun({
           $3,
           $4,
           $5::jsonb,
-          $6::jsonb,
-          $7::jsonb,
+          $6,
+          $7::text[],
           $8::jsonb,
           $9::jsonb,
-          $10,
-          $11,
-          $12,
+          $10::jsonb,
+          $11::jsonb,
+          $12::jsonb,
+          $13::text[],
+          $14::text[],
+          $15::text[],
+          $16::jsonb,
+          $17::jsonb,
+          'derived_only',
+          $18,
+          $19,
+          $20,
           NOW()
         )
       `,
@@ -130,10 +152,19 @@ export async function persistAnalysisRun({
             precisionReport: photo.precisionReport,
           }))
         ),
+        representativePhotoIndex,
+        boundedPhotos.map((photo) => photo.mimeType),
         JSON.stringify(representativePhoto.geometryProfile),
         JSON.stringify(mergedPrecision),
+        JSON.stringify(buildGeometrySummary(representativePhoto.geometryProfile)),
+        JSON.stringify(buildToneSummary(faceAnalysis)),
+        JSON.stringify(buildFeatureSummary(faceAnalysis)),
+        JSON.stringify(faceAnalysis?.readConfidence ?? null),
+        faceAnalysis?.beautyHighlights ?? [],
+        faceAnalysis?.makeupPriorities ?? [],
+        faceAnalysis?.avoidTechniques ?? [],
         JSON.stringify(result.photoRequest ?? null),
-        JSON.stringify(result.faceAnalysis ?? null),
+        JSON.stringify(faceAnalysis),
         MEDUSA_CLAUDE_MODEL,
         FACE_ANALYSIS_PROMPT_VERSION,
         FACE_ANALYSIS_SCHEMA_VERSION,
@@ -153,6 +184,7 @@ export async function persistTutorialRun({
   faceAnalysis,
   selectedLook,
   selectedEditorialSubtype,
+  personalizationProfile,
   tutorial,
 }: {
   profileId: string;
@@ -160,6 +192,7 @@ export async function persistTutorialRun({
   faceAnalysis: FaceAnalysis;
   selectedLook: LookId;
   selectedEditorialSubtype?: EditorialSubtype;
+  personalizationProfile?: PersonalizationProfile | null;
   tutorial: GenerateTutorialResult;
 }): Promise<{ id: string } | null> {
   const db = getPersistencePool();
@@ -180,7 +213,11 @@ export async function persistTutorialRun({
           selected_look,
           selected_editorial_subtype,
           input_face_analysis,
+          personalization_profile,
           tutorial,
+          tutorial_summary,
+          look_variant,
+          storage_policy,
           model,
           prompt_version,
           schema_version,
@@ -194,9 +231,13 @@ export async function persistTutorialRun({
           $5,
           $6::jsonb,
           $7::jsonb,
-          $8,
-          $9,
-          $10,
+          $8::jsonb,
+          $9::jsonb,
+          $10::jsonb,
+          'derived_only',
+          $11,
+          $12,
+          $13,
           NOW()
         )
       `,
@@ -207,7 +248,10 @@ export async function persistTutorialRun({
         selectedLook,
         selectedEditorialSubtype ?? null,
         JSON.stringify(faceAnalysis),
+        JSON.stringify(personalizationProfile ?? {}),
         JSON.stringify(tutorial),
+        JSON.stringify(buildTutorialSummary(tutorial)),
+        JSON.stringify(tutorial.lookVariant ?? null),
         MEDUSA_CLAUDE_MODEL,
         TUTORIAL_PROMPT_VERSION,
         TUTORIAL_SCHEMA_VERSION,
@@ -677,6 +721,94 @@ function buildPersonalizationProfile(
     featureFocus: summary.featureFocus,
     positiveTags: summary.positiveTags,
     dislikedTags: summary.dislikedTags,
+  };
+}
+
+function buildGeometrySummary(
+  geometryProfile: AnalyzeFacePhoto["geometryProfile"]
+) {
+  return {
+    faceShape: geometryProfile.faceShape,
+    faceRatios: geometryProfile.faceRatios,
+    eyes: {
+      setType: geometryProfile.eyes.setType,
+      shape: geometryProfile.eyes.shape,
+      lidVisibilityRatio: geometryProfile.eyes.lidVisibilityRatio,
+      tiltDeg: geometryProfile.eyes.tiltDeg,
+      asymmetryMm: geometryProfile.eyes.asymmetryMm,
+    },
+    lips: {
+      fullness: geometryProfile.lips.fullness,
+      upperToLowerRatio: geometryProfile.lips.upperToLowerRatio,
+      widthToFaceRatio: geometryProfile.lips.widthToFaceRatio,
+      symmetry: geometryProfile.lips.symmetry,
+      cupidBowDepth: geometryProfile.lips.cupidBowDepth,
+    },
+    nose: {
+      widthToFaceRatio: geometryProfile.nose.widthToFaceRatio,
+      lengthToFaceRatio: geometryProfile.nose.lengthToFaceRatio,
+      bridgeWidth: geometryProfile.nose.bridgeWidth,
+    },
+    brows: {
+      archHeightRatio: geometryProfile.brows.archHeightRatio,
+      asymmetryDeg: geometryProfile.brows.asymmetryDeg,
+      spacingRatio: geometryProfile.brows.spacingRatio,
+    },
+    cheekbones: {
+      prominence: geometryProfile.cheekbones.prominence,
+      widthRatio: geometryProfile.cheekbones.widthRatio,
+    },
+  };
+}
+
+function buildToneSummary(faceAnalysis: FaceAnalysis | null) {
+  if (!faceAnalysis) {
+    return {};
+  }
+
+  return {
+    skinTone: faceAnalysis.skinTone,
+    skinToneOptions: faceAnalysis.skinToneOptions,
+    skinUndertone: faceAnalysis.skinUndertone,
+    skinUndertoneOptions: faceAnalysis.skinUndertoneOptions,
+    skinToneExplanation: faceAnalysis.skinToneExplanation,
+    skinToneWorkWith: faceAnalysis.skinToneWorkWith,
+    skinToneAvoid: faceAnalysis.skinToneAvoid,
+  };
+}
+
+function buildFeatureSummary(faceAnalysis: FaceAnalysis | null) {
+  if (!faceAnalysis) {
+    return {};
+  }
+
+  return {
+    personalReading: faceAnalysis.personalReading,
+    faceShape: faceAnalysis.faceShape,
+    faceShapeExplanation: faceAnalysis.faceShapeExplanation,
+    faceShapeWorkWith: faceAnalysis.faceShapeWorkWith,
+    faceShapeAvoid: faceAnalysis.faceShapeAvoid,
+    eyes: faceAnalysis.eyes,
+    lips: faceAnalysis.lips,
+    nose: faceAnalysis.nose,
+    brows: faceAnalysis.brows,
+    cheekbones: faceAnalysis.cheekbones,
+    beautyHighlights: faceAnalysis.beautyHighlights,
+    makeupPriorities: faceAnalysis.makeupPriorities,
+    avoidTechniques: faceAnalysis.avoidTechniques,
+    precisionLevel: faceAnalysis.precisionLevel,
+    precisionNote: faceAnalysis.precisionNote,
+  };
+}
+
+function buildTutorialSummary(tutorial: GenerateTutorialResult) {
+  return {
+    lookName: tutorial.lookName,
+    lookDescription: tutorial.lookDescription,
+    lookIntent: tutorial.lookIntent,
+    stepCount: tutorial.steps.length,
+    stepCategories: [...new Set(tutorial.steps.map((step) => step.category))],
+    closingNote: tutorial.closingNote,
   };
 }
 
