@@ -784,224 +784,186 @@ function ProcessingScreen({
   body: string;
   items: string[];
 }) {
-  const [activeIndex, setActiveIndex] = useState(0);
+  const [elapsedMs, setElapsedMs] = useState(0);
 
   useEffect(() => {
+    const startedAt = Date.now();
     const interval = window.setInterval(() => {
-      setActiveIndex((current) => (current + 1) % items.length);
-    }, 1400);
+      setElapsedMs(Date.now() - startedAt);
+    }, 120);
 
     return () => window.clearInterval(interval);
-  }, [items.length]);
+  }, []);
 
-  const stageCopy =
+  const targetDurationMs = stage === "analyzing" ? 12000 : 15000;
+  const progress = Math.min(elapsedMs / targetDurationMs, 0.92);
+  const visibleProgress = Math.max(progress, 0.06);
+  const completedCount = Math.min(
+    items.length - 1,
+    Math.floor(progress * items.length)
+  );
+  const activeIndex = completedCount;
+  const activeItem = items[activeIndex];
+  const displayPercent = Math.round(visibleProgress * 100);
+
+  const copy =
     stage === "analyzing"
       ? {
-          label: "Live Geometry Pass",
-          note: "Watching for structure, tone stability, and the strongest read across the frame set.",
-          accent: "Face map active",
+          chapter: "Facial Read",
+          eyebrowNote: "MEDUSA is reading your structure, tone, and feature emphasis.",
+          statusLabel: "Geometry locked",
+          detail: "This pass stays strict. The screen moves forward once, then holds while the face read finishes.",
+          capsule: "Feature extraction in motion",
+          terminalLabel: "Reading your face",
+          terminalBody: "Checking structure, face fit, and tone cues without relaxing the precision gate.",
+          ambientWord: "ANALYZE",
         }
       : {
-          label: "Look Composition Pass",
-          note: "Shaping a routine around your structure, finish, and feature emphasis without flattening the look.",
-          accent: "Routine drafting",
+          chapter: "Routine Draft",
+          eyebrowNote: "MEDUSA is shaping your selected look around the face read.",
+          statusLabel: "Look architecture active",
+          detail: "The draft builds forward and settles into finalization instead of looping back through the same motions.",
+          capsule: "Face-fit routine composition",
+          terminalLabel: "Writing your routine",
+          terminalBody: "Matching placement, finish, and emphasis to your actual features while keeping the look distinct.",
+          ambientWord: "COMPOSE",
         };
 
   return (
     <AppFrame stage={stage}>
-      <main className="mx-auto flex min-h-screen w-full max-w-6xl items-center px-6 py-16">
-        <div className="grid w-full gap-8 lg:grid-cols-[1.05fr_0.95fr]">
-          <div className="glass-card noise relative overflow-hidden rounded-[2.6rem] border border-white/8 px-8 py-10 md:px-10">
-            <div
-              className="pointer-events-none absolute inset-0"
-              style={{
-                background:
-                  stage === "analyzing"
-                    ? "radial-gradient(circle at 18% 18%, rgba(244,63,94,0.16), transparent 28%), radial-gradient(circle at 82% 82%, rgba(255,255,255,0.05), transparent 28%)"
-                    : "radial-gradient(circle at 82% 18%, rgba(244,63,94,0.18), transparent 30%), radial-gradient(circle at 20% 82%, rgba(255,255,255,0.04), transparent 28%)",
-              }}
-            />
+      <main className="relative mx-auto flex min-h-screen w-full max-w-7xl items-center px-6 py-16">
+        <div className="pointer-events-none absolute inset-x-6 top-1/2 -translate-y-1/2 overflow-hidden">
+          <div
+            className="text-center text-[clamp(6rem,22vw,18rem)] font-semibold leading-none text-white/[0.03]"
+            style={{ fontFamily: "var(--font-cormorant), Georgia, serif" }}
+          >
+            {copy.ambientWord}
+          </div>
+        </div>
 
-            <div className="relative">
-              <div className="flex flex-wrap items-center gap-3">
-                <span className="rounded-full border border-rose-500/20 bg-rose-500/8 px-4 py-2 text-[11px] uppercase tracking-[0.26em] text-rose-300">
-                  {eyebrow}
-                </span>
-                <span className="rounded-full border border-white/10 px-4 py-2 text-[11px] uppercase tracking-[0.22em] text-white/34">
-                  {stageCopy.accent}
-                </span>
-              </div>
+        <div className="relative w-full">
+          <div className="mb-10 flex flex-wrap items-center justify-between gap-4">
+            <div className="flex flex-wrap items-center gap-3">
+              <span className="rounded-full border border-rose-500/20 bg-rose-500/8 px-4 py-2 text-[11px] uppercase tracking-[0.28em] text-rose-300">
+                {eyebrow}
+              </span>
+              <span className="rounded-full border border-white/10 px-4 py-2 text-[11px] uppercase tracking-[0.24em] text-white/34">
+                {copy.capsule}
+              </span>
+            </div>
+            <div className="rounded-full border border-white/10 px-5 py-2 text-[11px] uppercase tracking-[0.26em] text-white/36">
+              {copy.statusLabel}
+            </div>
+          </div>
 
+          <div className="grid gap-10 lg:grid-cols-[1.1fr_0.9fr] lg:items-end">
+            <div>
+              <p className="text-xs uppercase tracking-[0.28em] text-white/28">{copy.chapter}</p>
               <h1
-                className="mt-7 max-w-3xl text-[clamp(3.4rem,7vw,5.8rem)] font-semibold leading-none text-white"
+                className="mt-5 max-w-4xl text-[clamp(3.6rem,8vw,7rem)] font-semibold leading-[0.92] text-white"
                 style={{ fontFamily: "var(--font-cormorant), Georgia, serif" }}
               >
                 {title}
               </h1>
-              <p className="mt-5 max-w-2xl text-sm leading-relaxed text-white/48 md:text-base">{body}</p>
+              <p className="mt-6 max-w-2xl text-base leading-relaxed text-white/46 md:text-lg">{body}</p>
 
-              <div className="mt-8 grid gap-4 sm:grid-cols-3">
-                {[
-                  ["Current pass", stageCopy.label],
-                  ["Focused now", items[activeIndex]],
-                  ["System note", stage === "analyzing" ? "Precision stays locked." : "Face-fit logic stays intact."],
-                ].map(([label, value]) => (
-                  <div key={label} className="rounded-[1.5rem] border border-white/8 bg-white/[0.035] px-4 py-4">
-                    <p className="text-[10px] uppercase tracking-[0.22em] text-white/28">{label}</p>
-                    <p className="mt-3 text-sm leading-relaxed text-white/72">{value}</p>
+              <div className="mt-10 rounded-[2rem] border border-white/8 bg-white/[0.03] p-6">
+                <div className="flex items-end justify-between gap-6">
+                  <div>
+                    <p className="text-[10px] uppercase tracking-[0.24em] text-white/26">Live status</p>
+                    <p className="mt-3 text-2xl text-white/86">{activeItem}</p>
+                    <p className="mt-2 max-w-xl text-sm leading-relaxed text-white/42">{copy.eyebrowNote}</p>
                   </div>
-                ))}
-              </div>
+                  <div className="text-right">
+                    <p className="text-[10px] uppercase tracking-[0.22em] text-white/26">Visible progress</p>
+                    <p className="mt-3 text-5xl text-white/84 tabular-nums">{displayPercent}%</p>
+                  </div>
+                </div>
 
-              <div className="mt-10 space-y-3">
-                {items.map((item, index) => {
-                  const isActive = index === activeIndex;
-                  const isPassed = index < activeIndex;
-
-                  return (
-                    <motion.div
-                      key={item}
-                      initial={false}
-                      animate={{
-                        opacity: isActive ? 1 : isPassed ? 0.8 : 0.46,
-                        x: isActive ? 8 : 0,
-                        scale: isActive ? 1.01 : 1,
-                      }}
-                      transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
-                      className={`relative overflow-hidden rounded-[1.6rem] border px-5 py-4 ${
-                        isActive
-                          ? "border-rose-400/30 bg-rose-500/[0.08] shadow-[0_0_40px_rgba(244,63,94,0.1)]"
-                          : "border-white/8 bg-white/[0.03]"
-                      }`}
-                    >
-                      {isActive && <div className="medusa-loading-sheen absolute inset-0" />}
-                      <div className="relative flex items-center justify-between gap-4">
-                        <div className="flex items-center gap-4">
-                          <div
-                            className={`flex h-9 w-9 items-center justify-center rounded-full border text-[11px] uppercase tracking-[0.2em] ${
-                              isActive
-                                ? "border-rose-300/45 bg-rose-500/14 text-rose-200"
-                                : isPassed
-                                  ? "border-white/16 bg-white/[0.05] text-white/62"
-                                  : "border-white/10 bg-transparent text-white/28"
-                            }`}
-                          >
-                            {String(index + 1).padStart(2, "0")}
-                          </div>
-                          <div>
-                            <p className="text-sm text-white/78">{item}</p>
-                            <p className="mt-1 text-[11px] uppercase tracking-[0.22em] text-white/24">
-                              {isActive ? "In focus" : isPassed ? "Stabilized" : "Queued"}
-                            </p>
-                          </div>
-                        </div>
-                        <div
-                          className={`h-2.5 w-2.5 rounded-full ${
-                            isActive ? "bg-rose-400 shadow-[0_0_18px_rgba(244,63,94,0.8)]" : "bg-white/16"
-                          }`}
-                        />
-                      </div>
-                    </motion.div>
-                  );
-                })}
+                <div className="mt-6 h-2 w-full overflow-hidden rounded-full bg-white/8">
+                  <motion.div
+                    initial={{ width: "0%" }}
+                    animate={{ width: `${displayPercent}%` }}
+                    transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
+                    className="h-full rounded-full bg-[linear-gradient(90deg,rgba(244,63,94,0.5),rgba(255,255,255,0.85),rgba(244,63,94,0.72))]"
+                  />
+                </div>
               </div>
             </div>
-          </div>
 
-          <div className="glass-card relative overflow-hidden rounded-[2.6rem] border border-white/8 px-8 py-10">
-            <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(244,63,94,0.08),transparent_45%)]" />
-            <div className="relative flex h-full flex-col justify-between">
-              <div className="mx-auto flex w-full max-w-[22rem] flex-1 items-center justify-center">
-                <div className="relative flex aspect-square w-full items-center justify-center">
-                  <motion.div
-                    animate={{ rotate: 360 }}
-                    transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
-                    className="absolute inset-2 rounded-full border border-white/10"
-                  />
-                  <motion.div
-                    animate={{ rotate: -360 }}
-                    transition={{ duration: 14, repeat: Infinity, ease: "linear" }}
-                    className="absolute inset-8 rounded-full border border-dashed border-rose-400/30"
-                  />
-                  <motion.div
-                    animate={{ scale: [1, 1.06, 1], opacity: [0.45, 0.85, 0.45] }}
-                    transition={{ duration: 3.4, repeat: Infinity, ease: "easeInOut" }}
-                    className="absolute inset-[22%] rounded-full bg-[radial-gradient(circle,rgba(244,63,94,0.24),rgba(244,63,94,0.02)_62%,transparent_70%)]"
-                  />
-                  <div className="medusa-scan-grid absolute inset-[18%] overflow-hidden rounded-full border border-white/8 bg-[rgba(255,255,255,0.02)]">
-                    <div className="medusa-scan-beam absolute inset-x-0 top-0 h-20" />
-                    <svg
-                      viewBox="0 0 300 300"
-                      className="absolute inset-0 h-full w-full"
-                      xmlns="http://www.w3.org/2000/svg"
-                    >
-                      <path
-                        d="M150 48c36 0 66 24 74 58 8 34 6 95-19 132-13 20-33 32-55 32s-42-12-55-32c-25-37-27-98-19-132 8-34 38-58 74-58Z"
-                        fill="none"
-                        stroke="rgba(255,255,255,0.28)"
-                        strokeWidth="1.5"
-                      />
-                      <path
-                        d="M103 126c12-10 26-16 47-16s35 6 47 16"
-                        fill="none"
-                        stroke="rgba(244,63,94,0.52)"
-                        strokeWidth="2"
-                        strokeLinecap="round"
-                      />
-                      <path
-                        d="M112 184c13 12 25 18 38 18s25-6 38-18"
-                        fill="none"
-                        stroke="rgba(255,255,255,0.22)"
-                        strokeWidth="2"
-                        strokeLinecap="round"
-                      />
-                      {[
-                        [118, 122],
-                        [182, 122],
-                        [150, 146],
-                        [124, 188],
-                        [176, 188],
-                        [150, 214],
-                      ].map(([cx, cy], index) => (
-                        <circle
-                          key={`${cx}-${cy}`}
-                          cx={cx}
-                          cy={cy}
-                          r={index === activeIndex + 1 ? "5.5" : "4"}
-                          fill={index === activeIndex + 1 ? "rgba(244,63,94,0.92)" : "rgba(255,255,255,0.45)"}
-                        />
-                      ))}
-                    </svg>
+            <div className="glass-card relative overflow-hidden rounded-[2.8rem] border border-white/8 p-8">
+              <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(244,63,94,0.14),transparent_32%),radial-gradient(circle_at_bottom_left,rgba(255,255,255,0.04),transparent_30%)]" />
+              <div className="relative">
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <p className="text-[10px] uppercase tracking-[0.24em] text-rose-300">MEDUSA Pass</p>
+                    <p className="mt-3 text-sm leading-relaxed text-white/46">{copy.detail}</p>
+                  </div>
+                  <div className="rounded-full border border-white/10 px-3 py-1.5 text-[10px] uppercase tracking-[0.22em] text-white/34">
+                    Hold to finalization
                   </div>
                 </div>
-              </div>
 
-              <div className="mt-8 space-y-4">
-                <div className="rounded-[1.6rem] border border-white/8 bg-white/[0.03] p-5">
-                  <p className="text-[10px] uppercase tracking-[0.24em] text-rose-300">System Motion</p>
-                  <p className="mt-3 text-lg text-white/82">{items[activeIndex]}</p>
-                  <p className="mt-2 text-sm leading-relaxed text-white/42">{stageCopy.note}</p>
+                <div className="mt-10 space-y-4">
+                  {items.map((item, index) => {
+                    const isComplete = index < completedCount;
+                    const isCurrent = index === completedCount;
+
+                    return (
+                      <motion.div
+                        key={item}
+                        initial={false}
+                        animate={{
+                          opacity: isCurrent ? 1 : isComplete ? 0.78 : 0.36,
+                          y: isCurrent ? -2 : 0,
+                        }}
+                        transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
+                        className={`rounded-[1.6rem] border px-5 py-5 ${
+                          isCurrent
+                            ? "border-rose-400/28 bg-rose-500/[0.07]"
+                            : isComplete
+                              ? "border-white/12 bg-white/[0.04]"
+                              : "border-white/8 bg-transparent"
+                        }`}
+                      >
+                        <div className="flex items-center justify-between gap-4">
+                          <div className="flex items-center gap-4">
+                            <div
+                              className={`flex h-10 w-10 items-center justify-center rounded-full border text-[11px] uppercase tracking-[0.18em] ${
+                                isCurrent
+                                  ? "border-rose-300/42 bg-rose-500/10 text-rose-200"
+                                  : isComplete
+                                    ? "border-white/16 bg-white/[0.06] text-white/72"
+                                    : "border-white/10 text-white/28"
+                              }`}
+                            >
+                              {String(index + 1).padStart(2, "0")}
+                            </div>
+                            <div>
+                              <p className="text-sm text-white/82">{item}</p>
+                              <p className="mt-1 text-[10px] uppercase tracking-[0.22em] text-white/26">
+                                {isCurrent ? "Current focus" : isComplete ? "Passed" : "Pending"}
+                              </p>
+                            </div>
+                          </div>
+                          <div
+                            className={`h-2.5 w-14 rounded-full ${
+                              isCurrent
+                                ? "bg-[linear-gradient(90deg,rgba(244,63,94,0.85),rgba(255,255,255,0.82))]"
+                                : isComplete
+                                  ? "bg-white/35"
+                                  : "bg-white/10"
+                            }`}
+                          />
+                        </div>
+                      </motion.div>
+                    );
+                  })}
                 </div>
 
-                <div className="grid gap-3 sm:grid-cols-3">
-                  {items.map((_, index) => (
-                    <motion.div
-                      key={`meter-${index}`}
-                      initial={false}
-                      animate={{
-                        opacity: index === activeIndex ? 1 : 0.28,
-                        scaleY: index === activeIndex ? 1 : 0.72,
-                      }}
-                      transition={{ duration: 0.35 }}
-                      className="rounded-full border border-white/8 bg-white/[0.03] px-3 py-4"
-                    >
-                      <div
-                        className={`mx-auto h-10 w-1.5 rounded-full ${
-                          index === activeIndex ? "bg-rose-400" : "bg-white/20"
-                        }`}
-                      />
-                    </motion.div>
-                  ))}
+                <div className="mt-8 rounded-[1.8rem] border border-white/8 bg-black/30 px-5 py-5">
+                  <p className="text-[10px] uppercase tracking-[0.24em] text-white/28">{copy.terminalLabel}</p>
+                  <p className="mt-3 text-sm leading-relaxed text-white/62">{copy.terminalBody}</p>
                 </div>
               </div>
             </div>
