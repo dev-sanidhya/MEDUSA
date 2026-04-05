@@ -99,6 +99,11 @@ interface ResolvedLookVariant {
   metadata?: NonNullable<GenerateTutorialResult["lookVariant"]>;
 }
 
+interface TutorialCacheEntry {
+  expiresAt: number;
+  value: GenerateTutorialResult;
+}
+
 const ZONE_KEYS = [
   "full_face",
   "under_eye",
@@ -163,7 +168,10 @@ const SYSTEM_PROMPT = `You are MEDUSA's tutorial engine. You are a luxury makeup
 
 ## Non-Negotiable Structure
 - Return JSON that matches the schema exactly.
+- Set lookName to the exact selected look label.
 - Include lookIntent and make it match the supplied look contract.
+- lookIntent.primaryAxis and lookIntent.anchorFeature must match the supplied contract exactly.
+- lookIntent.intensity should default to the supplied contract unless the prompt explicitly says otherwise.
 - Step 1 must be skin prep on full_face.
 - Step 2 must be color correction on under_eye unless the prompt explicitly says to skip correction.
 - Step 3 must be concealer on under_eye and cover both under-eye brightening and spot concealment.
@@ -191,10 +199,15 @@ const SYSTEM_PROMPT = `You are MEDUSA's tutorial engine. You are a luxury makeup
 - Editorial subtype only modifies the editorial direction. It does not replace the main look contract.
 - Monochromatic variant decides the exact color family and finish mood inside the monochromatic contract.
 - Preferences can steer finish or emphasis, but they cannot override the selected look.
+- Do not rewrite or soften the supplied contract. Build inside it.
 
 ## Output Goal
 - Teach the user what to do and why it works on their face.
 - Make the look feel clearly different from the other MEDUSA looks.`;
+
+const TUTORIAL_CACHE_TTL_MS = 1000 * 60 * 30;
+const TUTORIAL_CACHE_MAX_ENTRIES = 100;
+const tutorialResultCache = new Map<string, TutorialCacheEntry>();
 
 export async function generateTutorial(
   faceAnalysis: FaceAnalysis,
@@ -216,14 +229,58 @@ export async function generateTutorial(
   }
 
   try {
+    const cacheKey = buildTutorialCacheKey(
+      faceAnalysis,
+      selectedLook,
+      resolvedVariant,
+      preferenceProfile
+    );
+    const cachedResult = getCachedTutorialResult(cacheKey);
+
+    if (cachedResult) {
+      await persistEval({
+        executionStatus: "succeeded",
+        outputStatus: "cache_hit",
+        selectedLook,
+        requestSummary: summarizeTutorialInput(
+          faceAnalysis,
+          selectedLook,
+          resolvedVariant.editorialSubtype,
+          preferenceProfile,
+          resolvedVariant.metadata?.label ?? null
+        ),
+        responseSummary: summarizeTutorialOutput(cachedResult),
+        automaticEvaluation: evaluateTutorialResult(cachedResult, selectedLook),
+        metrics: {
+          durationMs: Date.now() - startedAt,
+          repairAttempted: false,
+          cacheHit: true,
+          validatorVersion: VALIDATOR_VERSION,
+        },
+      });
+
+      return cachedResult;
+    }
+
+    const initialPrompt = buildTutorialPrompt(
+      faceAnalysis,
+      lookDef,
+      resolvedVariant,
+      preferenceProfile
+    );
     const initialResult = await runTutorialQuery(
-      buildTutorialPrompt(faceAnalysis, lookDef, resolvedVariant, preferenceProfile),
+      initialPrompt,
       "generate-tutorial"
     );
-    const enrichedInitialResult = attachResolvedVariant(initialResult, resolvedVariant);
+    const enrichedInitialResult = finalizeTutorialResult(
+      initialResult,
+      lookDef,
+      resolvedVariant
+    );
 
     const initialEvaluation = evaluateTutorialResult(enrichedInitialResult, selectedLook);
     if (initialEvaluation.passed) {
+      setCachedTutorialResult(cacheKey, enrichedInitialResult);
       await persistEval({
         executionStatus: "succeeded",
         outputStatus: "initial_pass",
@@ -239,7 +296,9 @@ export async function generateTutorial(
         automaticEvaluation: initialEvaluation,
         metrics: {
           durationMs: Date.now() - startedAt,
+          promptCharacters: initialPrompt.length,
           repairAttempted: false,
+          cacheHit: false,
           validatorVersion: VALIDATOR_VERSION,
         },
       });
@@ -247,8 +306,7 @@ export async function generateTutorial(
       return enrichedInitialResult;
     }
 
-    const repairedResult = await runTutorialQuery(
-      buildRepairPrompt(
+    const repairPrompt = buildRepairPrompt(
         faceAnalysis,
         selectedLook,
         lookDef,
@@ -256,10 +314,16 @@ export async function generateTutorial(
         initialEvaluation.issues.map((issue) => issue.message),
         resolvedVariant,
         preferenceProfile
-      ),
+      );
+    const repairedResult = await runTutorialQuery(
+      repairPrompt,
       "generate-tutorial-repair"
     );
-    const enrichedRepairedResult = attachResolvedVariant(repairedResult, resolvedVariant);
+    const enrichedRepairedResult = finalizeTutorialResult(
+      repairedResult,
+      lookDef,
+      resolvedVariant
+    );
 
     const repairedEvaluation = evaluateTutorialResult(enrichedRepairedResult, selectedLook);
     if (!repairedEvaluation.passed) {
@@ -284,19 +348,26 @@ export async function generateTutorial(
         final: summarizeTutorialOutput(enrichedRepairedResult),
         repair: {
           attempted: true,
-          initialResult: summarizeTutorialOutput(enrichedInitialResult),
+        initialResult: summarizeTutorialOutput(enrichedInitialResult),
           initialIssues: initialEvaluation.issues,
         },
       },
       automaticEvaluation: repairedEvaluation,
       metrics: {
         durationMs: Date.now() - startedAt,
+        promptCharacters: initialPrompt.length,
+        repairPromptCharacters: repairPrompt.length,
         repairAttempted: true,
+        cacheHit: false,
         initialScore: initialEvaluation.score,
         repairedScore: repairedEvaluation.score,
         validatorVersion: VALIDATOR_VERSION,
       },
     });
+
+    if (repairedEvaluation.passed) {
+      setCachedTutorialResult(cacheKey, enrichedRepairedResult);
+    }
 
     return enrichedRepairedResult;
   } catch (error) {
@@ -312,6 +383,7 @@ export async function generateTutorial(
       ),
       metrics: {
         durationMs: Date.now() - startedAt,
+        cacheHit: false,
         validatorVersion: VALIDATOR_VERSION,
       },
       errorTag: "generate-tutorial",
@@ -366,55 +438,30 @@ Variant contract:
 `
       : "";
 
-  const preferenceBlock = preferenceProfile
-    ? `
-## Saved Preferences
-- Preferred looks: ${preferenceProfile.preferredLooks.length > 0 ? preferenceProfile.preferredLooks.join(" | ") : "none yet"}
-- Discouraged looks: ${preferenceProfile.discouragedLooks.length > 0 ? preferenceProfile.discouragedLooks.join(" | ") : "none yet"}
-- Recent looks: ${preferenceProfile.recentLooks.length > 0 ? preferenceProfile.recentLooks.join(" | ") : "none yet"}
-- Intensity preference: ${preferenceProfile.intensityPreference ?? "unknown"}
-- Finish preference: ${preferenceProfile.finishPreference ?? "unknown"}
-- Style mood: ${preferenceProfile.styleMood ?? "unknown"}
-- Edge preference: ${preferenceProfile.definitionPreference ?? "unknown"}
-- Feature focus: ${preferenceProfile.featureFocus ?? "none"}
-- Positive signals: ${preferenceProfile.positiveTags.length > 0 ? preferenceProfile.positiveTags.join(" | ") : "none yet"}
-- Negative signals: ${preferenceProfile.dislikedTags.length > 0 ? preferenceProfile.dislikedTags.join(" | ") : "none yet"}
-`
-    : "";
+  const promptSections = [
+    "## Face Read",
+    ...buildCompactFaceSummary(analysis),
+    "",
+    "## Look Contract",
+    `- label: ${lookDef.label}`,
+    `- definition: ${lookDef.promptDefinition}`,
+    `- intent.primaryAxis: ${lookDef.engine.primaryAxis}`,
+    `- intent.intensity: ${lookDef.engine.defaultIntensity}`,
+    `- intent.anchorFeature: ${lookDef.engine.anchorFeature}`,
+    `- color discipline: ${lookDef.engine.colorDiscipline}`,
+    `- complexion: ${lookDef.engine.complexionDirective}`,
+    `- eyes: ${lookDef.engine.eyeDirective}`,
+    `- lips: ${lookDef.engine.lipDirective}`,
+    `- contour: ${lookDef.engine.contourDirective}`,
+    `- finish: ${lookDef.engine.finishDirective}`,
+    `- statement: ${lookDef.engine.statementDirective}`,
+    buildCompactPreferenceBlock(preferenceProfile),
+    editorialSubtypeBlock,
+    monochromaticVariantBlock,
+    "Return JSON matching the schema. Keep the tutorial inside the supplied contract and use the exact look label.",
+  ];
 
-  return `
-## Their Face
-- Shape: ${analysis.faceShape} - ${analysis.faceShapeExplanation}
-- Skin: ${analysis.skinTone}, ${analysis.skinUndertone} undertone - ${analysis.skinToneExplanation}
-- Eyes: ${analysis.eyes.shape}, ${analysis.eyes.set} - ${analysis.eyes.specificCharacteristics} - ${analysis.eyes.makeupImplication}
-- Lips: ${analysis.lips.description} - ${analysis.lips.specificCharacteristics} - ${analysis.lips.makeupImplication}
-- Nose: ${analysis.nose.description} - ${analysis.nose.makeupImplication}
-- Brows: ${analysis.brows.naturalShape}${analysis.brows.asymmetry ? ` (${analysis.brows.asymmetry})` : ""} - ${analysis.brows.makeupImplication}
-- Cheekbones: ${analysis.cheekbones.description} - ${analysis.cheekbones.makeupImplication}
-- Best features: ${analysis.beautyHighlights.join(" · ")}
-- Makeup priorities: ${analysis.makeupPriorities.join(" · ")}
-- Known avoid rules: ${analysis.avoidTechniques.map((technique, index) => `${index + 1}. ${technique}`).join(" | ")}
-
-## Look Contract
-- Selected look: ${lookDef.label}
-- Look definition: ${lookDef.promptDefinition}
-- Primary axis: ${lookDef.engine.primaryAxis}
-- Default intensity: ${lookDef.engine.defaultIntensity}
-- Anchor feature: ${lookDef.engine.anchorFeature}
-- Color discipline: ${lookDef.engine.colorDiscipline}
-- Complexion directive: ${lookDef.engine.complexionDirective}
-- Eye directive: ${lookDef.engine.eyeDirective}
-- Lip directive: ${lookDef.engine.lipDirective}
-- Contour directive: ${lookDef.engine.contourDirective}
-- Finish directive: ${lookDef.engine.finishDirective}
-- Statement directive: ${lookDef.engine.statementDirective}
-
-${preferenceBlock}
-${editorialSubtypeBlock}
-${monochromaticVariantBlock}
-
-Return JSON matching the schema. The lookIntent fields must align with the look contract above, not generic defaults.
-`.trim();
+  return promptSections.filter(Boolean).join("\n").trim();
 }
 
 function buildRepairPrompt(
@@ -458,20 +505,7 @@ Variant contract:
 `
       : "";
 
-  const preferenceBlock = preferenceProfile
-    ? `
-Saved preferences:
-- Preferred looks: ${preferenceProfile.preferredLooks.length > 0 ? preferenceProfile.preferredLooks.join(" | ") : "none yet"}
-- Discouraged looks: ${preferenceProfile.discouragedLooks.length > 0 ? preferenceProfile.discouragedLooks.join(" | ") : "none yet"}
-- Intensity preference: ${preferenceProfile.intensityPreference ?? "unknown"}
-- Finish preference: ${preferenceProfile.finishPreference ?? "unknown"}
-- Style mood: ${preferenceProfile.styleMood ?? "unknown"}
-- Edge preference: ${preferenceProfile.definitionPreference ?? "unknown"}
-- Feature focus: ${preferenceProfile.featureFocus ?? "none"}
-- Positive signals: ${preferenceProfile.positiveTags.length > 0 ? preferenceProfile.positiveTags.join(" | ") : "none yet"}
-- Negative signals: ${preferenceProfile.dislikedTags.length > 0 ? preferenceProfile.dislikedTags.join(" | ") : "none yet"}
-`
-    : "";
+  const preferenceBlock = buildCompactPreferenceBlock(preferenceProfile, "Saved Preferences");
 
   return `
 The previous tutorial did not match the selected look strongly enough.
@@ -570,6 +604,135 @@ function attachResolvedVariant(
     ...result,
     lookVariant: resolvedVariant.metadata ?? null,
   };
+}
+
+function finalizeTutorialResult(
+  result: GenerateTutorialResult,
+  lookDef: (typeof LOOK_DEFINITIONS)[LookId],
+  resolvedVariant: ResolvedLookVariant
+): GenerateTutorialResult {
+  return attachResolvedVariant(
+    {
+      ...result,
+      lookName: lookDef.label,
+      lookIntent: {
+        ...result.lookIntent,
+        primaryAxis: lookDef.engine.primaryAxis,
+        intensity: lookDef.engine.defaultIntensity,
+        anchorFeature: lookDef.engine.anchorFeature,
+      },
+      steps: result.steps.map((step, index) => ({
+        ...step,
+        stepNumber: index + 1,
+      })),
+    },
+    resolvedVariant
+  );
+}
+
+function buildCompactFaceSummary(analysis: FaceAnalysis) {
+  return [
+    `- shape: ${analysis.faceShape}; reason: ${analysis.faceShapeExplanation}; steer toward: ${analysis.faceShapeWorkWith}; avoid: ${analysis.faceShapeAvoid}`,
+    `- skin: ${analysis.skinTone}/${analysis.skinUndertone}; reason: ${analysis.skinToneExplanation}; steer toward: ${analysis.skinToneWorkWith}; avoid: ${analysis.skinToneAvoid}`,
+    `- eyes: ${analysis.eyes.shape}, ${analysis.eyes.set}; traits: ${analysis.eyes.specificCharacteristics}; implication: ${analysis.eyes.makeupImplication}; favor: ${analysis.eyes.workWith}; avoid: ${analysis.eyes.avoid}`,
+    `- lips: ${analysis.lips.description}; traits: ${analysis.lips.specificCharacteristics}; implication: ${analysis.lips.makeupImplication}; favor: ${analysis.lips.workWith}; avoid: ${analysis.lips.avoid}`,
+    `- brows: ${analysis.brows.naturalShape}${analysis.brows.asymmetry ? ` (${analysis.brows.asymmetry})` : ""}; implication: ${analysis.brows.makeupImplication}`,
+    `- nose: ${analysis.nose.description}; implication: ${analysis.nose.makeupImplication}`,
+    `- cheekbones: ${analysis.cheekbones.description}; implication: ${analysis.cheekbones.makeupImplication}`,
+    `- highlights: ${analysis.beautyHighlights.join(" | ")}`,
+    `- priorities: ${analysis.makeupPriorities.join(" | ")}`,
+    `- avoid rules: ${analysis.avoidTechniques.length > 0 ? analysis.avoidTechniques.join(" | ") : "none"}`,
+  ];
+}
+
+function buildCompactPreferenceBlock(
+  preferenceProfile?: PersonalizationProfile | null,
+  title = "## Saved Preferences"
+) {
+  if (!preferenceProfile) {
+    return "";
+  }
+
+  return [
+    title,
+    `- preferred: ${summarizeList(preferenceProfile.preferredLooks)}`,
+    `- discouraged: ${summarizeList(preferenceProfile.discouragedLooks)}`,
+    `- recent: ${summarizeList(preferenceProfile.recentLooks)}`,
+    `- intensity: ${preferenceProfile.intensityPreference ?? "unknown"}`,
+    `- finish: ${preferenceProfile.finishPreference ?? "unknown"}`,
+    `- mood: ${preferenceProfile.styleMood ?? "unknown"}`,
+    `- edge: ${preferenceProfile.definitionPreference ?? "unknown"}`,
+    `- focus: ${preferenceProfile.featureFocus ?? "none"}`,
+    `- positive: ${summarizeList(preferenceProfile.positiveTags)}`,
+    `- negative: ${summarizeList(preferenceProfile.dislikedTags)}`,
+  ].join("\n");
+}
+
+function summarizeList(values: string[]) {
+  return values.length > 0 ? values.join(" | ") : "none";
+}
+
+function buildTutorialCacheKey(
+  faceAnalysis: FaceAnalysis,
+  selectedLook: LookId,
+  resolvedVariant: ResolvedLookVariant,
+  preferenceProfile?: PersonalizationProfile | null
+) {
+  return stableStringify({
+    faceAnalysis,
+    selectedLook,
+    editorialSubtype: resolvedVariant.editorialSubtype ?? null,
+    monochromaticVariant: resolvedVariant.monochromaticVariant ?? null,
+    preferenceProfile: preferenceProfile ?? null,
+  });
+}
+
+function getCachedTutorialResult(cacheKey: string): GenerateTutorialResult | null {
+  const entry = tutorialResultCache.get(cacheKey);
+
+  if (!entry) {
+    return null;
+  }
+
+  if (entry.expiresAt <= Date.now()) {
+    tutorialResultCache.delete(cacheKey);
+    return null;
+  }
+
+  return entry.value;
+}
+
+function setCachedTutorialResult(cacheKey: string, value: GenerateTutorialResult) {
+  tutorialResultCache.set(cacheKey, {
+    value,
+    expiresAt: Date.now() + TUTORIAL_CACHE_TTL_MS,
+  });
+
+  if (tutorialResultCache.size <= TUTORIAL_CACHE_MAX_ENTRIES) {
+    return;
+  }
+
+  const oldestKey = tutorialResultCache.keys().next().value;
+
+  if (oldestKey) {
+    tutorialResultCache.delete(oldestKey);
+  }
+}
+
+function stableStringify(value: unknown): string {
+  if (Array.isArray(value)) {
+    return `[${value.map((item) => stableStringify(item)).join(",")}]`;
+  }
+
+  if (value && typeof value === "object") {
+    const entries = Object.entries(value as Record<string, unknown>)
+      .sort(([left], [right]) => left.localeCompare(right))
+      .map(([key, nestedValue]) => `${JSON.stringify(key)}:${stableStringify(nestedValue)}`);
+
+    return `{${entries.join(",")}}`;
+  }
+
+  return JSON.stringify(value);
 }
 
 function pickEditorialSubtype(
