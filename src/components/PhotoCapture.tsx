@@ -329,7 +329,7 @@ export function PhotoCapture({
               autoPlay
               playsInline
               muted
-              className="h-full w-full object-cover"
+              className="h-full w-full -scale-x-100 object-cover"
             />
             <div className="pointer-events-none absolute inset-x-0 top-0 bg-gradient-to-b from-black/75 via-black/25 to-transparent px-5 py-5">
               <p className="text-[10px] uppercase tracking-[0.24em] text-rose-300">Live Camera</p>
