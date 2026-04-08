@@ -38,24 +38,24 @@ export function LookSelector({
   const topLookId = topRecommendation?.lookId ?? null;
 
   return (
-    <main className="min-h-screen bg-[#050508] px-6 py-12 text-white">
+    <main className="min-h-screen bg-transparent px-6 py-12 text-[var(--text-main)]">
       <div className="mx-auto max-w-6xl">
         <div className="mb-12 max-w-2xl">
-          <p className="mb-4 text-xs uppercase tracking-[0.3em] text-rose-400">Step 03</p>
+          <p className="mb-4 text-xs uppercase tracking-[0.3em] text-[var(--rose-strong)]">Step 03</p>
           <h1
-            className="text-5xl font-semibold leading-none md:text-7xl"
+            className="text-5xl font-semibold leading-none text-[var(--text-strong)] md:text-7xl"
             style={{ fontFamily: "var(--font-cormorant), Georgia, serif" }}
           >
             Choose the look.
             <br />
             <span style={{ fontStyle: "italic" }}>Keep the fit.</span>
           </h1>
-          <p className="mt-6 max-w-xl text-base leading-relaxed text-white/48">
+          <p className="mt-6 max-w-xl text-base leading-relaxed text-[var(--text-main)]">
             Your face read is done. This step only changes the mood, intensity,
             and finish MEDUSA builds around it.
           </p>
           {topLookId && (
-            <p className="mt-4 max-w-xl text-sm leading-relaxed text-rose-100/72">
+            <p className="mt-4 max-w-xl text-sm leading-relaxed text-[var(--text-main)]">
               MEDUSA would start with {LOOK_DEFINITIONS[topLookId].label.toLowerCase()} for your
               current face read and taste memory.
             </p>
@@ -64,40 +64,40 @@ export function LookSelector({
 
         {(topLookId || preferenceSummary) && (
           <div className="mb-8 grid gap-4 lg:grid-cols-[1.1fr_0.9fr]">
-            <div className="rounded-[2rem] border border-rose-400/16 bg-rose-500/[0.06] p-6">
-              <p className="text-[10px] uppercase tracking-[0.24em] text-rose-300">Recommended Direction</p>
+            <div className="rounded-[2rem] border border-[rgba(220,127,139,0.24)] bg-[var(--bg-soft-rose)] p-6 shadow-[var(--shadow-soft)]">
+              <p className="text-[10px] uppercase tracking-[0.24em] text-[var(--rose-strong)]">Recommended Direction</p>
               <div className="mt-4 flex flex-wrap items-center gap-3">
                 {topLookId && (
-                  <span className="rounded-full border border-rose-300/26 bg-rose-500/12 px-4 py-2 text-xs uppercase tracking-[0.18em] text-rose-100">
+                  <span className="rounded-full border border-[rgba(220,127,139,0.24)] bg-white/78 px-4 py-2 text-xs uppercase tracking-[0.18em] text-[var(--rose-strong)]">
                     {LOOK_DEFINITIONS[topLookId].label}
                   </span>
                 )}
                 {preferenceSummary?.intensityPreference && (
-                  <span className="rounded-full border border-white/10 bg-white/[0.04] px-4 py-2 text-xs uppercase tracking-[0.18em] text-white/62">
+                  <span className="rounded-full border border-[var(--border-subtle)] bg-white/74 px-4 py-2 text-xs uppercase tracking-[0.18em] text-[var(--text-muted)]">
                     {preferenceSummary.intensityPreference} intensity
                   </span>
                 )}
                 {preferenceSummary?.finishPreference && (
-                  <span className="rounded-full border border-white/10 bg-white/[0.04] px-4 py-2 text-xs uppercase tracking-[0.18em] text-white/62">
+                  <span className="rounded-full border border-[var(--border-subtle)] bg-white/74 px-4 py-2 text-xs uppercase tracking-[0.18em] text-[var(--text-muted)]">
                     {preferenceSummary.finishPreference} finish
                   </span>
                 )}
                 {preferenceSummary?.featureFocus && (
-                  <span className="rounded-full border border-white/10 bg-white/[0.04] px-4 py-2 text-xs uppercase tracking-[0.18em] text-white/62">
+                  <span className="rounded-full border border-[var(--border-subtle)] bg-white/74 px-4 py-2 text-xs uppercase tracking-[0.18em] text-[var(--text-muted)]">
                     {preferenceSummary.featureFocus} focus
                   </span>
                 )}
               </div>
-              <p className="mt-4 max-w-2xl text-sm leading-relaxed text-white/58">
+              <p className="mt-4 max-w-2xl text-sm leading-relaxed text-[var(--text-main)]">
                 {topRecommendation?.rationale ?? buildRecommendationRationale(topLookId, preferenceSummary, analysis)}
               </p>
             </div>
 
-            <div className="rounded-[2rem] border border-white/8 bg-white/[0.03] p-6">
+            <div className="glass-card rounded-[2rem] p-6">
               <div className="flex items-start justify-between gap-4">
                 <div>
-                  <p className="text-[10px] uppercase tracking-[0.24em] text-white/30">Taste Profile</p>
-                  <p className="mt-3 text-sm leading-relaxed text-white/52">
+                  <p className="text-[10px] uppercase tracking-[0.24em] text-[var(--text-muted)]">Taste Profile</p>
+                  <p className="mt-3 text-sm leading-relaxed text-[var(--text-main)]">
                     {explicitPreferences?.completedOnboarding
                       ? "Your saved defaults are already shaping what MEDUSA prioritizes."
                       : "You can keep going, or tune your defaults before you choose a look."}
@@ -107,7 +107,7 @@ export function LookSelector({
                   <button
                     type="button"
                     onClick={onRefineProfile}
-                    className="rounded-full border border-white/10 px-4 py-2 text-[11px] uppercase tracking-[0.18em] text-white/60 transition-colors hover:border-white/18 hover:text-white/80"
+                    className="rounded-full border border-[var(--border-subtle)] bg-white/76 px-4 py-2 text-[11px] uppercase tracking-[0.18em] text-[var(--text-main)] transition-colors hover:bg-white"
                   >
                     {explicitPreferences?.completedOnboarding ? "Refine" : "Tune"}
                   </button>
@@ -118,7 +118,7 @@ export function LookSelector({
                 {buildProfileChips(preferenceSummary).map((chip) => (
                   <span
                     key={chip}
-                    className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-[10px] uppercase tracking-[0.18em] text-white/60"
+                    className="rounded-full border border-[var(--border-subtle)] bg-white/76 px-3 py-1 text-[10px] uppercase tracking-[0.18em] text-[var(--text-muted)]"
                   >
                     {chip}
                   </span>
@@ -140,12 +140,12 @@ export function LookSelector({
               <button
                 key={look.id}
                 onClick={() => onSelect(look.id)}
-                className={`group relative overflow-hidden rounded-[2rem] border bg-[rgba(13,13,20,0.8)] p-6 text-left transition-all duration-200 hover:-translate-y-1 hover:shadow-[0_24px_80px_rgba(0,0,0,0.35)] ${
+                className={`group relative overflow-hidden rounded-[2rem] border bg-white/82 p-6 text-left transition-all duration-200 hover:-translate-y-1 hover:shadow-[var(--shadow-soft)] ${
                   isTopMatch
-                    ? "border-rose-300/36 hover:border-rose-200/48"
+                    ? "border-[rgba(220,127,139,0.3)] hover:border-[rgba(220,127,139,0.44)]"
                     : isPreferred
-                      ? "border-rose-400/28 hover:border-rose-300/42"
-                      : "border-white/8 hover:border-rose-400/30"
+                      ? "border-[rgba(220,127,139,0.24)] hover:border-[rgba(220,127,139,0.4)]"
+                      : "border-[var(--border-subtle)] hover:border-[rgba(220,127,139,0.26)]"
                 }`}
               >
                 <div
@@ -155,31 +155,31 @@ export function LookSelector({
                 <div className="relative">
                   <div className="mb-10 flex items-start justify-between gap-4">
                     <div>
-                      <p className="text-[10px] uppercase tracking-[0.24em] text-rose-300">{look.tag}</p>
-                      <p className="mt-2 text-[11px] uppercase tracking-[0.22em] text-white/22">
+                      <p className="text-[10px] uppercase tracking-[0.24em] text-[var(--rose-strong)]">{look.tag}</p>
+                      <p className="mt-2 text-[11px] uppercase tracking-[0.22em] text-[var(--text-muted)]">
                         Look {String(index + 1).padStart(2, "0")}
                       </p>
                     </div>
-                    <span className="rounded-full border border-white/10 px-3 py-1 text-[10px] uppercase tracking-[0.2em] text-white/35">
+                    <span className="rounded-full border border-[var(--border-subtle)] bg-white/76 px-3 py-1 text-[10px] uppercase tracking-[0.2em] text-[var(--text-muted)]">
                       Face read holds
                     </span>
                   </div>
 
                   <h2
-                    className="text-3xl font-semibold leading-none text-white"
+                    className="text-3xl font-semibold leading-none text-[var(--text-strong)]"
                     style={{ fontFamily: "var(--font-cormorant), Georgia, serif" }}
                   >
                     {look.label}
                   </h2>
-                  <p className="mt-3 max-w-[24ch] text-sm leading-relaxed text-white/48">
+                  <p className="mt-3 max-w-[24ch] text-sm leading-relaxed text-[var(--text-main)]">
                     {look.subtitle}
                   </p>
 
                   <div className="mt-4 flex flex-wrap gap-2">
                     {isTopMatch && (
-                      <span className="rounded-full border border-rose-300/26 bg-rose-500/14 px-3 py-1 text-[10px] uppercase tracking-[0.18em] text-rose-100">
-                        Best Match
-                      </span>
+                        <span className="rounded-full border border-[rgba(220,127,139,0.24)] bg-white/78 px-3 py-1 text-[10px] uppercase tracking-[0.18em] text-[var(--rose-strong)]">
+                          Best Match
+                        </span>
                     )}
                     {recommendation?.badges
                       .filter((badge) => !(
@@ -190,29 +190,29 @@ export function LookSelector({
                       .map((badge) => (
                         <span
                           key={badge}
-                          className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-[10px] uppercase tracking-[0.18em] text-white/58"
+                          className="rounded-full border border-[var(--border-subtle)] bg-white/76 px-3 py-1 text-[10px] uppercase tracking-[0.18em] text-[var(--text-muted)]"
                         >
                           {badge}
                         </span>
                       ))}
                     {isPreferred && (
-                      <span className="rounded-full border border-rose-400/22 bg-rose-500/10 px-3 py-1 text-[10px] uppercase tracking-[0.18em] text-rose-100/88">
+                      <span className="rounded-full border border-[rgba(220,127,139,0.24)] bg-[var(--bg-soft-rose)] px-3 py-1 text-[10px] uppercase tracking-[0.18em] text-[var(--rose-strong)]">
                         Preferred
                       </span>
                     )}
                     {isRecent && (
-                      <span className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-[10px] uppercase tracking-[0.18em] text-white/58">
+                      <span className="rounded-full border border-[var(--border-subtle)] bg-white/76 px-3 py-1 text-[10px] uppercase tracking-[0.18em] text-[var(--text-muted)]">
                         Recent
                       </span>
                     )}
                     {isDiscouraged && (
-                      <span className="rounded-full border border-amber-400/18 bg-amber-500/[0.08] px-3 py-1 text-[10px] uppercase tracking-[0.18em] text-amber-100/78">
+                      <span className="rounded-full border border-amber-400/18 bg-amber-500/[0.08] px-3 py-1 text-[10px] uppercase tracking-[0.18em] text-amber-700">
                         Lower Match
                       </span>
                     )}
                   </div>
 
-                  <div className="mt-8 flex items-center gap-2 text-sm font-medium text-rose-300">
+                  <div className="mt-8 flex items-center gap-2 text-sm font-medium text-[var(--rose-strong)]">
                     Choose this look
                     <span className="transition-transform group-hover:translate-x-1">-&gt;</span>
                   </div>
@@ -222,7 +222,7 @@ export function LookSelector({
           })}
         </div>
 
-        <p className="mt-8 text-center text-xs uppercase tracking-[0.22em] text-white/22">
+        <p className="mt-8 text-center text-xs uppercase tracking-[0.22em] text-[var(--text-muted)]">
           Placement and cautions stay specific to your face. Only the look direction changes.
         </p>
       </div>

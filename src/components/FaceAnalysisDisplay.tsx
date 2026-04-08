@@ -106,34 +106,34 @@ export function FaceAnalysisDisplay({
   return (
     <div className="mx-auto flex w-full max-w-6xl flex-col gap-6">
       <div className="grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
-        <div className="glass-card rounded-[2.25rem] border border-rose-500/15 p-7 md:p-8">
+        <div className="glass-card rounded-[2.25rem] p-7 md:p-8">
           <div className="mb-4 flex items-center gap-3">
-            <span className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-rose-500/20 bg-rose-500/10 text-rose-300">
+            <span className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-[rgba(220,127,139,0.24)] bg-[var(--bg-soft-rose)] text-[var(--rose-strong)]">
               ✦
             </span>
             <div>
-              <p className="text-[11px] uppercase tracking-[0.3em] text-rose-300">Your Quick Read</p>
-              <p className="mt-1 text-sm text-white/35">Short, simple, and based on your photos.</p>
+              <p className="text-[11px] uppercase tracking-[0.3em] text-[var(--rose-strong)]">Your Quick Read</p>
+              <p className="mt-1 text-sm text-[var(--text-muted)]">Short, simple, and based on your photos.</p>
             </div>
           </div>
 
-          <p className="text-lg leading-relaxed text-white/82">{analysis.personalReading}</p>
+          <p className="text-lg leading-relaxed text-[var(--text-strong)]">{analysis.personalReading}</p>
 
-          <div className="mt-4 rounded-[1.5rem] border border-white/8 bg-white/[0.03] px-4 py-4">
-            <p className="text-[10px] uppercase tracking-[0.22em] text-white/30">Why we trust this read</p>
-            <p className="mt-2 text-sm leading-relaxed text-white/60">{analysis.readConfidence.summary}</p>
+          <div className="mt-4 rounded-[1.5rem] border border-[var(--border-subtle)] bg-white/74 px-4 py-4">
+            <p className="text-[10px] uppercase tracking-[0.22em] text-[var(--text-muted)]">Why we trust this read</p>
+            <p className="mt-2 text-sm leading-relaxed text-[var(--text-main)]">{analysis.readConfidence.summary}</p>
           </div>
 
           {analysis.precisionLevel === "medium" && (
-            <p className="mt-4 rounded-2xl border border-white/8 bg-white/4 px-4 py-3 text-sm leading-relaxed text-white/52">
+            <p className="mt-4 rounded-2xl border border-[var(--border-subtle)] bg-white/72 px-4 py-3 text-sm leading-relaxed text-[var(--text-main)]">
               {analysis.precisionNote}
             </p>
           )}
         </div>
 
-        <div className="glass-card rounded-[2.25rem] border border-white/8 p-7 md:p-8">
-          <p className="text-[11px] uppercase tracking-[0.3em] text-white/35">Read Confidence</p>
-          <p className="mt-2 text-sm leading-relaxed text-white/48">
+        <div className="glass-card rounded-[2.25rem] p-7 md:p-8">
+          <p className="text-[11px] uppercase tracking-[0.3em] text-[var(--text-muted)]">Read Confidence</p>
+          <p className="mt-2 text-sm leading-relaxed text-[var(--text-main)]">
             MEDUSA is reading these areas with different levels of certainty across your photos.
           </p>
 
@@ -141,21 +141,21 @@ export function FaceAnalysisDisplay({
             {confidenceItems.map((item) => (
               <div
                 key={item.key}
-                className="flex items-center justify-between gap-4 rounded-[1.35rem] border border-white/8 bg-white/[0.03] px-4 py-4"
+                className="flex items-center justify-between gap-4 rounded-[1.35rem] border border-[var(--border-subtle)] bg-white/74 px-4 py-4"
               >
-                <p className="text-sm font-medium text-white/82">{item.label}</p>
+                <p className="text-sm font-medium text-[var(--text-strong)]">{item.label}</p>
                 <ConfidenceBadge tier={item.tier} />
               </div>
             ))}
           </div>
 
-          <div className="mt-5 border-t border-white/8 pt-5">
-            <p className="text-[11px] uppercase tracking-[0.3em] text-white/35">Best Features To Play Up</p>
+          <div className="mt-5 border-t border-[var(--border-subtle)] pt-5">
+            <p className="text-[11px] uppercase tracking-[0.3em] text-[var(--text-muted)]">Best Features To Play Up</p>
             <div className="mt-4 flex flex-wrap gap-3">
               {analysis.beautyHighlights.map((highlight) => (
                 <span
                   key={highlight}
-                  className="rounded-full border border-white/10 bg-white/[0.03] px-4 py-2.5 text-sm text-white/72"
+                  className="rounded-full border border-[var(--border-subtle)] bg-white/74 px-4 py-2.5 text-sm text-[var(--text-main)]"
                 >
                   {highlight}
                 </span>
@@ -166,15 +166,15 @@ export function FaceAnalysisDisplay({
       </div>
 
       <div className="grid gap-6 xl:grid-cols-[1.05fr_0.95fr]">
-        <div className="glass-card relative overflow-hidden rounded-[2.25rem] border border-white/8 p-4 md:p-5">
+        <div className="glass-card relative overflow-hidden rounded-[2.25rem] p-4 md:p-5">
           <div
             className="pointer-events-none absolute inset-0 opacity-90"
             style={{
               background:
-                "radial-gradient(circle at top right, rgba(96,165,250,0.12), transparent 52%), radial-gradient(circle at bottom left, rgba(244,63,94,0.08), transparent 44%)",
+                "radial-gradient(circle at top right, rgba(240,179,154,0.18), transparent 52%), radial-gradient(circle at bottom left, rgba(253,232,228,0.78), transparent 44%)",
             }}
           />
-          <div className="relative overflow-hidden rounded-[1.75rem] border border-white/8 bg-black">
+          <div className="relative overflow-hidden rounded-[1.75rem] border border-[var(--border-subtle)] bg-[#f6e6dd]">
             <FaceZoneCanvas
               photoUrl={facePhoto.photoUrl}
               landmarks={facePhoto.landmarks}
@@ -184,29 +184,29 @@ export function FaceAnalysisDisplay({
               showMotionGuides={false}
               showBadge={false}
             />
-            <div className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 via-black/35 to-transparent px-5 py-5">
-              <p className="text-[10px] uppercase tracking-[0.24em] text-rose-300">Feature Spotlight</p>
+            <div className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-[rgba(255,250,246,0.96)] via-[rgba(255,250,246,0.72)] to-transparent px-5 py-5">
+              <p className="text-[10px] uppercase tracking-[0.24em] text-[var(--rose-strong)]">Feature Spotlight</p>
               <p
-                className="mt-2 text-2xl font-semibold text-white"
+                className="mt-2 text-2xl font-semibold text-[var(--text-strong)]"
                 style={{ fontFamily: "var(--font-cormorant), Georgia, serif" }}
               >
                 {activeFeature.title}
               </p>
-              <p className="mt-2 max-w-md text-sm leading-relaxed text-white/72">{activeFeature.body}</p>
+              <p className="mt-2 max-w-md text-sm leading-relaxed text-[var(--text-main)]">{activeFeature.body}</p>
             </div>
           </div>
         </div>
 
         <div className="grid gap-6">
-          <div className="glass-card rounded-[2.25rem] border border-white/8 p-6 md:p-7">
+          <div className="glass-card rounded-[2.25rem] p-6 md:p-7">
             <div className="flex items-center justify-between gap-4">
               <div>
-                <p className="text-[11px] uppercase tracking-[0.3em] text-white/35">What Stood Out</p>
-                <p className="mt-2 text-sm leading-relaxed text-white/48">
+                <p className="text-[11px] uppercase tracking-[0.3em] text-[var(--text-muted)]">What Stood Out</p>
+                <p className="mt-2 text-sm leading-relaxed text-[var(--text-main)]">
                   These are the main features shaping your tutorial.
                 </p>
               </div>
-              <div className="rounded-full border border-white/10 px-3 py-1 text-[10px] uppercase tracking-[0.2em] text-white/35">
+              <div className="rounded-full border border-[var(--border-subtle)] bg-white/76 px-3 py-1 text-[10px] uppercase tracking-[0.2em] text-[var(--text-muted)]">
                 Live Read
               </div>
             </div>
@@ -222,17 +222,17 @@ export function FaceAnalysisDisplay({
                     onClick={() => setActiveSpotlight(index)}
                     className={`rounded-[1.35rem] border px-4 py-4 text-left transition-all ${
                       isActive
-                        ? "border-rose-400/30 bg-rose-500/[0.08] shadow-[0_0_24px_rgba(244,63,94,0.08)]"
-                        : "border-white/8 bg-white/[0.03] hover:border-white/16 hover:bg-white/[0.05]"
+                        ? "border-[rgba(220,127,139,0.24)] bg-[var(--bg-soft-rose)] shadow-[var(--shadow-soft)]"
+                        : "border-[var(--border-subtle)] bg-white/74 hover:border-[var(--border-strong)] hover:bg-white"
                     }`}
                   >
                     <div className="flex items-start justify-between gap-4">
                       <div>
-                        <p className="text-[10px] uppercase tracking-[0.2em] text-white/28">{feature.label}</p>
-                        <p className="mt-2 text-sm font-medium capitalize text-white/84">{feature.kicker}</p>
-                        <p className="mt-2 text-sm leading-relaxed text-white/50">{feature.body}</p>
+                        <p className="text-[10px] uppercase tracking-[0.2em] text-[var(--text-muted)]">{feature.label}</p>
+                        <p className="mt-2 text-sm font-medium capitalize text-[var(--text-strong)]">{feature.kicker}</p>
+                        <p className="mt-2 text-sm leading-relaxed text-[var(--text-main)]">{feature.body}</p>
                       </div>
-                      <div className={`mt-1 h-2.5 w-2.5 rounded-full ${isActive ? "bg-rose-300" : "bg-white/16"}`} />
+                      <div className={`mt-1 h-2.5 w-2.5 rounded-full ${isActive ? "bg-[var(--rose)]" : "bg-[var(--border-strong)]"}`} />
                     </div>
                   </button>
                 );
@@ -240,9 +240,9 @@ export function FaceAnalysisDisplay({
             </div>
           </div>
 
-          <div className="glass-card rounded-[2.25rem] border border-white/8 p-6 md:p-7">
-            <p className="text-[11px] uppercase tracking-[0.3em] text-white/35">Best Makeup Shades For You</p>
-            <p className="mt-2 text-sm leading-relaxed text-white/48">
+          <div className="glass-card rounded-[2.25rem] p-6 md:p-7">
+            <p className="text-[11px] uppercase tracking-[0.3em] text-[var(--text-muted)]">Best Makeup Shades For You</p>
+            <p className="mt-2 text-sm leading-relaxed text-[var(--text-main)]">
               Based on your current tone match, these families should feel the easiest and most natural to wear.
             </p>
 
@@ -250,16 +250,16 @@ export function FaceAnalysisDisplay({
               {tonePalette.map((swatch) => (
                 <div
                   key={swatch.name}
-                  className="rounded-[1.35rem] border border-white/8 bg-white/[0.03] p-4"
+                  className="rounded-[1.35rem] border border-[var(--border-subtle)] bg-white/74 p-4"
                 >
                   <div className="flex items-center gap-3">
                     <div
-                      className="h-11 w-11 rounded-full border border-white/10"
+                      className="h-11 w-11 rounded-full border border-white/80"
                       style={{ background: swatch.color }}
                     />
                     <div>
-                      <p className="text-sm font-medium text-white/82">{swatch.name}</p>
-                      <p className="mt-1 text-xs uppercase tracking-[0.18em] text-white/28">{swatch.note}</p>
+                      <p className="text-sm font-medium text-[var(--text-strong)]">{swatch.name}</p>
+                      <p className="mt-1 text-xs uppercase tracking-[0.18em] text-[var(--text-muted)]">{swatch.note}</p>
                     </div>
                   </div>
                 </div>
@@ -293,63 +293,63 @@ export function FaceAnalysisDisplay({
             <Tag label={analysis.eyes.set} variant="soft" />
           </div>
           <FeatureNote title="What we noticed" body={analysis.eyes.specificCharacteristics} />
-          <p className="mt-3 text-sm leading-relaxed text-white/68">{analysis.eyes.makeupImplication}</p>
+          <p className="mt-3 text-sm leading-relaxed text-[var(--text-main)]">{analysis.eyes.makeupImplication}</p>
           <MiniGuidance workWith={analysis.eyes.workWith} avoid={analysis.eyes.avoid} />
         </Section>
 
         <Section title="Lips" icon="◌" accent="rose">
           <FeatureNote title="What we noticed" body={analysis.lips.specificCharacteristics} />
-          <p className="mt-3 text-sm leading-relaxed text-white/68">{analysis.lips.makeupImplication}</p>
+          <p className="mt-3 text-sm leading-relaxed text-[var(--text-main)]">{analysis.lips.makeupImplication}</p>
           <MiniGuidance workWith={analysis.lips.workWith} avoid={analysis.lips.avoid} />
         </Section>
       </div>
 
       <div className="grid gap-6 xl:grid-cols-[0.95fr_1.05fr]">
-        <div className="glass-card relative overflow-hidden rounded-[2rem] border border-white/8 p-6 md:p-7">
+        <div className="glass-card relative overflow-hidden rounded-[2rem] p-6 md:p-7">
           <div
             className="pointer-events-none absolute inset-0 opacity-90"
-            style={{ background: "radial-gradient(circle at top right, rgba(255,255,255,0.05), transparent 58%)" }}
+            style={{ background: "radial-gradient(circle at top right, rgba(253,232,228,0.8), transparent 58%)" }}
           />
           <div className="relative">
             <div className="mb-5 flex items-center gap-2.5">
-              <span className="text-sm text-rose-300">⌒</span>
-              <span className="text-[11px] uppercase tracking-[0.28em] text-white/35">Keep It Simple</span>
+              <span className="text-sm text-[var(--rose-strong)]">⌒</span>
+              <span className="text-[11px] uppercase tracking-[0.28em] text-[var(--text-muted)]">Keep It Simple</span>
             </div>
 
             <div className="space-y-3">
               {analysis.makeupPriorities.map((priority, index) => (
                 <div
                   key={priority}
-                  className="flex items-start gap-4 rounded-[1.3rem] border border-white/8 bg-white/[0.03] px-5 py-4"
+                  className="flex items-start gap-4 rounded-[1.3rem] border border-[var(--border-subtle)] bg-white/74 px-5 py-4"
                 >
-                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-rose-500/20 bg-rose-500/10 text-xs font-semibold text-rose-200">
+                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-[rgba(220,127,139,0.24)] bg-[var(--bg-soft-rose)] text-xs font-semibold text-[var(--rose-strong)]">
                     {index + 1}
                   </div>
-                  <p className="pt-1 text-sm leading-relaxed text-white/74">{priority}</p>
+                  <p className="pt-1 text-sm leading-relaxed text-[var(--text-main)]">{priority}</p>
                 </div>
               ))}
             </div>
           </div>
         </div>
 
-        <div className="glass-card relative overflow-hidden rounded-[2rem] border border-white/8 p-6 md:p-7">
+        <div className="glass-card relative overflow-hidden rounded-[2rem] p-6 md:p-7">
           <div
             className="pointer-events-none absolute inset-0 opacity-90"
-            style={{ background: "radial-gradient(circle at top right, rgba(244,63,94,0.08), transparent 58%)" }}
+            style={{ background: "radial-gradient(circle at top right, rgba(248,212,200,0.52), transparent 58%)" }}
           />
           <div className="relative">
             <div className="mb-5 flex items-center gap-2.5">
-              <span className="text-sm text-rose-300">✕</span>
-              <span className="text-[11px] uppercase tracking-[0.28em] text-white/35">Skip These</span>
+              <span className="text-sm text-[var(--rose-strong)]">✕</span>
+              <span className="text-[11px] uppercase tracking-[0.28em] text-[var(--text-muted)]">Skip These</span>
             </div>
 
             <div className="grid gap-3">
               {analysis.avoidTechniques.map((avoid) => (
                 <div
                   key={avoid}
-                  className="rounded-[1.3rem] border border-rose-500/14 bg-rose-500/[0.05] px-5 py-4"
+                  className="rounded-[1.3rem] border border-[rgba(220,127,139,0.2)] bg-[var(--bg-soft-rose)] px-5 py-4"
                 >
-                  <p className="text-sm leading-relaxed text-rose-100/82">{avoid}</p>
+                  <p className="text-sm leading-relaxed text-[var(--text-main)]">{avoid}</p>
                 </div>
               ))}
             </div>
@@ -360,14 +360,14 @@ export function FaceAnalysisDisplay({
       <div className="flex flex-col gap-3 sm:flex-row">
         <button
           onClick={onProceed}
-          className="group inline-flex w-full items-center justify-center gap-3 rounded-full bg-rose-500 px-8 py-4 text-[15px] font-semibold text-white transition-all duration-200 hover:bg-rose-400 hover:shadow-[0_0_40px_rgba(244,63,94,0.25)]"
+          className="medusa-button-primary group inline-flex w-full items-center justify-center gap-3 px-8 py-4 text-[15px] font-semibold transition-transform hover:-translate-y-0.5"
         >
           Continue With This Match
           <span className="transition-transform group-hover:translate-x-1">-&gt;</span>
         </button>
         <button
           onClick={onAdjustTone}
-          className="inline-flex w-full items-center justify-center rounded-full border border-white/10 px-8 py-4 text-[15px] font-semibold text-white/72 transition-colors hover:border-white/18 hover:bg-white/[0.04]"
+          className="medusa-button-secondary inline-flex w-full items-center justify-center px-8 py-4 text-[15px] font-semibold transition-colors hover:bg-white/90"
         >
           Choose My Own Tone
         </button>
@@ -390,21 +390,21 @@ function Section({
   accent?: "rose" | "amber" | "violet" | "neutral";
 }) {
   const accents = {
-    rose: "radial-gradient(circle at top right, rgba(244,63,94,0.12), transparent 58%)",
-    amber: "radial-gradient(circle at top right, rgba(245,158,11,0.1), transparent 58%)",
-    violet: "radial-gradient(circle at top right, rgba(168,85,247,0.1), transparent 58%)",
-    neutral: "radial-gradient(circle at top right, rgba(255,255,255,0.05), transparent 58%)",
+    rose: "radial-gradient(circle at top right, rgba(248,212,200,0.45), transparent 58%)",
+    amber: "radial-gradient(circle at top right, rgba(240,179,154,0.32), transparent 58%)",
+    violet: "radial-gradient(circle at top right, rgba(253,232,228,0.82), transparent 58%)",
+    neutral: "radial-gradient(circle at top right, rgba(253,232,228,0.72), transparent 58%)",
   } as const;
 
   return (
-    <div className={`glass-card relative overflow-hidden rounded-[2rem] border border-white/8 p-6 md:p-7 ${className}`}>
+    <div className={`glass-card relative overflow-hidden rounded-[2rem] p-6 md:p-7 ${className}`}>
       <div
         className="pointer-events-none absolute inset-0 opacity-90"
         style={{ background: accents[accent] }}
       />
       <div className="relative mb-4 flex items-center gap-2.5">
-        <span className="text-sm text-rose-300">{icon}</span>
-        <span className="text-[11px] uppercase tracking-[0.28em] text-white/35">{title}</span>
+        <span className="text-sm text-[var(--rose-strong)]">{icon}</span>
+        <span className="text-[11px] uppercase tracking-[0.28em] text-[var(--text-muted)]">{title}</span>
       </div>
       <div className="relative">{children}</div>
     </div>
@@ -416,8 +416,8 @@ function Tag({ label, variant = "primary" }: { label: string; variant?: "primary
     <span
       className={`inline-flex rounded-full px-4 py-1.5 text-[11px] font-semibold capitalize transition-colors ${
         variant === "primary"
-          ? "border border-rose-500/25 bg-rose-500/10 text-rose-200"
-          : "border border-white/10 bg-white/[0.04] text-white/62"
+          ? "border border-[rgba(220,127,139,0.24)] bg-[var(--bg-soft-rose)] text-[var(--rose-strong)]"
+          : "border border-[var(--border-subtle)] bg-white/76 text-[var(--text-main)]"
       }`}
     >
       {label}
@@ -427,9 +427,9 @@ function Tag({ label, variant = "primary" }: { label: string; variant?: "primary
 
 function FeatureNote({ title, body }: { title: string; body: string }) {
   return (
-    <div className="rounded-[1.35rem] border border-white/8 bg-white/[0.03] px-5 py-4">
-      <p className="text-[10px] uppercase tracking-[0.22em] text-white/30">{title}</p>
-      <p className="mt-2 text-sm leading-relaxed text-white/62">{body}</p>
+    <div className="rounded-[1.35rem] border border-[var(--border-subtle)] bg-white/76 px-5 py-4">
+      <p className="text-[10px] uppercase tracking-[0.22em] text-[var(--text-muted)]">{title}</p>
+      <p className="mt-2 text-sm leading-relaxed text-[var(--text-main)]">{body}</p>
     </div>
   );
 }
@@ -439,16 +439,16 @@ function ConfidenceBadge({ tier }: { tier: ResolvedFaceAnalysis["readConfidence"
     tier === "strong"
       ? {
           label: "Very Clear",
-          className: "border-emerald-500/20 bg-emerald-500/[0.08] text-emerald-200",
+          className: "border-emerald-500/20 bg-emerald-500/[0.08] text-emerald-700",
         }
       : tier === "usable"
         ? {
             label: "Good Read",
-            className: "border-amber-400/18 bg-amber-400/[0.08] text-amber-100",
+            className: "border-amber-400/18 bg-amber-400/[0.08] text-amber-700",
           }
         : {
             label: "Softer Read",
-            className: "border-white/10 bg-white/[0.04] text-white/62",
+            className: "border-[var(--border-subtle)] bg-white/76 text-[var(--text-main)]",
           };
 
   return (
@@ -464,12 +464,12 @@ function MiniGuidance({ workWith, avoid }: { workWith: string; avoid: string }) 
   return (
     <div className="mt-5 grid gap-3">
       <div className="rounded-[1.35rem] border border-emerald-500/18 bg-emerald-500/[0.06] px-5 py-4">
-        <p className="text-[10px] uppercase tracking-[0.22em] text-emerald-300/85">Do</p>
-        <p className="mt-2 text-sm leading-relaxed text-emerald-100/85">{workWith}</p>
+        <p className="text-[10px] uppercase tracking-[0.22em] text-emerald-700">Do</p>
+        <p className="mt-2 text-sm leading-relaxed text-emerald-900/80">{workWith}</p>
       </div>
-      <div className="rounded-[1.35rem] border border-rose-500/18 bg-rose-500/[0.06] px-5 py-4">
-        <p className="text-[10px] uppercase tracking-[0.22em] text-rose-300/85">Don&apos;t</p>
-        <p className="mt-2 text-sm leading-relaxed text-rose-100/85">{avoid}</p>
+      <div className="rounded-[1.35rem] border border-[rgba(220,127,139,0.24)] bg-[var(--bg-soft-rose)] px-5 py-4">
+        <p className="text-[10px] uppercase tracking-[0.22em] text-[var(--rose-strong)]">Don&apos;t</p>
+        <p className="mt-2 text-sm leading-relaxed text-[var(--text-main)]">{avoid}</p>
       </div>
     </div>
   );

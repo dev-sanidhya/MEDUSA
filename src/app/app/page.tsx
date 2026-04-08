@@ -260,9 +260,9 @@ export default function MedusaApp() {
         <main className="mx-auto flex min-h-screen w-full max-w-6xl items-center px-6 py-20">
           <div className="grid w-full gap-12 lg:grid-cols-[1.05fr_0.95fr] lg:items-center">
             <div>
-              <p className="mb-5 text-xs uppercase tracking-[0.32em] text-rose-400">Face Analysis</p>
+              <p className="mb-5 text-xs uppercase tracking-[0.32em] text-[var(--rose-strong)]">Face Analysis</p>
               <h1
-                className="text-[clamp(3.5rem,9vw,6.8rem)] font-semibold leading-none text-white"
+                className="text-[clamp(3.5rem,9vw,6.8rem)] font-semibold leading-none text-[var(--text-strong)]"
                 style={{ fontFamily: "var(--font-cormorant), Georgia, serif" }}
               >
                 Get a routine
@@ -271,7 +271,7 @@ export default function MedusaApp() {
                 <br />
                 your face.
               </h1>
-              <p className="mt-6 max-w-xl text-base leading-relaxed text-white/48 md:text-lg">
+              <p className="mt-6 max-w-xl text-base leading-relaxed text-[var(--text-main)] md:text-lg">
                 Upload a photo, let MEDUSA read your features, then get step-by-step
                 placement and technique built around your eyes, lips, structure, and tone.
               </p>
@@ -284,7 +284,7 @@ export default function MedusaApp() {
                 ].map((pill) => (
                   <span
                     key={pill}
-                    className="rounded-full border border-white/10 bg-white/[0.03] px-4 py-2 text-xs uppercase tracking-[0.18em] text-white/42"
+                    className="rounded-full border border-[var(--border-subtle)] bg-white/70 px-4 py-2 text-xs uppercase tracking-[0.18em] text-[var(--text-muted)]"
                   >
                     {pill}
                   </span>
@@ -294,13 +294,13 @@ export default function MedusaApp() {
               <div className="mt-10 flex flex-col gap-3 sm:flex-row">
                 <button
                   onClick={() => setStage("capturing")}
-                  className="rounded-full bg-rose-500 px-8 py-4 text-sm font-semibold uppercase tracking-[0.16em] text-white transition-colors hover:bg-rose-400"
+                  className="medusa-button-primary px-8 py-4 text-sm font-semibold uppercase tracking-[0.16em] transition-transform hover:-translate-y-0.5"
                 >
                   Begin Analysis
                 </button>
                 <Link
                   href="/"
-                  className="rounded-full border border-white/10 px-8 py-4 text-sm uppercase tracking-[0.16em] text-white/55 transition-colors hover:border-white/18 hover:text-white/75"
+                  className="medusa-button-secondary px-8 py-4 text-sm uppercase tracking-[0.16em] transition-colors hover:bg-white/90"
                 >
                   Back to Home
                 </Link>
@@ -313,10 +313,10 @@ export default function MedusaApp() {
               )}
             </div>
 
-            <div className="glass-card noise relative overflow-hidden rounded-[2.4rem] border border-white/8 p-7">
+            <div className="glass-card noise relative overflow-hidden rounded-[2.4rem] p-7">
               <div
                 className="pointer-events-none absolute inset-0"
-                style={{ background: "radial-gradient(circle at top right, rgba(244,63,94,0.18), transparent 55%)" }}
+                style={{ background: "radial-gradient(circle at top right, rgba(240,179,154,0.24), transparent 55%)" }}
               />
               <div className="relative">
                 <div className="mb-7 flex justify-center">
@@ -329,23 +329,23 @@ export default function MedusaApp() {
                     ["02", "Analyze", "MEDUSA reads structure, eye set, lip proportions, and tone cues locally."],
                     ["03", "Write", "MEDUSA turns the read into placement notes, technique, and what to avoid."],
                   ].map(([num, title, body]) => (
-                    <div key={num} className="rounded-[1.6rem] border border-white/8 bg-white/[0.03] p-4">
+                    <div key={num} className="rounded-[1.6rem] border border-[var(--border-subtle)] bg-white/72 p-4">
                       <div className="flex items-center justify-between">
-                        <span className="text-[10px] uppercase tracking-[0.24em] text-rose-300">Step {num}</span>
-                        <span className="text-[10px] uppercase tracking-[0.2em] text-white/22">{title}</span>
+                        <span className="text-[10px] uppercase tracking-[0.24em] text-[var(--rose-strong)]">Step {num}</span>
+                        <span className="text-[10px] uppercase tracking-[0.2em] text-[var(--text-muted)]">{title}</span>
                       </div>
                       <p
-                        className="mt-3 text-2xl font-semibold text-white"
+                        className="mt-3 text-2xl font-semibold text-[var(--text-strong)]"
                         style={{ fontFamily: "var(--font-cormorant), Georgia, serif" }}
                       >
                         {title}
                       </p>
-                      <p className="mt-2 text-sm leading-relaxed text-white/45">{body}</p>
+                      <p className="mt-2 text-sm leading-relaxed text-[var(--text-main)]">{body}</p>
                     </div>
                   ))}
                 </div>
 
-                <p className="mt-6 text-center text-xs uppercase tracking-[0.22em] text-white/24">
+                <p className="mt-6 text-center text-xs uppercase tracking-[0.22em] text-[var(--text-muted)]">
                   Every routine starts with your actual features.
                 </p>
               </div>
@@ -374,15 +374,15 @@ export default function MedusaApp() {
                     "Forehead to chin visible",
                     "Hair pulled away",
                   ].map((tip) => (
-                    <div key={tip} className="rounded-2xl border border-white/8 bg-white/[0.03] px-4 py-3 text-sm text-white/58">
+                    <div key={tip} className="rounded-2xl border border-[var(--border-subtle)] bg-white/75 px-4 py-3 text-sm text-[var(--text-main)]">
                       {tip}
                     </div>
                   ))}
                 </div>
               </HeroPanel>
 
-              <div className="glass-card rounded-[2rem] border border-white/8 p-6">
-                <p className="text-[11px] uppercase tracking-[0.28em] text-white/35">Capture Progress</p>
+              <div className="glass-card rounded-[2rem] p-6">
+                <p className="text-[11px] uppercase tracking-[0.28em] text-[var(--text-muted)]">Capture Progress</p>
                 <div className="mt-5 flex gap-3">
                   {[0, 1, 2].map((index) => {
                     const isComplete = index < capturedPhotos.length;
@@ -392,10 +392,10 @@ export default function MedusaApp() {
                       <div key={index} className="flex-1">
                         <div
                           className={`h-1 rounded-full ${
-                            isComplete ? "bg-rose-400" : isActive ? "bg-white/28" : "bg-white/8"
+                            isComplete ? "bg-[var(--rose)]" : isActive ? "bg-[var(--text-muted)]/45" : "bg-[var(--border-subtle)]"
                           }`}
                         />
-                        <p className="mt-2 text-[10px] uppercase tracking-[0.18em] text-white/25">
+                        <p className="mt-2 text-[10px] uppercase tracking-[0.18em] text-[var(--text-muted)]">
                           Photo {index + 1}
                         </p>
                       </div>
@@ -406,7 +406,7 @@ export default function MedusaApp() {
                 {capturedPhotos.length > 0 && (
                   <div className="mt-6 grid grid-cols-3 gap-3">
                     {capturedPhotos.map((photo, index) => (
-                      <div key={`${photo.previewUrl}-${index}`} className="overflow-hidden rounded-[1.25rem] border border-white/10 bg-black">
+                      <div key={`${photo.previewUrl}-${index}`} className="overflow-hidden rounded-[1.25rem] border border-[var(--border-subtle)] bg-[#f7ebe4]">
                         <Image
                           src={photo.previewUrl}
                           alt={`Photo ${index + 1}`}
@@ -422,21 +422,21 @@ export default function MedusaApp() {
               </div>
             </div>
 
-            <div className="glass-card rounded-[2rem] border border-white/8 p-6">
+            <div className="glass-card rounded-[2rem] p-6">
               <div className="mb-6 flex items-center justify-between gap-4">
                 <div>
-                  <p className="text-[11px] uppercase tracking-[0.28em] text-rose-300">Upload Panel</p>
-                  <p className="mt-2 text-sm text-white/45">Photo {currentPhotoNumber} of up to 3</p>
+                  <p className="text-[11px] uppercase tracking-[0.28em] text-[var(--rose-strong)]">Upload Panel</p>
+                  <p className="mt-2 text-sm text-[var(--text-main)]">Photo {currentPhotoNumber} of up to 3</p>
                 </div>
-                <div className="rounded-full border border-white/10 px-3 py-1.5 text-xs text-white/35">
+                <div className="rounded-full border border-[var(--border-subtle)] bg-white/70 px-3 py-1.5 text-xs text-[var(--text-muted)]">
                   Precision first
                 </div>
               </div>
 
               {agentMessage && (
-                <div className="mb-5 rounded-[1.6rem] border border-rose-500/18 bg-rose-500/[0.06] p-5">
-                  <p className="text-[10px] uppercase tracking-[0.24em] text-rose-300">One more angle needed</p>
-                  <p className="mt-2 text-sm leading-relaxed text-rose-100/82">{agentMessage}</p>
+                <div className="mb-5 rounded-[1.6rem] border border-[rgba(220,127,139,0.24)] bg-[var(--bg-soft-rose)] p-5">
+                  <p className="text-[10px] uppercase tracking-[0.24em] text-[var(--rose-strong)]">One more angle needed</p>
+                  <p className="mt-2 text-sm leading-relaxed text-[var(--text-main)]">{agentMessage}</p>
                 </div>
               )}
 
@@ -502,7 +502,7 @@ export default function MedusaApp() {
             />
             <button
               onClick={handleRestart}
-              className="rounded-full border border-white/10 px-5 py-3 text-sm text-white/58 transition-colors hover:border-white/16 hover:text-white/75"
+              className="medusa-button-secondary px-5 py-3 text-sm transition-colors hover:bg-white/90"
             >
               Start Over
             </button>
@@ -678,13 +678,13 @@ function AppFrame({
   children: React.ReactNode;
 }) {
   return (
-    <div className="relative min-h-screen overflow-hidden bg-[#050508] text-white">
+    <div className="relative min-h-screen overflow-hidden bg-transparent text-[var(--text-main)]">
       <AppBackdrop stage={stage} />
       <header className="relative z-10 mx-auto flex w-full max-w-6xl items-center justify-between px-6 pt-8">
         <Link href="/" aria-label="MEDUSA home">
           <MedusaLogo size="sm" />
         </Link>
-        <div className="rounded-full border border-white/8 px-4 py-2 text-[10px] uppercase tracking-[0.28em] text-white/30">
+        <div className="rounded-full border border-[var(--border-subtle)] bg-white/78 px-4 py-2 text-[10px] uppercase tracking-[0.28em] text-[var(--text-muted)]">
           {getStageLabel(stage)}
         </div>
       </header>
@@ -695,24 +695,24 @@ function AppFrame({
 
 function AppBackdrop({ stage }: { stage: AppStage }) {
   const gradients: Record<AppStage, string> = {
-    welcome: "radial-gradient(circle at 18% 25%, rgba(244,63,94,0.16), transparent 34%), radial-gradient(circle at 82% 18%, rgba(255,255,255,0.05), transparent 26%)",
-    capturing: "radial-gradient(circle at 20% 25%, rgba(244,63,94,0.14), transparent 32%), radial-gradient(circle at 85% 75%, rgba(109,40,217,0.08), transparent 30%)",
-    analyzing: "radial-gradient(circle at 50% 28%, rgba(244,63,94,0.18), transparent 34%)",
-    tone_override: "radial-gradient(circle at 50% 20%, rgba(244,63,94,0.18), transparent 28%), radial-gradient(circle at 15% 80%, rgba(255,255,255,0.04), transparent 26%)",
-    analysis_complete: "radial-gradient(circle at 80% 20%, rgba(244,63,94,0.14), transparent 30%), radial-gradient(circle at 10% 75%, rgba(255,255,255,0.04), transparent 28%)",
-    look_selection: "radial-gradient(circle at 16% 18%, rgba(244,63,94,0.12), transparent 28%), radial-gradient(circle at 84% 82%, rgba(109,40,217,0.09), transparent 28%)",
-    generating_tutorial: "radial-gradient(circle at 50% 28%, rgba(244,63,94,0.18), transparent 34%)",
-    tutorial: "radial-gradient(circle at 82% 18%, rgba(244,63,94,0.12), transparent 30%), radial-gradient(circle at 12% 85%, rgba(255,255,255,0.04), transparent 28%)",
+    welcome: "radial-gradient(circle at 18% 25%, rgba(248,212,200,0.62), transparent 34%), radial-gradient(circle at 82% 18%, rgba(253,232,228,0.75), transparent 28%)",
+    capturing: "radial-gradient(circle at 20% 25%, rgba(240,179,154,0.34), transparent 32%), radial-gradient(circle at 85% 75%, rgba(253,232,228,0.92), transparent 30%)",
+    analyzing: "radial-gradient(circle at 50% 28%, rgba(248,212,200,0.58), transparent 34%)",
+    tone_override: "radial-gradient(circle at 50% 20%, rgba(248,212,200,0.5), transparent 28%), radial-gradient(circle at 15% 80%, rgba(255,255,255,0.6), transparent 26%)",
+    analysis_complete: "radial-gradient(circle at 80% 20%, rgba(240,179,154,0.3), transparent 30%), radial-gradient(circle at 10% 75%, rgba(253,232,228,0.84), transparent 28%)",
+    look_selection: "radial-gradient(circle at 16% 18%, rgba(248,212,200,0.54), transparent 28%), radial-gradient(circle at 84% 82%, rgba(253,232,228,0.9), transparent 28%)",
+    generating_tutorial: "radial-gradient(circle at 50% 28%, rgba(248,212,200,0.56), transparent 34%)",
+    tutorial: "radial-gradient(circle at 82% 18%, rgba(240,179,154,0.28), transparent 30%), radial-gradient(circle at 12% 85%, rgba(253,232,228,0.85), transparent 28%)",
   };
 
   return (
     <>
       <div className="absolute inset-0 opacity-95" style={{ background: gradients[stage] }} />
-      <div className="absolute inset-0 opacity-[0.03]">
+      <div className="absolute inset-0 opacity-[0.1]">
         <svg className="h-full w-full" xmlns="http://www.w3.org/2000/svg">
           <defs>
             <pattern id="medusa-grid" x="0" y="0" width="32" height="32" patternUnits="userSpaceOnUse">
-              <circle cx="1" cy="1" r="1" fill="white" />
+              <circle cx="1" cy="1" r="1" fill="#d2b6ad" />
             </pattern>
           </defs>
           <rect width="100%" height="100%" fill="url(#medusa-grid)" />
@@ -733,14 +733,14 @@ function HeroHeader({
 }) {
   return (
     <div className="max-w-2xl">
-      <p className="mb-4 text-xs uppercase tracking-[0.3em] text-rose-400">{eyebrow}</p>
+      <p className="mb-4 text-xs uppercase tracking-[0.3em] text-[var(--rose-strong)]">{eyebrow}</p>
       <h1
-        className="text-5xl font-semibold leading-none text-white md:text-6xl"
+        className="text-5xl font-semibold leading-none text-[var(--text-strong)] md:text-6xl"
         style={{ fontFamily: "var(--font-cormorant), Georgia, serif" }}
       >
         {title}
       </h1>
-      <p className="mt-5 text-sm leading-relaxed text-white/48 md:text-base">{body}</p>
+      <p className="mt-5 text-sm leading-relaxed text-[var(--text-main)] md:text-base">{body}</p>
     </div>
   );
 }
@@ -757,15 +757,15 @@ function HeroPanel({
   children: React.ReactNode;
 }) {
   return (
-    <div className="glass-card rounded-[2rem] border border-white/8 p-6">
-      <p className="mb-4 text-xs uppercase tracking-[0.28em] text-rose-400">{eyebrow}</p>
+    <div className="glass-card rounded-[2rem] p-6">
+      <p className="mb-4 text-xs uppercase tracking-[0.28em] text-[var(--rose-strong)]">{eyebrow}</p>
       <h1
-        className="text-4xl font-semibold leading-none text-white md:text-5xl"
+        className="text-4xl font-semibold leading-none text-[var(--text-strong)] md:text-5xl"
         style={{ fontFamily: "var(--font-cormorant), Georgia, serif" }}
       >
         {title}
       </h1>
-      <p className="mt-4 text-sm leading-relaxed text-white/48 md:text-base">{body}</p>
+      <p className="mt-4 text-sm leading-relaxed text-[var(--text-main)] md:text-base">{body}</p>
       <div className="mt-6">{children}</div>
     </div>
   );
@@ -834,7 +834,7 @@ function ProcessingScreen({
       <main className="relative mx-auto flex min-h-screen w-full max-w-7xl items-center px-6 py-16">
         <div className="pointer-events-none absolute inset-x-6 top-1/2 -translate-y-1/2 overflow-hidden">
           <div
-            className="text-center text-[clamp(6rem,22vw,18rem)] font-semibold leading-none text-white/[0.03]"
+            className="text-center text-[clamp(6rem,22vw,18rem)] font-semibold leading-none text-[rgba(111,77,69,0.07)]"
             style={{ fontFamily: "var(--font-cormorant), Georgia, serif" }}
           >
             {copy.ambientWord}
@@ -844,62 +844,62 @@ function ProcessingScreen({
         <div className="relative w-full">
           <div className="mb-10 flex flex-wrap items-center justify-between gap-4">
             <div className="flex flex-wrap items-center gap-3">
-              <span className="rounded-full border border-rose-500/20 bg-rose-500/8 px-4 py-2 text-[11px] uppercase tracking-[0.28em] text-rose-300">
+              <span className="rounded-full border border-[rgba(220,127,139,0.24)] bg-[var(--bg-soft-rose)] px-4 py-2 text-[11px] uppercase tracking-[0.28em] text-[var(--rose-strong)]">
                 {eyebrow}
               </span>
-              <span className="rounded-full border border-white/10 px-4 py-2 text-[11px] uppercase tracking-[0.24em] text-white/34">
+              <span className="rounded-full border border-[var(--border-subtle)] bg-white/72 px-4 py-2 text-[11px] uppercase tracking-[0.24em] text-[var(--text-muted)]">
                 {copy.capsule}
               </span>
             </div>
-            <div className="rounded-full border border-white/10 px-5 py-2 text-[11px] uppercase tracking-[0.26em] text-white/36">
+            <div className="rounded-full border border-[var(--border-subtle)] bg-white/72 px-5 py-2 text-[11px] uppercase tracking-[0.26em] text-[var(--text-muted)]">
               {copy.statusLabel}
             </div>
           </div>
 
           <div className="grid gap-10 lg:grid-cols-[1.1fr_0.9fr] lg:items-end">
             <div>
-              <p className="text-xs uppercase tracking-[0.28em] text-white/28">{copy.chapter}</p>
+              <p className="text-xs uppercase tracking-[0.28em] text-[var(--text-muted)]">{copy.chapter}</p>
               <h1
-                className="mt-5 max-w-4xl text-[clamp(3.6rem,8vw,7rem)] font-semibold leading-[0.92] text-white"
+                className="mt-5 max-w-4xl text-[clamp(3.6rem,8vw,7rem)] font-semibold leading-[0.92] text-[var(--text-strong)]"
                 style={{ fontFamily: "var(--font-cormorant), Georgia, serif" }}
               >
                 {title}
               </h1>
-              <p className="mt-6 max-w-2xl text-base leading-relaxed text-white/46 md:text-lg">{body}</p>
+              <p className="mt-6 max-w-2xl text-base leading-relaxed text-[var(--text-main)] md:text-lg">{body}</p>
 
-              <div className="mt-10 rounded-[2rem] border border-white/8 bg-white/[0.03] p-6">
+              <div className="mt-10 rounded-[2rem] border border-[var(--border-subtle)] bg-white/74 p-6 shadow-[var(--shadow-soft)]">
                 <div className="flex items-end justify-between gap-6">
                   <div>
-                    <p className="text-[10px] uppercase tracking-[0.24em] text-white/26">Live status</p>
-                    <p className="mt-3 text-2xl text-white/86">{activeItem}</p>
-                    <p className="mt-2 max-w-xl text-sm leading-relaxed text-white/42">{copy.eyebrowNote}</p>
+                    <p className="text-[10px] uppercase tracking-[0.24em] text-[var(--text-muted)]">Live status</p>
+                    <p className="mt-3 text-2xl text-[var(--text-strong)]">{activeItem}</p>
+                    <p className="mt-2 max-w-xl text-sm leading-relaxed text-[var(--text-main)]">{copy.eyebrowNote}</p>
                   </div>
                   <div className="text-right">
-                    <p className="text-[10px] uppercase tracking-[0.22em] text-white/26">Visible progress</p>
-                    <p className="mt-3 text-5xl text-white/84 tabular-nums">{displayPercent}%</p>
+                    <p className="text-[10px] uppercase tracking-[0.22em] text-[var(--text-muted)]">Visible progress</p>
+                    <p className="mt-3 text-5xl tabular-nums text-[var(--text-strong)]">{displayPercent}%</p>
                   </div>
                 </div>
 
-                <div className="mt-6 h-2 w-full overflow-hidden rounded-full bg-white/8">
+                <div className="mt-6 h-2 w-full overflow-hidden rounded-full bg-[var(--border-subtle)]">
                   <motion.div
                     initial={{ width: "0%" }}
                     animate={{ width: `${displayPercent}%` }}
                     transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
-                    className="h-full rounded-full bg-[linear-gradient(90deg,rgba(244,63,94,0.5),rgba(255,255,255,0.85),rgba(244,63,94,0.72))]"
+                    className="medusa-progress h-full rounded-full"
                   />
                 </div>
               </div>
             </div>
 
-            <div className="glass-card relative overflow-hidden rounded-[2.8rem] border border-white/8 p-8">
-              <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(244,63,94,0.14),transparent_32%),radial-gradient(circle_at_bottom_left,rgba(255,255,255,0.04),transparent_30%)]" />
+            <div className="glass-card relative overflow-hidden rounded-[2.8rem] p-8">
+              <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(240,179,154,0.2),transparent_32%),radial-gradient(circle_at_bottom_left,rgba(253,232,228,0.7),transparent_30%)]" />
               <div className="relative">
                 <div className="flex items-start justify-between gap-4">
                   <div>
-                    <p className="text-[10px] uppercase tracking-[0.24em] text-rose-300">MEDUSA Pass</p>
-                    <p className="mt-3 text-sm leading-relaxed text-white/46">{copy.detail}</p>
+                    <p className="text-[10px] uppercase tracking-[0.24em] text-[var(--rose-strong)]">MEDUSA Pass</p>
+                    <p className="mt-3 text-sm leading-relaxed text-[var(--text-main)]">{copy.detail}</p>
                   </div>
-                  <div className="rounded-full border border-white/10 px-3 py-1.5 text-[10px] uppercase tracking-[0.22em] text-white/34">
+                  <div className="rounded-full border border-[var(--border-subtle)] bg-white/75 px-3 py-1.5 text-[10px] uppercase tracking-[0.22em] text-[var(--text-muted)]">
                     Hold to finalization
                   </div>
                 </div>
@@ -920,10 +920,10 @@ function ProcessingScreen({
                         transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
                         className={`rounded-[1.6rem] border px-5 py-5 ${
                           isCurrent
-                            ? "border-rose-400/28 bg-rose-500/[0.07]"
+                            ? "border-[rgba(220,127,139,0.24)] bg-[var(--bg-soft-rose)]"
                             : isComplete
-                              ? "border-white/12 bg-white/[0.04]"
-                              : "border-white/8 bg-transparent"
+                              ? "border-[var(--border-subtle)] bg-white/70"
+                              : "border-[var(--border-subtle)] bg-transparent"
                         }`}
                       >
                         <div className="flex items-center justify-between gap-4">
@@ -931,17 +931,17 @@ function ProcessingScreen({
                             <div
                               className={`flex h-10 w-10 items-center justify-center rounded-full border text-[11px] uppercase tracking-[0.18em] ${
                                 isCurrent
-                                  ? "border-rose-300/42 bg-rose-500/10 text-rose-200"
+                                  ? "border-[rgba(220,127,139,0.28)] bg-white/80 text-[var(--rose-strong)]"
                                   : isComplete
-                                    ? "border-white/16 bg-white/[0.06] text-white/72"
-                                    : "border-white/10 text-white/28"
+                                    ? "border-[var(--border-subtle)] bg-white/70 text-[var(--text-main)]"
+                                    : "border-[var(--border-subtle)] text-[var(--text-muted)]"
                               }`}
                             >
                               {String(index + 1).padStart(2, "0")}
                             </div>
                             <div>
-                              <p className="text-sm text-white/82">{item}</p>
-                              <p className="mt-1 text-[10px] uppercase tracking-[0.22em] text-white/26">
+                              <p className="text-sm text-[var(--text-strong)]">{item}</p>
+                              <p className="mt-1 text-[10px] uppercase tracking-[0.22em] text-[var(--text-muted)]">
                                 {isCurrent ? "Current focus" : isComplete ? "Passed" : "Pending"}
                               </p>
                             </div>
@@ -949,10 +949,10 @@ function ProcessingScreen({
                           <div
                             className={`h-2.5 w-14 rounded-full ${
                               isCurrent
-                                ? "bg-[linear-gradient(90deg,rgba(244,63,94,0.85),rgba(255,255,255,0.82))]"
+                                ? "medusa-progress"
                                 : isComplete
-                                  ? "bg-white/35"
-                                  : "bg-white/10"
+                                  ? "bg-[var(--apricot)]"
+                                  : "bg-[var(--border-subtle)]"
                             }`}
                           />
                         </div>
@@ -961,9 +961,9 @@ function ProcessingScreen({
                   })}
                 </div>
 
-                <div className="mt-8 rounded-[1.8rem] border border-white/8 bg-black/30 px-5 py-5">
-                  <p className="text-[10px] uppercase tracking-[0.24em] text-white/28">{copy.terminalLabel}</p>
-                  <p className="mt-3 text-sm leading-relaxed text-white/62">{copy.terminalBody}</p>
+                <div className="mt-8 rounded-[1.8rem] border border-[var(--border-subtle)] bg-white/72 px-5 py-5">
+                  <p className="text-[10px] uppercase tracking-[0.24em] text-[var(--text-muted)]">{copy.terminalLabel}</p>
+                  <p className="mt-3 text-sm leading-relaxed text-[var(--text-main)]">{copy.terminalBody}</p>
                 </div>
               </div>
             </div>
@@ -976,7 +976,7 @@ function ProcessingScreen({
 
 function ErrorBanner({ message }: { message: string }) {
   return (
-    <div className="rounded-2xl border border-rose-500/20 bg-rose-500/[0.08] px-5 py-3 text-sm text-rose-100/85 backdrop-blur-sm">
+    <div className="rounded-2xl border border-[rgba(220,127,139,0.24)] bg-[var(--bg-soft-rose)] px-5 py-3 text-sm text-[var(--text-main)] backdrop-blur-sm">
       {message}
     </div>
   );
@@ -1006,35 +1006,35 @@ function ToneConfirmationScreen({
           initial={{ opacity: 0, y: 24, scale: 0.98 }}
           animate={{ opacity: 1, y: 0, scale: 1 }}
           transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1] }}
-          className="glass-card w-full overflow-hidden rounded-[2.6rem] border border-white/8"
+          className="glass-card w-full overflow-hidden rounded-[2.6rem]"
         >
           <div
-            className="border-b border-white/8 px-8 py-8 md:px-10"
-            style={{ background: "radial-gradient(circle at top, rgba(244,63,94,0.12), transparent 60%)" }}
+            className="border-b border-[var(--border-subtle)] px-8 py-8 md:px-10"
+            style={{ background: "radial-gradient(circle at top, rgba(248,212,200,0.5), transparent 60%)" }}
           >
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ delay: 0.15 }}
-              className="mb-4 inline-flex items-center gap-2 rounded-full border border-rose-500/20 bg-rose-500/8 px-4 py-2 text-[11px] uppercase tracking-[0.26em] text-rose-300"
+              className="mb-4 inline-flex items-center gap-2 rounded-full border border-[rgba(220,127,139,0.24)] bg-[var(--bg-soft-rose)] px-4 py-2 text-[11px] uppercase tracking-[0.26em] text-[var(--rose-strong)]"
             >
-              <span className="h-2 w-2 rounded-full bg-rose-400 animate-pulse" />
+              <span className="h-2 w-2 rounded-full bg-[var(--rose)] animate-pulse" />
               Adjust If Needed
             </motion.div>
             <h1
-              className="max-w-3xl text-4xl font-semibold leading-tight text-white md:text-6xl"
+              className="max-w-3xl text-4xl font-semibold leading-tight text-[var(--text-strong)] md:text-6xl"
               style={{ fontFamily: "var(--font-cormorant), Georgia, serif" }}
             >
               Want to adjust
               <br />
               the tone match?
             </h1>
-            <p className="mt-5 max-w-2xl text-base leading-relaxed text-white/55">
+            <p className="mt-5 max-w-2xl text-base leading-relaxed text-[var(--text-main)]">
               We already chose the closest skin tone and undertone from your photos. If it feels off, update it here.
             </p>
-            <div className="mt-6 rounded-[1.4rem] border border-white/8 bg-white/[0.03] px-5 py-4">
-              <p className="text-[10px] uppercase tracking-[0.22em] text-white/30">What we noticed</p>
-              <p className="mt-2 text-sm leading-relaxed text-white/68">{analysis.skinToneExplanation}</p>
+            <div className="mt-6 rounded-[1.4rem] border border-[var(--border-subtle)] bg-white/72 px-5 py-4">
+              <p className="text-[10px] uppercase tracking-[0.22em] text-[var(--text-muted)]">What we noticed</p>
+              <p className="mt-2 text-sm leading-relaxed text-[var(--text-main)]">{analysis.skinToneExplanation}</p>
             </div>
           </div>
 
@@ -1056,21 +1056,21 @@ function ToneConfirmationScreen({
             />
           </div>
 
-          <div className="flex flex-col gap-4 border-t border-white/8 px-8 py-6 md:flex-row md:items-center md:justify-between md:px-10">
-            <p className="text-sm text-white/40">
-              Selected: <span className="text-white/72 capitalize">{selectedSkinTone}</span> /{" "}
-              <span className="text-white/72 capitalize">{selectedSkinUndertone}</span> undertone
+          <div className="flex flex-col gap-4 border-t border-[var(--border-subtle)] px-8 py-6 md:flex-row md:items-center md:justify-between md:px-10">
+            <p className="text-sm text-[var(--text-muted)]">
+              Selected: <span className="capitalize text-[var(--text-strong)]">{selectedSkinTone}</span> /{" "}
+              <span className="capitalize text-[var(--text-strong)]">{selectedSkinUndertone}</span> undertone
             </p>
             <div className="flex flex-col gap-3 sm:flex-row">
               <button
                 onClick={onBack}
-                className="inline-flex items-center justify-center rounded-full border border-white/10 px-6 py-4 text-sm font-semibold text-white/72 transition-colors hover:border-white/18 hover:bg-white/[0.04]"
+                className="medusa-button-secondary px-6 py-4 text-sm font-semibold transition-colors hover:bg-white/90"
               >
                 Keep This Match
               </button>
               <button
                 onClick={onConfirm}
-                className="inline-flex items-center justify-center rounded-full bg-rose-500 px-8 py-4 text-sm font-semibold text-white transition-all duration-200 hover:bg-rose-400 hover:shadow-[0_0_40px_rgba(244,63,94,0.25)]"
+                className="medusa-button-primary px-8 py-4 text-sm font-semibold transition-transform hover:-translate-y-0.5"
               >
                 Save My Changes
               </button>
@@ -1098,9 +1098,9 @@ function ToneChoiceCard<T extends string>({
   formatLabel?: (value: T) => string;
 }) {
   return (
-    <div className="rounded-[2rem] border border-white/8 bg-white/[0.03] p-5">
-      <p className="text-[11px] uppercase tracking-[0.26em] text-rose-300">{title}</p>
-      <p className="mt-3 text-sm leading-relaxed text-white/48">{subtitle}</p>
+    <div className="rounded-[2rem] border border-[var(--border-subtle)] bg-white/72 p-5">
+      <p className="text-[11px] uppercase tracking-[0.26em] text-[var(--rose-strong)]">{title}</p>
+      <p className="mt-3 text-sm leading-relaxed text-[var(--text-main)]">{subtitle}</p>
       <div className="mt-5 grid gap-3">
         {options.map((option, index) => {
           const isSelected = selected === option;
@@ -1114,22 +1114,22 @@ function ToneChoiceCard<T extends string>({
               whileTap={{ scale: 0.99 }}
               className={`rounded-[1.4rem] border px-4 py-4 text-left transition-all ${
                 isSelected
-                  ? "border-rose-400/35 bg-rose-500/12 shadow-[0_0_24px_rgba(244,63,94,0.12)]"
-                  : "border-white/8 bg-white/[0.02] hover:border-white/16 hover:bg-white/[0.04]"
+                  ? "border-[rgba(220,127,139,0.24)] bg-[var(--bg-soft-rose)] shadow-[var(--shadow-soft)]"
+                  : "border-[var(--border-subtle)] bg-white/75 hover:border-[var(--border-strong)] hover:bg-white"
               }`}
             >
               <div className="flex items-center justify-between gap-4">
                 <div>
-                  <p className="text-[10px] uppercase tracking-[0.2em] text-white/28">
+                  <p className="text-[10px] uppercase tracking-[0.2em] text-[var(--text-muted)]">
                     Option {index + 1}
                   </p>
-                  <p className="mt-2 text-lg font-medium capitalize text-white/85">
+                  <p className="mt-2 text-lg font-medium capitalize text-[var(--text-strong)]">
                     {formatLabel ? formatLabel(option) : option}
                   </p>
                 </div>
                 <div
                   className={`h-5 w-5 rounded-full border ${
-                    isSelected ? "border-rose-300 bg-rose-400/90" : "border-white/20"
+                    isSelected ? "border-[var(--rose-strong)] bg-[var(--rose)]/90" : "border-[var(--border-strong)]"
                   }`}
                 />
               </div>

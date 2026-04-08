@@ -237,8 +237,8 @@ export function PhotoCapture({
       <canvas ref={canvasRef} className="hidden" />
 
       {instruction && (
-        <div className="mb-5 rounded-[1.4rem] border border-rose-500/20 bg-rose-500/8 px-5 py-4 text-sm text-white/72 leading-relaxed backdrop-blur-sm">
-          <span className="mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.22em] text-rose-300">
+        <div className="mb-5 rounded-[1.4rem] border border-[rgba(220,127,139,0.24)] bg-[var(--bg-soft-rose)] px-5 py-4 text-sm leading-relaxed text-[var(--text-main)] backdrop-blur-sm">
+          <span className="mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.22em] text-[var(--rose-strong)]">
             {photoNumber === 1 ? "For your first photo:" : `Photo ${photoNumber} - what to change:`}
           </span>
           {instruction}
@@ -248,7 +248,7 @@ export function PhotoCapture({
       {!previewUrl && !isCameraOpen && (
         <div
           className={`relative overflow-hidden rounded-[2rem] border border-dashed transition-all cursor-pointer
-            ${isDragging ? "border-rose-400 bg-[rgba(244,63,94,0.08)]" : "border-white/12 bg-[rgba(13,13,20,0.72)] hover:border-rose-400/45 hover:bg-[rgba(244,63,94,0.04)]"}
+            ${isDragging ? "border-[var(--rose)] bg-[var(--bg-soft-rose)]" : "border-[var(--border-strong)] bg-[rgba(255,249,245,0.9)] hover:border-[var(--rose)] hover:bg-white"}
             ${disabled ? "opacity-50 pointer-events-none" : ""}
           `}
           onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
@@ -257,7 +257,7 @@ export function PhotoCapture({
         >
           <div
             className="pointer-events-none absolute inset-0"
-            style={{ background: "radial-gradient(circle at top, rgba(244,63,94,0.1), transparent 58%)" }}
+            style={{ background: "radial-gradient(circle at top, rgba(240,179,154,0.18), transparent 58%)" }}
           />
           <input
             ref={fileInputRef}
@@ -272,21 +272,21 @@ export function PhotoCapture({
             {isProcessing ? (
               <>
                 <div className="mb-5 h-14 w-14 rounded-full border border-rose-400/25 border-t-rose-400 animate-spin" />
-                <p className="font-medium text-white">Reading your photo...</p>
-                <p className="mt-1 text-sm text-white/45">Mapping your features</p>
+                <p className="font-medium text-[var(--text-strong)]">Reading your photo...</p>
+                <p className="mt-1 text-sm text-[var(--text-main)]">Mapping your features</p>
               </>
             ) : (
               <>
-                <div className="mb-5 flex h-18 w-18 items-center justify-center rounded-full border border-rose-500/20 bg-rose-500/10">
-                  <svg className="h-8 w-8 text-rose-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <div className="mb-5 flex h-18 w-18 items-center justify-center rounded-full border border-[rgba(220,127,139,0.24)] bg-[var(--bg-soft-rose)]">
+                  <svg className="h-8 w-8 text-[var(--rose-strong)]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
                       d="M12 16.5V9.75m0 0 3 3m-3-3-3 3M6.75 19.5a4.5 4.5 0 0 1-1.41-8.775 5.25 5.25 0 0 1 10.233-2.33 3 3 0 0 1 3.758 3.848A3.752 3.752 0 0 1 18 19.5H6.75Z" />
                   </svg>
                 </div>
-                <p className="text-lg font-semibold text-white">
+                <p className="text-lg font-semibold text-[var(--text-strong)]">
                   {photoNumber === 1 ? "Upload your photo" : `Upload photo ${photoNumber}`}
                 </p>
-                <p className="mt-1 text-sm text-white/45">
+                <p className="mt-1 text-sm text-[var(--text-main)]">
                   Take a live selfie or upload one you already have
                 </p>
                 <div className="mt-6 flex w-full max-w-md flex-col gap-3 sm:flex-row sm:justify-center">
@@ -296,7 +296,7 @@ export function PhotoCapture({
                       e.stopPropagation();
                       void handleStartCamera();
                     }}
-                    className="inline-flex items-center justify-center rounded-full bg-rose-500 px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-rose-400"
+                    className="medusa-button-primary px-5 py-3 text-sm font-semibold transition-transform hover:-translate-y-0.5"
                   >
                     {isStartingCamera ? "Opening Camera..." : "Take Live Photo"}
                   </button>
@@ -306,13 +306,13 @@ export function PhotoCapture({
                       e.stopPropagation();
                       fileInputRef.current?.click();
                     }}
-                    className="inline-flex items-center justify-center rounded-full border border-white/10 px-5 py-3 text-sm font-semibold text-white/75 transition-colors hover:border-white/18 hover:bg-white/[0.04]"
+                    className="medusa-button-secondary px-5 py-3 text-sm font-semibold transition-colors hover:bg-white"
                   >
                     Upload From Device
                   </button>
                 </div>
-                <div className="mt-5 inline-flex items-center gap-2 rounded-full border border-white/10 px-3 py-1.5 text-[11px] uppercase tracking-[0.2em] text-white/35">
-                  <span className="h-1.5 w-1.5 rounded-full bg-rose-400" />
+                <div className="mt-5 inline-flex items-center gap-2 rounded-full border border-[var(--border-subtle)] bg-white/76 px-3 py-1.5 text-[11px] uppercase tracking-[0.2em] text-[var(--text-muted)]">
+                  <span className="h-1.5 w-1.5 rounded-full bg-[var(--rose)]" />
                   Best with a clear, straight-on photo
                 </div>
               </>
@@ -322,8 +322,8 @@ export function PhotoCapture({
       )}
 
       {!previewUrl && isCameraOpen && (
-        <div className="relative overflow-hidden rounded-[2rem] border border-white/10 bg-black shadow-[0_14px_40px_rgba(0,0,0,0.45)]">
-          <div className="relative aspect-[4/5] w-full bg-black">
+        <div className="relative overflow-hidden rounded-[2rem] border border-[var(--border-subtle)] bg-[#f7ebe4] shadow-[var(--shadow-soft)]">
+          <div className="relative aspect-[4/5] w-full bg-[#f2e1d8]">
             <video
               ref={videoRef}
               autoPlay
@@ -331,26 +331,26 @@ export function PhotoCapture({
               muted
               className="h-full w-full -scale-x-100 object-cover"
             />
-            <div className="pointer-events-none absolute inset-x-0 top-0 bg-gradient-to-b from-black/75 via-black/25 to-transparent px-5 py-5">
-              <p className="text-[10px] uppercase tracking-[0.24em] text-rose-300">Live Camera</p>
-              <p className="mt-2 text-sm leading-relaxed text-white/72">
+            <div className="pointer-events-none absolute inset-x-0 top-0 bg-gradient-to-b from-[rgba(255,250,246,0.94)] via-[rgba(255,250,246,0.56)] to-transparent px-5 py-5">
+              <p className="text-[10px] uppercase tracking-[0.24em] text-[var(--rose-strong)]">Live Camera</p>
+              <p className="mt-2 text-sm leading-relaxed text-[var(--text-main)]">
                 Hold your face straight, stay in even light, and capture when the frame feels clear.
               </p>
             </div>
           </div>
 
-          <div className="flex flex-col gap-3 border-t border-white/8 bg-[rgba(10,10,14,0.92)] px-5 py-4 sm:flex-row sm:justify-between">
+          <div className="flex flex-col gap-3 border-t border-[var(--border-subtle)] bg-white/80 px-5 py-4 sm:flex-row sm:justify-between">
             <button
               type="button"
               onClick={handleCloseCamera}
-              className="inline-flex items-center justify-center rounded-full border border-white/10 px-5 py-3 text-sm font-semibold text-white/72 transition-colors hover:border-white/18 hover:bg-white/[0.04]"
+              className="medusa-button-secondary px-5 py-3 text-sm font-semibold transition-colors hover:bg-white"
             >
               Cancel Camera
             </button>
             <button
               type="button"
               onClick={() => void handleCaptureLivePhoto()}
-              className="inline-flex items-center justify-center rounded-full bg-rose-500 px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-rose-400"
+              className="medusa-button-primary px-5 py-3 text-sm font-semibold transition-transform hover:-translate-y-0.5"
             >
               Capture Photo
             </button>
@@ -359,7 +359,7 @@ export function PhotoCapture({
       )}
 
       {previewUrl && (
-        <div className="relative overflow-hidden rounded-[2rem] border border-white/10 bg-black shadow-[0_14px_40px_rgba(0,0,0,0.45)]">
+        <div className="relative overflow-hidden rounded-[2rem] border border-[var(--border-subtle)] bg-[#f7ebe4] shadow-[var(--shadow-soft)]">
           <Image
             src={previewUrl}
             alt="Your photo with face mapping"
@@ -384,7 +384,7 @@ export function PhotoCapture({
 
           <button
             onClick={() => { setPreviewUrl(null); setPrecisionScore(null); }}
-            className="absolute bottom-3 right-3 rounded-full border border-white/12 bg-black/55 px-3 py-1.5 text-xs text-white/85 backdrop-blur-sm transition-colors hover:bg-black/75"
+            className="absolute bottom-3 right-3 rounded-full border border-[var(--border-subtle)] bg-white/82 px-3 py-1.5 text-xs text-[var(--text-main)] backdrop-blur-sm transition-colors hover:bg-white"
           >
             Retake
           </button>
@@ -392,7 +392,7 @@ export function PhotoCapture({
       )}
 
       {error && (
-        <div className="mt-3 rounded-2xl border border-rose-500/18 bg-rose-500/8 p-3 text-sm text-rose-200">
+        <div className="mt-3 rounded-2xl border border-[rgba(220,127,139,0.24)] bg-[var(--bg-soft-rose)] p-3 text-sm text-[var(--text-main)]">
           {error}
         </div>
       )}

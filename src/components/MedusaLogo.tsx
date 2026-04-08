@@ -23,15 +23,15 @@ export function MedusaLogoMark({
     >
       <defs>
         <linearGradient id="medusa-core" x1="12" y1="10" x2="58" y2="74" gradientUnits="userSpaceOnUse">
-          <stop offset="0%" stopColor="#ffe4ea" />
-          <stop offset="38%" stopColor="#fda4af" />
-          <stop offset="72%" stopColor="#fb7185" />
-          <stop offset="100%" stopColor="#be123c" />
+          <stop offset="0%" stopColor="#fff2ee" />
+          <stop offset="40%" stopColor="#f3b4a3" />
+          <stop offset="74%" stopColor="#dd808e" />
+          <stop offset="100%" stopColor="#b95d70" />
         </linearGradient>
         <linearGradient id="medusa-line" x1="10" y1="8" x2="62" y2="78" gradientUnits="userSpaceOnUse">
-          <stop offset="0%" stopColor="#fff7fb" />
-          <stop offset="45%" stopColor="#fda4af" />
-          <stop offset="100%" stopColor="#e11d48" />
+          <stop offset="0%" stopColor="#fff9f6" />
+          <stop offset="45%" stopColor="#df95a0" />
+          <stop offset="100%" stopColor="#c96578" />
         </linearGradient>
         <radialGradient id="medusa-glow" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(36 34) rotate(90) scale(34 28)">
           <stop offset="0%" stopColor="rgba(255,255,255,0.95)" />
@@ -69,7 +69,7 @@ export function MedusaLogoMark({
 
       <path
         d="M24 30.5c0-7.4 5.4-13.5 12-13.5s12 6.1 12 13.5c0 6-2.6 11.4-6.9 15.4-.8.7-1.6 1.6-2.1 2.6L36 55l-3-6.5c-.5-1-1.2-1.9-2-2.6-4.4-4-7-9.5-7-15.4Z"
-        fill="rgba(8,8,13,0.82)"
+        fill="rgba(255,250,246,0.92)"
         stroke="url(#medusa-line)"
         strokeWidth="1.5"
       />
@@ -84,7 +84,7 @@ export function MedusaLogoMark({
         strokeLinecap="round"
         opacity="0.95"
       />
-      <circle cx="36" cy="31.5" r="2.4" fill="#0f0f17" />
+      <circle cx="36" cy="31.5" r="2.4" fill="#6b4d45" />
       <path
         d="M30 43.2c1.8 2.2 3.9 3.3 6 3.3s4.2-1.1 6-3.3"
         stroke="url(#medusa-core)"
@@ -159,13 +159,13 @@ export function MedusaLogo({
       </div>
       <div className="flex flex-col leading-none">
         <span
-          className={`font-semibold text-white ${titleClass}`}
+          className={`font-semibold text-[var(--text-strong)] ${titleClass}`}
           style={{ fontFamily: "var(--font-cormorant), 'Cormorant Garamond', Georgia, serif" }}
         >
           MEDUSA
         </span>
         {showTagline && (
-          <span className={`${subtitleClass} mt-1.5 uppercase tracking-[0.42em] text-white/38`}>
+          <span className={`${subtitleClass} mt-1.5 uppercase tracking-[0.42em] text-[var(--text-muted)]`}>
             Face-Mapped Makeup
           </span>
         )}
@@ -180,12 +180,12 @@ export function MedusaLogoCentered({ className = "" }: { className?: string }) {
       <MedusaLogoMark size={84} animated className="drop-shadow-[0_0_24px_rgba(244,63,94,0.18)]" />
       <div className="text-center space-y-2">
         <div
-          className="text-5xl font-semibold text-white tracking-[0.3em]"
+          className="text-5xl font-semibold tracking-[0.3em] text-[var(--text-strong)]"
           style={{ fontFamily: "var(--font-cormorant), Georgia, serif" }}
         >
           MEDUSA
         </div>
-        <div className="text-[10px] uppercase tracking-[0.45em] text-white/35">
+        <div className="text-[10px] uppercase tracking-[0.45em] text-[var(--text-muted)]">
           Face-Mapped Makeup
         </div>
       </div>

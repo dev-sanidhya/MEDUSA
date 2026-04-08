@@ -60,12 +60,12 @@ export function FeedbackPanel({
   };
 
   return (
-    <div className="glass-card rounded-[2rem] border border-white/8 p-6">
-      <p className="text-[11px] uppercase tracking-[0.3em] text-rose-300">{title}</p>
-      <p className="mt-3 max-w-2xl text-sm leading-relaxed text-white/52">{body}</p>
+    <div className="glass-card rounded-[2rem] p-6">
+      <p className="text-[11px] uppercase tracking-[0.3em] text-[var(--rose-strong)]">{title}</p>
+      <p className="mt-3 max-w-2xl text-sm leading-relaxed text-[var(--text-main)]">{body}</p>
 
       {isSubmitted ? (
-        <div className="mt-5 rounded-[1.35rem] border border-emerald-500/18 bg-emerald-500/[0.06] px-5 py-4 text-sm text-emerald-100/85">
+        <div className="mt-5 rounded-[1.35rem] border border-emerald-500/18 bg-emerald-500/[0.06] px-5 py-4 text-sm text-emerald-900/80">
           Saved. MEDUSA will use this to sharpen future recommendations.
         </div>
       ) : (
@@ -82,8 +82,8 @@ export function FeedbackPanel({
                   onClick={() => setRating(value)}
                   className={`rounded-full border px-4 py-2 text-sm transition-colors ${
                     isActive
-                      ? "border-rose-400/35 bg-rose-500/12 text-white"
-                      : "border-white/10 bg-white/[0.03] text-white/62 hover:border-white/16 hover:text-white/82"
+                      ? "border-[rgba(220,127,139,0.24)] bg-[var(--bg-soft-rose)] text-[var(--rose-strong)]"
+                      : "border-[var(--border-subtle)] bg-white/76 text-[var(--text-main)] hover:border-[var(--border-strong)] hover:bg-white"
                   }`}
                 >
                   {value}. {label}
@@ -103,8 +103,8 @@ export function FeedbackPanel({
                   onClick={() => toggleTag(tag.id)}
                   className={`rounded-full border px-4 py-2 text-xs uppercase tracking-[0.18em] transition-colors ${
                     isActive
-                      ? "border-white/18 bg-white/[0.08] text-white"
-                      : "border-white/10 bg-white/[0.02] text-white/45 hover:border-white/16 hover:text-white/72"
+                      ? "border-[var(--border-strong)] bg-white text-[var(--text-strong)]"
+                      : "border-[var(--border-subtle)] bg-white/74 text-[var(--text-muted)] hover:border-[var(--border-strong)] hover:bg-white"
                   }`}
                 >
                   {tag.label}
@@ -118,7 +118,7 @@ export function FeedbackPanel({
               type="button"
               onClick={handleSubmit}
               disabled={!rating || isSubmitting}
-              className="rounded-full bg-rose-500 px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-rose-400 disabled:cursor-not-allowed disabled:opacity-50"
+              className="medusa-button-primary px-6 py-3 text-sm font-semibold transition-transform hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-50"
             >
               {isSubmitting ? "Saving..." : submitLabel}
             </button>

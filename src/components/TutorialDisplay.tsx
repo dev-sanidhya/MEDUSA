@@ -16,13 +16,13 @@ const CATEGORY_TAG: Record<TutorialStep["category"], string> = {
 };
 
 const CATEGORY_COLOR: Record<TutorialStep["category"], string> = {
-  prep: "border-white/10 bg-white/[0.04] text-white/60",
-  base: "border-amber-500/20 bg-amber-500/10 text-amber-200",
-  eyes: "border-violet-500/20 bg-violet-500/10 text-violet-200",
-  brows: "border-white/10 bg-white/[0.04] text-white/60",
-  lips: "border-rose-500/20 bg-rose-500/10 text-rose-200",
-  face: "border-orange-500/20 bg-orange-500/10 text-orange-200",
-  finish: "border-emerald-500/20 bg-emerald-500/10 text-emerald-200",
+  prep: "border-[var(--border-subtle)] bg-white/76 text-[var(--text-muted)]",
+  base: "border-amber-500/20 bg-amber-500/10 text-amber-700",
+  eyes: "border-violet-500/20 bg-violet-500/10 text-violet-700",
+  brows: "border-[var(--border-subtle)] bg-white/76 text-[var(--text-muted)]",
+  lips: "border-[rgba(220,127,139,0.24)] bg-[var(--bg-soft-rose)] text-[var(--rose-strong)]",
+  face: "border-orange-500/20 bg-orange-500/10 text-orange-700",
+  finish: "border-emerald-500/20 bg-emerald-500/10 text-emerald-700",
 };
 
 interface FacePhoto {
@@ -53,38 +53,38 @@ export function TutorialDisplay({
   const isLast = activeStep === total - 1;
 
   return (
-    <main className="min-h-screen bg-[#050508] px-6 py-8 text-white">
+    <main className="min-h-screen bg-transparent px-6 py-8 text-[var(--text-main)]">
       <div className="mx-auto flex max-w-7xl flex-col gap-6">
         <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
           <div className="max-w-2xl">
-            <p className="mb-3 text-xs uppercase tracking-[0.3em] text-rose-400">{tutorial.lookName}</p>
+            <p className="mb-3 text-xs uppercase tracking-[0.3em] text-[var(--rose-strong)]">{tutorial.lookName}</p>
             <h1
-              className="text-4xl font-semibold leading-none md:text-6xl"
+              className="text-4xl font-semibold leading-none text-[var(--text-strong)] md:text-6xl"
               style={{ fontFamily: "var(--font-cormorant), Georgia, serif" }}
             >
               Your routine.
               <br />
               <span style={{ fontStyle: "italic" }}>Step by step.</span>
             </h1>
-            <p className="mt-4 text-sm leading-relaxed text-white/45 md:text-base">
+            <p className="mt-4 text-sm leading-relaxed text-[var(--text-main)] md:text-base">
               Every step below is based on your face map, your proportions, and the look you picked.
             </p>
             {tutorial.lookVariant && (
-              <div className="mt-5 inline-flex max-w-xl flex-col rounded-[1.4rem] border border-white/8 bg-white/[0.03] px-4 py-3">
-                <p className="text-[10px] uppercase tracking-[0.22em] text-rose-300">MEDUSA Picked</p>
-                <p className="mt-2 text-sm font-medium text-white/82">{tutorial.lookVariant.label}</p>
-                <p className="mt-2 text-sm leading-relaxed text-white/48">{tutorial.lookVariant.rationale}</p>
+              <div className="mt-5 inline-flex max-w-xl flex-col rounded-[1.4rem] border border-[rgba(220,127,139,0.24)] bg-[var(--bg-soft-rose)] px-4 py-3">
+                <p className="text-[10px] uppercase tracking-[0.22em] text-[var(--rose-strong)]">MEDUSA Picked</p>
+                <p className="mt-2 text-sm font-medium text-[var(--text-strong)]">{tutorial.lookVariant.label}</p>
+                <p className="mt-2 text-sm leading-relaxed text-[var(--text-main)]">{tutorial.lookVariant.rationale}</p>
               </div>
             )}
           </div>
 
-          <div className="glass-card rounded-full border border-white/8 px-5 py-3 text-sm text-white/48">
+          <div className="glass-card rounded-full px-5 py-3 text-sm text-[var(--text-main)]">
             Step {activeStep + 1} of {total}
           </div>
         </div>
 
         <div className="grid gap-6 lg:grid-cols-[0.95fr_1.05fr]">
-          <div className="glass-card rounded-[2rem] border border-white/8 p-3">
+          <div className="glass-card rounded-[2rem] p-3">
             <div className="overflow-hidden rounded-[1.5rem]">
               <FaceZoneCanvas
                 photoUrl={facePhoto.photoUrl}
@@ -102,61 +102,61 @@ export function TutorialDisplay({
                   onClick={() => setActiveStep(index)}
                   className={`rounded-2xl border px-3 py-3 text-left transition-colors ${
                     index === activeStep
-                      ? "border-rose-400/30 bg-rose-500/12"
-                      : "border-white/8 bg-white/[0.02] hover:border-white/16 hover:bg-white/[0.04]"
+                      ? "border-[rgba(220,127,139,0.24)] bg-[var(--bg-soft-rose)]"
+                      : "border-[var(--border-subtle)] bg-white/74 hover:border-[var(--border-strong)] hover:bg-white"
                   }`}
                 >
-                  <p className="text-[10px] uppercase tracking-[0.2em] text-white/28">
+                  <p className="text-[10px] uppercase tracking-[0.2em] text-[var(--text-muted)]">
                     {String(index + 1).padStart(2, "0")}
                   </p>
-                  <p className="mt-2 text-sm font-medium leading-tight text-white/82">{tutorialStep.title}</p>
+                  <p className="mt-2 text-sm font-medium leading-tight text-[var(--text-strong)]">{tutorialStep.title}</p>
                 </button>
               ))}
             </div>
           </div>
 
-          <div className="glass-card flex min-h-[42rem] flex-col rounded-[2rem] border border-white/8 p-6">
+          <div className="glass-card flex min-h-[42rem] flex-col rounded-[2rem] p-6">
             <div className="mb-6 flex items-start justify-between gap-4">
               <div>
                 <div className={`inline-flex rounded-full border px-3 py-1 text-[10px] uppercase tracking-[0.24em] ${CATEGORY_COLOR[step.category]}`}>
                   {CATEGORY_TAG[step.category]}
                 </div>
                 <h2
-                  className="mt-4 text-3xl font-semibold leading-tight text-white md:text-4xl"
+                  className="mt-4 text-3xl font-semibold leading-tight text-[var(--text-strong)] md:text-4xl"
                   style={{ fontFamily: "var(--font-cormorant), Georgia, serif" }}
                 >
                   {step.title}
                 </h2>
               </div>
-              <div className="rounded-full border border-white/10 px-3 py-1.5 text-xs text-white/35">
+              <div className="rounded-full border border-[var(--border-subtle)] bg-white/76 px-3 py-1.5 text-xs text-[var(--text-muted)]">
                 {activeStep + 1}/{total}
               </div>
             </div>
 
             <div className="grid gap-4">
               <InfoBlock eyebrow="What You Need">
-                <p className="text-base font-medium text-white">{step.productType}</p>
-                <p className="mt-1 text-sm leading-relaxed text-white/45">{step.productColor}</p>
+                <p className="text-base font-medium text-[var(--text-strong)]">{step.productType}</p>
+                <p className="mt-1 text-sm leading-relaxed text-[var(--text-main)]">{step.productColor}</p>
               </InfoBlock>
 
               <InfoBlock eyebrow="Placement">
-                <p className="text-base leading-relaxed text-white/78">{step.instruction}</p>
+                <p className="text-base leading-relaxed text-[var(--text-strong)]">{step.instruction}</p>
               </InfoBlock>
 
               <InfoBlock eyebrow="Technique">
-                <p className="text-sm leading-relaxed text-white/58">{step.technique}</p>
+                <p className="text-sm leading-relaxed text-[var(--text-main)]">{step.technique}</p>
               </InfoBlock>
 
-              <div className="rounded-[1.5rem] border border-rose-500/16 bg-rose-500/[0.06] p-4">
-                <p className="text-[10px] uppercase tracking-[0.24em] text-rose-300">Avoid This</p>
-                <p className="mt-2 text-sm leading-relaxed text-rose-100/82">{step.avoid}</p>
+              <div className="rounded-[1.5rem] border border-[rgba(220,127,139,0.24)] bg-[var(--bg-soft-rose)] p-4">
+                <p className="text-[10px] uppercase tracking-[0.24em] text-[var(--rose-strong)]">Avoid This</p>
+                <p className="mt-2 text-sm leading-relaxed text-[var(--text-main)]">{step.avoid}</p>
               </div>
 
               {isLast && (
                 <>
-                  <div className="rounded-[1.5rem] border border-white/8 bg-white/[0.03] p-4">
-                    <p className="text-[10px] uppercase tracking-[0.24em] text-white/32">Closing Note</p>
-                    <p className="mt-2 text-sm leading-relaxed text-white/68">{tutorial.closingNote}</p>
+                  <div className="rounded-[1.5rem] border border-[var(--border-subtle)] bg-white/74 p-4">
+                    <p className="text-[10px] uppercase tracking-[0.24em] text-[var(--text-muted)]">Closing Note</p>
+                    <p className="mt-2 text-sm leading-relaxed text-[var(--text-main)]">{tutorial.closingNote}</p>
                   </div>
                   {feedbackSlot}
                 </>
@@ -164,9 +164,9 @@ export function TutorialDisplay({
             </div>
 
             <div className="mt-auto pt-8">
-              <div className="mb-4 h-1 w-full overflow-hidden rounded-full bg-white/6">
+              <div className="mb-4 h-1 w-full overflow-hidden rounded-full bg-[var(--border-subtle)]">
                 <div
-                  className="h-full rounded-full bg-rose-500 transition-all duration-300"
+                  className="medusa-progress h-full rounded-full transition-all duration-300"
                   style={{ width: `${((activeStep + 1) / total) * 100}%` }}
                 />
               </div>
@@ -175,7 +175,7 @@ export function TutorialDisplay({
                 {activeStep > 0 && (
                   <button
                     onClick={() => setActiveStep((index) => index - 1)}
-                    className="inline-flex items-center justify-center rounded-full border border-white/10 px-5 py-3 text-sm text-white/68 transition-colors hover:border-white/18 hover:bg-white/[0.04]"
+                    className="medusa-button-secondary px-5 py-3 text-sm transition-colors hover:bg-white/90"
                   >
                     Previous Step
                   </button>
@@ -184,7 +184,7 @@ export function TutorialDisplay({
                 {!isLast ? (
                   <button
                     onClick={() => setActiveStep((index) => index + 1)}
-                    className="inline-flex items-center justify-center rounded-full bg-rose-500 px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-rose-400"
+                    className="medusa-button-primary px-6 py-3 text-sm font-semibold transition-transform hover:-translate-y-0.5"
                   >
                     Next Step
                   </button>
@@ -192,13 +192,13 @@ export function TutorialDisplay({
                   <>
                     <button
                       onClick={onChooseAnotherLook}
-                      className="inline-flex items-center justify-center rounded-full bg-rose-500 px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-rose-400"
+                      className="medusa-button-primary px-6 py-3 text-sm font-semibold transition-transform hover:-translate-y-0.5"
                     >
                       Try Another Look
                     </button>
                     <button
                       onClick={onRestart}
-                      className="inline-flex items-center justify-center rounded-full border border-white/10 px-6 py-3 text-sm text-white/68 transition-colors hover:border-white/18 hover:bg-white/[0.04]"
+                      className="medusa-button-secondary px-6 py-3 text-sm transition-colors hover:bg-white/90"
                     >
                       New Analysis
                     </button>
@@ -221,8 +221,8 @@ function InfoBlock({
   children: React.ReactNode;
 }) {
   return (
-    <div className="rounded-[1.5rem] border border-white/8 bg-white/[0.03] p-4">
-      <p className="text-[10px] uppercase tracking-[0.24em] text-white/32">{eyebrow}</p>
+    <div className="rounded-[1.5rem] border border-[var(--border-subtle)] bg-white/74 p-4">
+      <p className="text-[10px] uppercase tracking-[0.24em] text-[var(--text-muted)]">{eyebrow}</p>
       <div className="mt-2">{children}</div>
     </div>
   );

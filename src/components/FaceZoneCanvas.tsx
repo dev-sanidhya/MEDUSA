@@ -94,7 +94,7 @@ export function FaceZoneCanvas({
   }, [photoUrl, landmarks, zone, imageWidth, imageHeight]);
 
   return (
-    <div className="relative w-full h-full rounded-2xl overflow-hidden bg-stone-900">
+    <div className="relative h-full w-full overflow-hidden rounded-2xl bg-[#f3dfd5]">
       <canvas ref={canvasRef} style={{ display: "block", width: "100%", height: "100%", objectFit: "cover" }} />
 
       {/* ── Animated motion guide SVG ──────────────────────────── */}
@@ -181,8 +181,8 @@ export function FaceZoneCanvas({
       {/* Zone badge */}
       {showBadge && (
         <div
-          className="absolute top-2.5 left-2.5 px-2.5 py-1 rounded-full text-xs font-semibold backdrop-blur-sm text-white"
-          style={{ background: "rgba(0,0,0,0.6)", border: `1px solid ${meta.accent}70`, fontSize: "11px" }}
+          className="absolute top-2.5 left-2.5 rounded-full px-2.5 py-1 text-xs font-semibold text-[var(--text-strong)] backdrop-blur-sm"
+          style={{ background: "rgba(255,250,246,0.84)", border: `1px solid ${meta.accent}55`, fontSize: "11px" }}
         >
           <span style={{ color: meta.accent }}>●</span>
           <span className="ml-1">{meta.label}</span>
